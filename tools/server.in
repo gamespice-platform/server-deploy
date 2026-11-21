@@ -1457,6 +1457,22 @@ check_web_natives() {
     printf '  native modules: %s\n' "$(cd "$build" && ls ./*.wasm | grep -v '/index\.' | sed 's#^\./##' | tr '\n' ' ')"
 }
 
+## A build whose embed.html still has an unfilled placeholder boots on defaults: no
+## `gdextensionLibs` means the dlink engine opens dot_sim.gdextension at its res:// path, which a
+## page never serves (404 "could not load dynamic lib", every start, 2026-11-21 load timing). Fail
+## the export rather than ship it. Only placeholders index.html has the value for are checked.
+check_embed_stamped() {
+    local build="$1" libs
+    [ -f "$build/index.html" ] && [ -f "$build/embed.html" ] || return 0
+    libs=$(grep -o '"gdextensionLibs":\[[^]]*\]' "$build/index.html" | head -1)
+    if [ -n "$libs" ] && [ "$libs" != '"gdextensionLibs":[]' ] && grep -qF '/*GDEXTENSION_LIBS*/[]' "$build/embed.html"; then
+        die "embed.html in $build has no gdextensionLibs ($libs in index.html): stamp_file_sizes did not run on it, so the page would 404 on addons/*/bin/*.wasm. Re-run export-web." 3
+    fi
+    if grep -qF '/*FILE_SIZES*/{}' "$build/embed.html" && grep -q '"fileSizes":{[^}]' "$build/index.html"; then
+        die "embed.html in $build has an empty fileSizes table: stamp_file_sizes did not run on it. Re-run export-web." 3
+    fi
+}
+
 ## [b]The threaded engine, beside the single-threaded one[/b], as index-mt.{js,wasm,...}.
 ##
 ## A browser only gives a page SharedArrayBuffer when the page is cross-origin isolated
@@ -2190,6 +2206,7 @@ case "$COMMAND" in
         # embed.html: the engine's progress callback only has a total when it is given one.
         stamp_file_sizes "$PROJECT/web/build"
         stamp_tmc_site "$PROJECT/web/build"
+        check_embed_stamped "$PROJECT/web/build"
 
         # And the loader website-city uploads, with the engine's location baked in.
         # It HAS to be baked: the site serves that file out of its own upload store,

@@ -21,6 +21,16 @@ const runs = runsAt >= 0 ? Number(args[runsAt + 1]) : 1;
 const url = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--runs') ?? 'http://127.0.0.1:8099/embed.html';
 const gpu = !!process.env.GPU_CDP_URL;
 
+// An embed.html that export-web did not stamp starts the dlink engine with no side modules, which then 404s on
+// addons/dot_sim/bin/...: say so up front rather than as eight page errors per run.
+if (/embed\.html/.test(url)) {
+  const html = await fetch(url).then(r => r.text()).catch(() => '');
+  if (html.includes('/*GDEXTENSION_LIBS*/[]') || html.includes('/*FILE_SIZES*/{}')) {
+    console.error(`${url} still has unfilled /*GDEXTENSION_LIBS*/ or /*FILE_SIZES*/ placeholders: not an export-web result (stamp_file_sizes); re-export`);
+    process.exit(2);
+  }
+}
+
 const cdp = gpu ? await chromium.connectOverCDP(process.env.GPU_CDP_URL) : null;
 const browser = cdp ?? await chromium.launch({ headless: true, args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 let bad = 0;
