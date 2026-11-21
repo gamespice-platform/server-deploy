@@ -41,6 +41,7 @@ for (let run = 0; run < runs; run++) {
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('response', r => { if (r.status() >= 400) errors.push('HTTP ' + r.status() + ' ' + r.url()); });
   page.on('pageerror', e => errors.push(String(e.message)));
   await page.goto(url, { waitUntil: 'commit' });
   const first = await page.waitForFunction(() => {
