@@ -71,7 +71,8 @@ func end() -> void:
 
 
 ## A job snapshot from GameSpice Cloud.
-func on_snapshot(snap: Dictionary) -> void:
+## Returns it with the rate and ETA from the bytes that arrived in the last seconds: the addon's figures hold their last speed when a transfer stops.
+func on_snapshot(snap: Dictionary) -> Dictionary:
 	var now := Time.get_ticks_msec()
 	var phase := str(snap.get("phase", "download"))
 	if phase == "download":
@@ -87,6 +88,9 @@ func on_snapshot(snap: Dictionary) -> void:
 			"at_ms": now - _begin_msec, "done_bytes": int(snap.get("done_bytes", 0))})
 	# The skip is offered from the first byte of a download that includes maps, not only once it has stalled.
 	_show_buttons(phase == "download" and _maps_in_job, phase == "download" and watch.is_stalled(now))
+	snap["bytes_per_sec"] = watch.rate(now)
+	snap["eta_sec"] = watch.eta_sec(now)
+	return snap
 
 
 ## Every second while a launch downloads: the numbers from what arrived, and the stall message when nothing did.
@@ -98,19 +102,34 @@ func tick() -> void:
 		DotLog.warn(shell.CHANNEL, "solo download stalled", {"quiet_s": watch.quiet_sec(now), "done_bytes": watch.done_bytes(), "total_bytes": watch.total_bytes(), "at_ms": now - _begin_msec})
 	var stalled := watch.is_stalled(now)
 	_show_buttons(_maps_in_job, stalled)
-	shell._refresh_job_text(stalled)
+	_redraw(stalled)
+
+
+## The launch's download text again: its numbers decay and the stall message appears without a new snapshot.
+func _redraw(stalled: bool) -> void:
+	var job: Dictionary = shell._job
+	if job.is_empty() or int(job.get("total_bytes", 0)) <= 0:
+		return
+	var now := Time.get_ticks_msec()
+	job["bytes_per_sec"] = watch.rate(now)
+	job["eta_sec"] = watch.eta_sec(now)
+	var line: String = shell._job_line()
+	var title: String = shell._text("shell.job.downloading_title", {}, "Downloading…")
+	if stalled:
+		var quiet := int(watch.quiet_sec(now))
+		title = shell._text("shell.job.stalled_title", {}, "Download stalled")
+		line = shell._text("shell.job.stalled", {"n": quiet}, "No data for %d s. The server may be busy; it is still trying." % quiet) + "\n" + line
+	if shell._status != null:
+		shell._status.text = title
+	if shell.loading != null:
+		shell.loading.set_progress(float(job.get("fraction", 0.0)), title, line)
+	if shell._detail != null:
+		shell._detail.text = line
+		shell._detail.visible = true
 
 
 func is_stalled() -> bool:
 	return watch.is_stalled(Time.get_ticks_msec())
-
-
-func rate() -> float:
-	return watch.rate(Time.get_ticks_msec())
-
-
-func eta() -> float:
-	return watch.eta_sec(Time.get_ticks_msec())
 
 
 func _show_buttons(skip: bool, retry: bool) -> void:
