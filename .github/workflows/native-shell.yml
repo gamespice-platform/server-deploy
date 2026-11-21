@@ -1,0 +1,149 @@
+# Exports the native shell (Linux, Windows, macOS) and publishes it to the site whenever
+# what it is built from changes. The web shell has its own workflow (web-shell.yml); this
+# is its native twin. Before it, `./server export-native` was run and published by hand,
+# so the Library kept an old native shell for weeks and the desktop app refused solo
+# starts on it ("needs a newer TMC game build", 2026-11-21).
+#
+# [b]No loops, no commits.[/b] tools/shell-inputs.sh's fingerprint is the cache key of a
+# marker entry saved after a publish; a hit means this tree's native shell is already out.
+# Nothing is pushed back. The build version is the UTC time, so each publish is newer than
+# the last, which the site requires.
+name: Native shell
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - addons.lock
+            - content-lists/addons.yml
+            - 'client/**'
+            - project.godot
+            - export_presets.example.cfg
+            - tools/fetch-godot.sh
+            - tools/fetch-export-templates.sh
+            - tools/fetch-natives.sh
+            - tools/shell-auth-json.sh
+            - tools/shell-inputs.sh
+            - tools/addons-lock.sh
+            - tools/publish-native-shell.sh
+            - .github/workflows/native-shell.yml
+    workflow_dispatch:
+        inputs:
+            force:
+                description: Export and publish even when this tree's native shell is already out.
+                type: boolean
+                default: false
+
+concurrency:
+    group: native-shell
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    shell:
+        runs-on: ubuntu-latest
+        timeout-minutes: 90
+        env:
+            WEB_SHELL_APP: ${{ vars.WEB_SHELL_APP || 'godot' }}
+            WEB_SHELL_API: ${{ vars.WEB_SHELL_API || 'https://moddingcommunity.com' }}
+            WEB_SHELL_BACKBONE_URL: ${{ vars.WEB_SHELL_BACKBONE_URL }}
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Fingerprint
+              id: fp
+              run: echo "inputs=$(tools/shell-inputs.sh print | sha256sum | cut -c1-32)" >> "$GITHUB_OUTPUT"
+
+            - name: Is this tree's native shell out?
+              id: marker
+              uses: actions/cache/restore@v4
+              with:
+                  path: native-published.txt
+                  key: native-published-${{ steps.fp.outputs.inputs }}
+                  lookup-only: true
+
+            - name: Decide
+              id: need
+              env:
+                  HIT: ${{ steps.marker.outputs.cache-hit }}
+                  FORCE: ${{ inputs.force }}
+              run: |
+                  if [ "$HIT" = true ] && [ "$FORCE" != true ]; then
+                      echo "native shell for ${{ steps.fp.outputs.inputs }} is already published; nothing to do."
+                      echo "build=false" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "build=true" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Settings this needs
+              if: steps.need.outputs.build == 'true'
+              env:
+                  TOKEN_SET: ${{ secrets.SHELL_PUBLISH_TOKEN != '' }}
+              run: |
+                  missing=()
+                  [ "$TOKEN_SET" = true ] || missing+=("secret SHELL_PUBLISH_TOKEN (the site's shell publish token)")
+                  [ -n "$WEB_SHELL_BACKBONE_URL" ] || missing+=("variable WEB_SHELL_BACKBONE_URL (client/auth.json's backbone_url)")
+                  if [ "${#missing[@]}" -gt 0 ]; then
+                      printf 'missing repository settings:\n'; printf '  %s\n' "${missing[@]}"
+                      exit 1
+                  fi
+
+            - name: Install what the runtime and the zips need
+              if: steps.need.outputs.build == 'true'
+              run: |
+                  sudo apt-get update -qq
+                  sudo apt-get install -y -qq --no-install-recommends \
+                      libfontconfig1 libx11-6 libxcursor1 libxinerama1 libxrandr2 libxi6 zip unzip jq
+
+            - name: Cache the export templates
+              if: steps.need.outputs.build == 'true'
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.local/share/godot/export_templates
+                  key: godot-templates-${{ hashFiles('tools/fetch-godot.sh', 'tools/fetch-export-templates.sh') }}
+
+            - name: Set up at the lock
+              if: steps.need.outputs.build == 'true'
+              env:
+                  DEPS_TOKEN: ${{ secrets.DOT_DEPS_TOKEN }}
+                  GIT_TERMINAL_PROMPT: '0'
+              run: |
+                  set -euo pipefail
+                  if [ -n "$DEPS_TOKEN" ]; then
+                      git config --global url."https://x-access-token:${DEPS_TOKEN}@github.com/".insteadOf "https://github.com/"
+                  fi
+                  ./setup.sh --no-games
+                  git config --global --unset-all url."https://x-access-token:${DEPS_TOKEN}@github.com/".insteadOf 2>/dev/null || true
+                  tools/addons-lock.sh check
+
+            - name: Export the desktop three
+              if: steps.need.outputs.build == 'true'
+              id: export
+              run: |
+                  set -euo pipefail
+                  tools/shell-auth-json.sh "$WEB_SHELL_BACKBONE_URL" > client/auth.json
+                  version="1.$(date -u +%Y%m%d).$(date -u +%H%M)"
+                  ./server export-native --platform all --build-version "$version"
+                  echo "version=$version" >> "$GITHUB_OUTPUT"
+
+            - name: Publish
+              if: steps.need.outputs.build == 'true'
+              env:
+                  SHELL_PUBLISH_TOKEN: ${{ secrets.SHELL_PUBLISH_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  tools/publish-native-shell.sh --site "$WEB_SHELL_API" --app "$WEB_SHELL_APP" \
+                      --version "${{ steps.export.outputs.version }}" \
+                      --notes "Exported by the native-shell workflow, run ${{ github.run_id }}, from $(git rev-parse --short HEAD)"
+                  echo "### Native shell ${{ steps.export.outputs.version }} published" >> "$GITHUB_STEP_SUMMARY"
+                  echo "${{ steps.export.outputs.version }} ${{ steps.fp.outputs.inputs }}" > native-published.txt
+
+            - name: Remember it
+              if: steps.need.outputs.build == 'true'
+              uses: actions/cache/save@v4
+              with:
+                  path: native-published.txt
+                  key: native-published-${{ steps.fp.outputs.inputs }}

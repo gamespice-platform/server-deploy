@@ -40,3 +40,7 @@ A player signed into the desktop app should join as themselves, which a TICKET s
 - **The `.app` bundle is named from the project name**, which is the server tool's. `config/name.macos="TMC"` is a feature-tagged override, so the bundle is `TMC.app` and the entry `TMC.app/Contents/MacOS/TMC`.
 
 Verified by exporting all three, unpacking the Linux archive the way the app does, and joining a real `./server` with the address arriving through `-- --connect`.
+
+## Publishing is automatic
+
+`.github/workflows/native-shell.yml` exports the desktop three and publishes them (`tools/publish-native-shell.sh`, the site\x27s native build API, `--app godot`) whenever the shell\x27s inputs change on main, the same inputs as the web shell. A cache entry keyed by `tools/shell-inputs.sh`\x27s fingerprint marks a tree as published, so nothing is committed back and a re-run does nothing; `workflow_dispatch` with `force` publishes anyway. It uses the same `SHELL_PUBLISH_TOKEN` secret and `WEB_SHELL_BACKBONE_URL` variable as web-shell.yml. Running `./server export-native` and the printed commands by hand is the fallback.
