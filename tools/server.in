@@ -46,6 +46,28 @@ ORIG_ARGS=("$@")
 # that silently stops working is worse than a search that takes a millisecond.
 GODOT="${TMC_GODOT:-@GODOT@}"
 
+# [b]./server is a generated copy of this file[/b] (setup.sh bakes in the runtime path), so it ages:
+# the 2026-11-21 web build ran a copy from before the threaded twin existed and printed "no
+# threaded engine" for a checkout whose tools/server.in builds one. When the copy differs from
+# tools/server.in (with the same baked runtime path), rewrite it and run the new one with the
+# same arguments. TMC_NO_SELF_REGEN=1 leaves it alone; a read-only copy just warns.
+if [ "$(basename "${BASH_SOURCE[0]}")" = server ] && [ -z "${TMC_NO_SELF_REGEN:-}" ] && [ -f "$PROJECT/tools/server.in" ]; then
+    _baked="$(sed -n 's/^GODOT="${TMC_GODOT:-\(.*\)}"$/\1/p' "${BASH_SOURCE[0]}" | head -1)"
+    if [ -n "$_baked" ] && [ "$_baked" != "@""GODOT@" ] && _new="$(mktemp "$PROJECT/.server.XXXXXX" 2>/dev/null)"; then
+        sed "s|@""GODOT@|$_baked|g" "$PROJECT/tools/server.in" > "$_new"
+        if cmp -s "$_new" "${BASH_SOURCE[0]}"; then
+            rm -f "$_new"
+        elif chmod +x "$_new" && mv "$_new" "$PROJECT/server"; then
+            printf './server was older than tools/server.in; regenerated it.\n' >&2
+            TMC_NO_SELF_REGEN=1 exec "$PROJECT/server" "$@"
+        else
+            rm -f "$_new"
+            printf 'warning: ./server is older than tools/server.in and could not be regenerated (re-run setup.sh)\n' >&2
+        fi
+    fi
+    unset _baked _new
+fi
+
 # Libraries the egg bundled for a runtime image that lacks them (libfontconfig.so.1).
 if [ -d "$PROJECT/.runtime/lib" ]; then
     export LD_LIBRARY_PATH="$PROJECT/.runtime/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"

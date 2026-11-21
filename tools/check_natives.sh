@@ -40,6 +40,8 @@ grep -q 'NATIVE_LIBS_MT.length === NATIVE_LIBS.length' web/embed.html && grep -q
 t "embed.html runs threaded natives only with every pthread module, falls back to ?threads=0" $?
 grep -q 'ENGINE_FILES+=(index-mt.side.wasm)' tools/publish-web-shell.sh
 t "publish-web-shell ships index-mt.side.wasm beside the shared engine" $?
+grep -q 'was older than tools/server.in; regenerated it' tools/server.in && grep -q 'TMC_NO_SELF_REGEN' tools/server.in
+t "./server regenerates itself from tools/server.in when stale (a stale copy built no threaded twin)" $?
 grep -q 'web_dlink_nothreads_release.zip' tools/fetch-export-templates.sh
 t "fetch-export-templates installs the dlink template" $?
 grep -qP '^dot-sim\tv' addons.lock;                      t "addons.lock pins dot-sim" $?
