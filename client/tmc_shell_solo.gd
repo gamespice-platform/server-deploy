@@ -53,6 +53,12 @@ func _start_solo(content_id: String, version: String = "", map: String = "") -> 
 	if shell._solo_button != null:
 		shell._solo_button.disabled = false
 
+	# Retry / Start without maps (the maps choice is already kept): go again, once, from the top.
+	if not started.ok and shell._dl_guard != null and shell._dl_guard.requested != "":
+		DotLog.info(shell.CHANNEL, "restarting the solo launch", {"why": shell._dl_guard.requested})
+		_start_solo.call_deferred(content_id, version, map)
+		return
+
 	if not started.ok:
 		shell._end_solo_session()
 		shell._fail(shell._text("shell.solo.failed", {"reason": shell._explain(started.error)},
@@ -85,6 +91,8 @@ func _forget_solo_retry() -> void:
 func _load_solo(content_id: String, version: String) -> DotResult:
 	shell._cloud.begin_job("launch")
 	shell._launch_job = true
+	if shell._dl_guard != null:
+		shell._dl_guard.begin(not TmcSolo.skip_maps(content_id) and not TmcSolo.map_packs(content_id).is_empty())
 	shell._solo_key_cache = {}
 	shell._solo_map_packs_memo = null
 	shell._deferred_workshop = false
@@ -92,6 +100,8 @@ func _load_solo(content_id: String, version: String) -> DotResult:
 	shell._launch_job = false
 	shell._job = {}
 	shell._solo_pack_label = ""
+	if shell._dl_guard != null:
+		shell._dl_guard.end()
 	shell._cloud.end_job()
 	return res
 
@@ -151,6 +161,9 @@ func _load_solo_inner(content_id: String, version: String) -> DotResult:
 
 	# Everything is registered and fetched first, so the total is fixed before a byte moves; mounting follows.
 	await shell._solo_packs._prefetch_solo(content_id, wanted)
+	# The player pressed Retry or Start without maps: the transfer was cancelled, so do not go on to fetch it again here; _start_solo starts over.
+	if shell._dl_guard != null and shell._dl_guard.requested != "":
+		return DotResult.fail(DotError.CODE_CANCELLED, "The download was stopped.")
 	shell._cloud.job_begin_unpack()
 
 	# "*" asks for every download group (GameSpice Cloud 22): a solo host serves any map. Older GameSpice Cloud reads it as

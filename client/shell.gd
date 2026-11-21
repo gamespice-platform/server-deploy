@@ -72,6 +72,8 @@ var _solo_maps_check: CheckBox = null
 var _solo_pack_label: String = ""
 ## True while a solo launch holds one outer job: the total line replaces every per-pack text and the bar never restarts.
 var _launch_job := false
+## Keeps a launch's download honest: stall message, Retry, Start without maps ([TmcShellDownloadGuard]).
+var _dl_guard: TmcShellDownloadGuard = null
 var _solo_key_cache: Dictionary = {}
 ## This launch's map packs ([method _solo_map_packs]), worked out once: null until then.
 var _solo_map_packs_memo: Variant = null
@@ -1009,6 +1011,8 @@ func _on_cloud_job(snap: Dictionary) -> void:
 ## The launch's one bar: bytes while downloading, an indeterminate "Unpacking n of N" afterwards.
 func _on_launch_job(snap: Dictionary) -> void:
 	_job = snap
+	if _dl_guard != null:
+		_dl_guard.on_snapshot(snap)
 	var unpacking := str(snap.get("phase", "download")) == "unpack"
 	var frac := float(snap.get("fraction", 0.0))
 	var line := ""
@@ -1033,6 +1037,28 @@ func _on_launch_job(snap: Dictionary) -> void:
 		_detail.visible = line != ""
 
 
+## The once-a-second redraw of a launch's download text, so a transfer that stopped says so instead of keeping its last numbers.
+func _refresh_job_text(stalled: bool) -> void:
+	if _job.is_empty() or int(_job.get("total_bytes", 0)) <= 0:
+		return
+	var line := _job_line()
+	if stalled:
+		var quiet := int(_dl_guard.watch.quiet_sec(Time.get_ticks_msec()))
+		var title := _text("shell.job.stalled_title", {}, "Download stalled")
+		line = _text("shell.job.stalled", {"n": quiet}, "No data for %d s. The server may be busy; it is still trying." % quiet) + "\n" + line
+		if _status != null:
+			_status.text = title
+		if loading != null:
+			loading.set_progress(float(_job.get("fraction", 0.0)), title, line)
+	elif _status != null:
+		_status.text = _text("shell.job.downloading_title", {}, "Downloading…")
+		if loading != null:
+			loading.set_progress(float(_job.get("fraction", 0.0)), _text("shell.job.downloading_title", {}, "Downloading…"), line)
+	if _detail != null:
+		_detail.text = line
+		_detail.visible = true
+
+
 ## "63 / 400 MiB · 3 of 40 packs" then "rate · ETA", the answer to "how much of everything".
 func _job_line() -> String:
 	var total_packs := int(_job.get("total_packs", 0))
@@ -1042,6 +1068,10 @@ func _job_line() -> String:
 	}, "%s · %d of %d packs" % [_bytes_pair(int(_job.get("done_bytes", 0)), int(_job.get("total_bytes", 0))), int(_job.get("done_packs", 0)), total_packs])
 	var rate := float(_job.get("bytes_per_sec", 0.0))
 	var eta := float(_job.get("eta_sec", -1.0))
+	if _launch_job and _dl_guard != null:
+		# From the bytes that arrived in the last seconds, not the addon's figure: that one holds its last speed when a transfer stops.
+		rate = _dl_guard.rate()
+		eta = _dl_guard.eta()
 	var tail := PackedStringArray()
 	if rate > 1.0:
 		tail.append(_rate_text(rate))
