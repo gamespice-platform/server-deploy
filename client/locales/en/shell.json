@@ -71,7 +71,11 @@
 		"line": "{bytes} · {done} of {total, plural, one {# pack} other {# packs}}",
 		"unpacking": "{done} of {total}",
 		"unpacking_title": "Unpacking…",
-		"downloading_title": "Downloading…"
+		"downloading_title": "Downloading…",
+		"stalled_title": "Download stalled",
+		"stalled": "No data for {n} s. The server may be busy; it is still trying.",
+		"retry": "Retry",
+		"skip_maps": "Start without maps"
 	},
 	"progress": {
 		"file_of": "{n} of {total}"

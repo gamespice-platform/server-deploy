@@ -3,7 +3,11 @@
 		"line": "{bytes} · {done} von {total, plural, one {# Paket} other {# Paketen}}",
 		"unpacking": "{done} von {total}",
 		"unpacking_title": "Entpacken…",
-		"downloading_title": "Herunterladen…"
+		"downloading_title": "Herunterladen…",
+		"stalled_title": "Download hängt",
+		"stalled": "Seit {n} s keine Daten. Der Server ist vielleicht ausgelastet; es wird weiter versucht.",
+		"retry": "Erneut versuchen",
+		"skip_maps": "Ohne Karten starten"
 	},
 	"progress": {
 		"file_of": "{n} von {total}"

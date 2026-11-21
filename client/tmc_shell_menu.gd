@@ -184,6 +184,10 @@ func _build_status_lines(box: VBoxContainer) -> void:
 	shell._detail.visible = false
 	box.add_child(shell._detail)
 
+	# Retry (once a download stalls) and Start without maps (while maps download): the ways out of a wait.
+	shell._dl_guard = TmcShellDownloadGuard.new(shell)
+	shell._dl_guard.build(box)
+
 
 
 func _build_footer(stack: VBoxContainer) -> void:
