@@ -153,6 +153,15 @@ jobs:
                   git config --global --unset-all url."https://x-access-token:${DEPS_TOKEN}@github.com/".insteadOf 2>/dev/null || true
                   tools/addons-lock.sh check
 
+            # The web shell is built from the same lock as the desktop one: an addon its addons need and it does not
+            # carry (dot-animation, dot-camera, 2026-11-21) is a parse error in the browser, and the game then stalls
+            # at "Preparing sounds" instead of failing.
+            - name: The shell's addons compile on their own
+              if: steps.need.outputs.build == 'true'
+              run: |
+                  set -euo pipefail
+                  TMC_SIBLINGS="$PWD/addons/.repos" GODOT="$(sed -n 's/^GODOT="${TMC_GODOT:-\(.*\)}"$/\1/p' server | head -1)" tools/check_shell_parse.sh
+
             - name: Export
               if: steps.need.outputs.build == 'true'
               run: |
