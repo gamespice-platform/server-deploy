@@ -92,6 +92,8 @@ The export is two engines and one pck. `./server export-web` exports the single-
 
 `window.__TMC_ENGINE__` says which (`"threads"` or `"single"`). `TMC_WEB_THREADS=0 ./server export-web` leaves the twin out; so does a preset with Extensions Support (a dlink build needs its side modules built for threads too) or a custom template.
 
+The page logs `tmc engine: threads` or `tmc engine: single (<reason>)` on load. **Framed** (a site iframing `embed.html?solo=owner/repo`): the parent must itself be cross-origin isolated (COOP `same-origin` plus COEP `require-corp` or `credentialless`) and the iframe needs `allow="cross-origin-isolated"`; the game origin and its content host must send `Cross-Origin-Resource-Policy: cross-origin` (or CORS). Anything less falls back to `single`. `node tools/browser_threads_check.mjs --serve web/build` checks top-level and framed, with and without the headers (run through `gpu.sh cdp-run --serve PORT`).
+
 **What a browser needs before it isolates a page.** Both on the document's response:
 
 ```

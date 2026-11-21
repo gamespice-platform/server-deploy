@@ -2,13 +2,13 @@
 // (browser_solo_overlay_check.mjs, browser_solo_rotate_check.mjs). The proxy matters: a local shell's /content is empty, so a solo game
 // that needs an addon overlay (FC: fc-weapons) could not fetch it and refused to start ("This game needs ..., which could not be
 // downloaded"), and the CDN sends no CORS header to another origin. Returns the server and the page URL for `givenUrl`'s query.
-// `coi` sends COOP/COEP on every response, as the site does, so the page is cross-origin isolated and embed.html picks the threaded engine.
+// `parentHtml` serves that page to Host: localhost:<port> (see below). `coi` sends COOP/COEP on every response, as the site does, so the page is cross-origin isolated and embed.html picks the threaded engine.
 import http from 'node:http';
 import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export async function serveShell({ dir, port, buildId, upstream, givenUrl, coi = false }) {
+export async function serveShell({ dir, port, buildId, upstream, givenUrl, coi = false, parentHtml = '' }) {
   if (!fs.existsSync(path.join(dir, 'embed.html'))) throw new Error(`--serve ${dir} has no embed.html`);
   const base = upstream.replace(/\/$/, '');
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'application/wasm', '.json': 'application/json', '.png': 'image/png' };
@@ -17,8 +17,16 @@ export async function serveShell({ dir, port, buildId, upstream, givenUrl, coi =
     if (coi) {
       res.setHeader('cross-origin-opener-policy', 'same-origin');
       res.setHeader('cross-origin-embedder-policy', 'require-corp');
+      res.setHeader('cross-origin-resource-policy', 'cross-origin'); // as the game origin sends it, so an isolated parent may frame this page
     }
     const u = new URL(req.url, 'http://x');
+    // A page on `localhost:<port>` (this server listens on 127.0.0.1, so it is another origin) is the framing parent, served with
+    // the same COOP/COEP: one port, so one tunnel to a GPU box's Chrome carries both origins.
+    if (parentHtml && (req.headers.host || '').startsWith('localhost')) {
+      res.writeHead(200, { 'content-type': 'text/html', 'cache-control': 'no-store' });
+      res.end(parentHtml);
+      return;
+    }
     if (u.pathname.startsWith('/content/')) {
       const lib = base.startsWith('https:') ? https : http;
       const up = lib.request(base + u.pathname + u.search, {
