@@ -10,11 +10,13 @@
 # dot-* addon, or when addons.lock names a dot-* addon this list does not (add it here when the shell should carry it).
 dot-2d
 dot-achievements
+dot-animation
 dot-audio
 dot-auth
 dot-bot
 dot-bot-record
 dot-browser
+dot-camera
 dot-chat
 dot-cloud
 dot-combat

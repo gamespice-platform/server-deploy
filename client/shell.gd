@@ -13,6 +13,9 @@ var _solo_packs := TmcShellSoloPacks.new(self)
 ## Where the game scene is added. Named so the server's scene and this shell's own UI
 ## cannot collide.
 const GAME_ROOT := &"Game"
+## Shown when a game's client scene loads but will not instantiate: its root script did not compile, almost always because
+## this client lacks an addon (or addon version) the game needs. Said instead of adding a null node, which crashed the client.
+const GAME_DID_NOT_COMPILE := "This game's scripts did not compile on this client.\nUpdate the GameSpice app (or this server's client) and try again."
 
 ## Where an operator puts the public key a delivered game's manifest is signed with.
 ## Shipped beside the shell and not settable from the page, see [method _ensure_cloud].
@@ -2085,7 +2088,12 @@ func _on_spawned() -> void:
 		_fail("The client scene for '%s' would not load." % content_id)
 		return
 
+	# An export's instantiate() returns null when the scene's root script did not compile; adding that null crashed the client (2026-11-21).
 	var instance := (packed as PackedScene).instantiate()
+	if instance == null:
+		DotLog.error(CHANNEL, "the game's client scene did not compile", {"content_id": content_id, "path": path})
+		_fail(GAME_DID_NOT_COMPILE)
+		return
 
 	# The link is handed over explicitly rather than looked up in DotRegistry, so that two
 	# shells in one process — which is what a test does — do not both find the same one.

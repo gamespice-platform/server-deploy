@@ -201,14 +201,16 @@ func _load_solo_inner(content_id: String, version: String) -> DotResult:
 ## game is running.
 func _enter_solo_game(session: TmcSoloSession, packed: PackedScene, desc: Dictionary, path: String) -> DotResult:
 	var content_id := session.content_id
+	# Before the session goes in, so a refusal leaves nothing behind (instantiate runs no _ready).
+	var instance := packed.instantiate()
+	if instance == null:
+		return DotResult.fail(DotError.CODE_INVALID, shell.GAME_DID_NOT_COMPILE, path)
 	shell.add_child(session)
 	shell._solo_session = session
 	DotRegistry.register(TmcSolo.MAPS_SERVICE, session)
 
 	if not shell.get_tree().node_added.is_connected(shell._on_solo_node_added):
 		shell.get_tree().node_added.connect(shell._on_solo_node_added)
-
-	var instance := packed.instantiate()
 
 	# A client that announces Leave rather than acting on it (`leave_requested`: "what leave
 	# means belongs to whatever loaded this client") is answered here, as a server's game is
@@ -374,10 +376,13 @@ func _load_sim_child() -> DotResult:
 	if not (packed is PackedScene):
 		return DotResult.fail(DotError.CODE_IO, "The game's client scene would not load.", path)
 
+	var instance := (packed as PackedScene).instantiate()
+	if instance == null:
+		return DotResult.fail(DotError.CODE_INVALID, shell.GAME_DID_NOT_COMPILE, path)
 	shell.add_child(session)
 	shell._solo_session = session
 	DotRegistry.register(TmcSolo.MAPS_SERVICE, session)
-	shell._game_root.add_child((packed as PackedScene).instantiate())
+	shell._game_root.add_child(instance)
 	DotLog.info(shell.CHANNEL, "solo server process started its game", {
 		"content": "%s@%s" % [content_id, version], "packs": session.pack_keys.size(), "maps": session.map_keys.size(),
 	})

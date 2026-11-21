@@ -2,6 +2,7 @@
 # Builds addons/ from the exact tags in addons.lock (git archive of each sibling repo), so a
 # suite can run against what servers install, not the working trees check.sh links.
 #   tools/check-pinned.sh [DIR]   DIR defaults to ./addons; existing links are replaced
+# PINNED_LOCK names another lock (tools/check_shell_parse.sh passes the shell's cut-down one).
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SIB="${TMC_SIBLINGS:-$ROOT/..}"
@@ -32,5 +33,5 @@ while IFS=$'\t' read -r repo tag; do
     rm -rf "$OUT/$d"
     git -C "$src" archive "$tag" "addons/$d" | tar -x -C "$OUT" --strip-components=1 \
         || { echo "no addons/$d at $tag in $repo" >&2; bad=1; }
-done < "$ROOT/addons.lock"
+done < "${PINNED_LOCK:-$ROOT/addons.lock}"
 exit $bad

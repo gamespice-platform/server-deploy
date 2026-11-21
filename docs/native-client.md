@@ -41,6 +41,15 @@ A player signed into the desktop app should join as themselves, which a TICKET s
 
 Verified by exporting all three, unpacking the Linux archive the way the app does, and joining a real `./server` with the address arriving through `-- --connect`.
 
+## Where a player's crash log is
+
+Two files, both on the player's machine; the first error in either names the cause.
+
+- **The shell's own log** (Godot file logging, on by default on desktop): `user://logs/godot.log`, with the previous runs beside it. The user dir comes from `config/name="TMC server"`: Windows `%APPDATA%\Godot\app_userdata\TMC server\logs\godot.log`, Linux `~/.local/share/godot/app_userdata/TMC server/logs/`, macOS `~/Library/Application Support/Godot/app_userdata/TMC/logs/` (the `name.macos` override).
+- **The GameSpice app's capture of the shell's stdout and stderr**, one file per launch: `sessions/session-<id>.log` under the app's log dir (Windows `%LOCALAPPDATA%\gamespice-app\logs\sessions\`, Linux `~/.local/share/gamespice-app/logs/sessions/`, macOS `~/Library/Logs/gamespice-app/sessions/`). The app's own panics are `crash.log` in the same log dir.
+
+A game whose scripts do not compile on the shell's addons is refused with `GAME_DID_NOT_COMPILE` (client/shell.gd) instead of a crash. The usual cause is an addon the shell's addons need and the shell does not carry; `tools/check_shell_parse.sh` catches that before a shell is published (2026-11-21: dot-animation and dot-camera were missing, and Fatal Contact and Hungario segfaulted on join).
+
 ## Publishing is automatic
 
 `.github/workflows/native-shell.yml` exports the desktop three and publishes them (`tools/publish-native-shell.sh`, the site\x27s native build API, `--app godot`) whenever the shell\x27s inputs change on main, the same inputs as the web shell. A cache entry keyed by `tools/shell-inputs.sh`\x27s fingerprint marks a tree as published, so nothing is committed back and a re-run does nothing; `workflow_dispatch` with `force` publishes anyway. It uses the same `SHELL_PUBLISH_TOKEN` secret and `WEB_SHELL_BACKBONE_URL` variable as web-shell.yml. Running `./server export-native` and the printed commands by hand is the fallback.

@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Every script the client shell carries must compile against the shell's own addons, and nothing else.
+#   tools/check_shell_parse.sh        builds the shell's addons from the addons.lock tags it exports
+#                                     (tools/shell_lock.sh lock), imports them alone, and parses them
+#   TMC_SIBLINGS=DIR                  where the addon clones are (default ..; CI: addons/.repos)
+#
+# Packs carry no addons, so an addon the shell's addons need and the shell does not carry is a parse
+# error on every player's machine. 2026-11-21: native shell 1.20261121.2113 carried dot-player-char
+# v0.1.76 (DotPlayerAnimState extends dot-animation's DotAnimationLocomotion) and dot-spectate v0.1.13
+# (dot-camera's DotCameraFreeLook) without dot-animation or dot-camera. Fatal Contact and Hungario
+# failed to compile and the client crashed on join. check_pinned_parse.sh did not see it: it fills a
+# game's extra linked addons in from their newest tags, which a shell never does.
+# Arm it by deleting the dot-camera line from addons.lock and tools/shell-addons.list.
+set -uo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+GODOT="${GODOT:-godot}"
+SIB="${TMC_SIBLINGS:-$ROOT/..}"
+W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
+p="$W/shell"; mkdir -p "$p/addons"
+
+bash "$ROOT/tools/shell_lock.sh" lock "$ROOT/addons.lock" > "$W/shell.lock" || { echo "FAIL tools/shell_lock.sh could not cut the shell's lock"; exit 1; }
+PINNED_LOCK="$W/shell.lock" bash "$ROOT/tools/check-pinned.sh" "$p/addons" || { echo "FAIL the shell's pinned addons did not build"; exit 1; }
+
+# The native library is a git-ignored download, in no tag: take the one setup.sh installed, else the sibling's.
+for b in "$ROOT/addons/dot_sim/bin" "$SIB/dot-sim/addons/dot_sim/bin"; do
+    [ -d "$b" ] && [ -d "$p/addons/dot_sim" ] && { cp -a "$b" "$p/addons/dot_sim/bin"; break; }
+done
+[ -d "$p/addons/dot_sim/bin" ] || echo "WARN no dot_sim native library found; the GDScript fallbacks are what get parsed"
+
+printf 'config_version=5\n\n[application]\n\nconfig/name="shell parse check"\n' > "$p/project.godot"
+tool="$p/addons/dot_core/tools/dot_parse_all.gd"
+[ -f "$tool" ] || { echo "FAIL no dot_parse_all in the shell's dot-core"; exit 1; }
+
+timeout 600 "$GODOT" --headless --path "$p" --import > "$W/import.log" 2>&1; irc=$?
+if [ "$irc" -ge 124 ] || grep -aqE 'handle_crash|Program crashed|Segmentation fault' "$W/import.log"; then
+    echo "FAIL --import died (exit $irc; 124 = timeout, 139 = SIGSEGV)"; tail -20 "$W/import.log"; exit 1
+fi
+
+# Runtime scripts only: an addon's examples and tests are not exported and may use what the shell lacks.
+(cd "$p" && find addons -name '*.gd' -not -path '*/examples/*' -not -path '*/tests/*' -not -path '*/test/*' \
+    -not -path '*/tools/*' -not -path '*/editor/*' | sort > "$W/list")
+PARSE_LIST="$W/list" timeout 900 "$GODOT" --headless --path "$p" --script res://addons/dot_core/tools/dot_parse_all.gd > "$W/parse.log" 2>&1
+bad="$(grep -aE 'PARSE_FAIL|SCRIPT ERROR|Parse Error|not declared|Could not (find|resolve)' "$W/parse.log" | head -12)"
+grep -aq '^PARSED ' "$W/parse.log" || bad="${bad:-the parse tool did not finish}"
+if [ -n "$bad" ]; then
+    echo "FAIL the shell's addons do not compile on their own ($(wc -l < "$W/list") scripts):"
+    echo "$bad"
+    echo "     an addon above needs another the shell does not carry: add it to addons.lock, content-lists/addons.yml and tools/shell-addons.list"
+    exit 1
+fi
+echo "ok   the shell's addons compile on their own: $(grep -a '^PARSED ' "$W/parse.log")"

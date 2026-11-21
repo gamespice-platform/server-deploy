@@ -119,6 +119,13 @@ jobs:
                   git config --global --unset-all url."https://x-access-token:${DEPS_TOKEN}@github.com/".insteadOf 2>/dev/null || true
                   tools/addons-lock.sh check
 
+            - name: The shell's addons compile on their own
+              if: steps.need.outputs.build == 'true'
+              run: |
+                  set -euo pipefail
+                  # setup.sh cloned each addon into addons/.repos/<repo>; check-pinned.sh archives the locked tags from there.
+                  TMC_SIBLINGS="$PWD/addons/.repos" GODOT="$(sed -n 's/^GODOT="${TMC_GODOT:-\(.*\)}"$/\1/p' server | head -1)" tools/check_shell_parse.sh
+
             - name: Export the desktop three
               if: steps.need.outputs.build == 'true'
               id: export
