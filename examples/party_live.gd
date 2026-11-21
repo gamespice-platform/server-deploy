@@ -9,7 +9,7 @@ const DATA := "user://tmc_party_live"
 
 const CHECKS := 25
 
-const BAN_SOURCE := &"dot_ban_source"
+const BAN_SOURCE := &"gs_ban_source"
 
 var _passed := 0
 var _failed := 0
@@ -55,7 +55,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: parties")
+	print("gs-server-deploy: parties")
 
 	GSPaths.remove_tree(DATA)
 
@@ -157,7 +157,7 @@ func _session(userid: int, uid: String, display: String) -> GSClientSession:
 
 func _chat_router() -> Object:
 	for service in GSRegistry.names():
-		if service.begins_with("dot_chat_router"):
+		if service.begins_with("gs_chat_router"):
 			return GSRegistry.get_service(StringName(service))
 	return null
 
@@ -202,7 +202,7 @@ func _test_built() -> void:
 	_check(p.tracker == null, "and no tracker, because this fixture has no backbone")
 	_check(
 		GSRegistry.get_service(BAN_SOURCE) == p.reservations,
-		"the booking is on the ban seam dot-server asks"
+		"the booking is on the ban seam gs-server asks"
 	)
 	_check(
 		p.reservations.previous_source != null
@@ -305,7 +305,7 @@ func _test_booking() -> void:
 	var refused: Variant = seam.call("check_admission", "backbone:1", "127.0.0.1")
 	_check(
 		refused is GSResult and not (refused as GSResult).ok,
-		"a stranger is refused at the door dot-server asks"
+		"a stranger is refused at the door gs-server asks"
 	)
 	_check(
 		(seam.call("check_admission", "", "127.0.0.1") as GSResult).ok,
@@ -359,7 +359,7 @@ func _test_survives_a_game_change() -> void:
 
 	_check(
 		GSRegistry.get_service(BAN_SOURCE) == p.reservations,
-		"the booking is still what dot-server asks"
+		"the booking is still what gs-server asks"
 	)
 	_check(
 		p.reservations.previous_source != null and p.reservations.previous_source != before

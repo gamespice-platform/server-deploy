@@ -22,7 +22,7 @@ die()  { printf '\n  %s%s%s\n\n' "$RED" "$1" "$OFF" >&2; exit "${2:-1}"; }
 ok()   { printf '  %sok%s   %s\n' "$GRN" "$OFF" "$1"; }
 warn() { printf '  %s!!%s   %s\n' "$YLW" "$OFF" "$1" >&2; }
 
-NAME="${TMC_UNIT_NAME:-dot-server}"
+NAME="${TMC_UNIT_NAME:-gs-server}"
 # The user this runs as, and the default is the one that OWNS THE PROJECT rather
 # than the one typing. sudo makes $USER root, and a game server running as root is
 # a choice nobody makes on purpose -- it is what happens when an installer takes the
@@ -53,7 +53,7 @@ command -v systemctl >/dev/null 2>&1 || die "no systemctl here; this box does no
 id "$RUN_USER" >/dev/null 2>&1 || die "no such user: $RUN_USER" 2
 
 RUN_GROUP="$(id -gn "$RUN_USER" 2>/dev/null)"
-DESC="${DESC:-dot-server ($NAME)}"
+DESC="${DESC:-gs-server ($NAME)}"
 UNIT="/etc/systemd/system/$NAME.service"
 
 SUDO=""
@@ -63,7 +63,7 @@ rendered="$(mktemp)"
 trap 'rm -f "$rendered"' EXIT
 
 cat > "$rendered" <<UNITFILE
-# Written by dot-server-deploy/deploy/install-systemd.sh.
+# Written by gs-server-deploy/deploy/install-systemd.sh.
 [Unit]
 Description=$DESC
 # network-online.target, not network.target: the server binds an address at

@@ -2,10 +2,10 @@ class_name TmcSiteDefault
 extends RefCounted
 
 ## The site a hand-started shell lists servers from, when nobody named one. A game's server browser
-## lists a site only when `--browser-backbone-url` or `DOT_BROWSER_BACKBONE_URL` names it (dot-
+## lists a site only when `--browser-backbone-url` or `GS_BROWSER_BACKBONE_URL` names it (dot-
 ## browser's layered config).
 
-const ENV_KEY := "DOT_BROWSER_BACKBONE_URL"
+const ENV_KEY := "GS_BROWSER_BACKBONE_URL"
 const ARG_PREFIX := "--browser-backbone-url"
 
 
@@ -52,7 +52,7 @@ static func apply(auth_path: String) -> String:
 	var query := GSWeb.query_param("backbone") if GSPlatform.is_web() else ""
 	var url := resolve(
 		FileAccess.get_file_as_string(auth_path),
-		_gs_env(ENV_KEY),
+		OS.get_environment(ENV_KEY),
 		OS.get_cmdline_user_args(),
 		query
 	)
@@ -64,12 +64,3 @@ static func apply(auth_path: String) -> String:
 
 	return url
 
-
-## [param name] (a DOT_ name) read as its GS_ spelling first, then as itself: what GSConfig.gs_env does,
-## written out because the dot-core addons.lock pins predates gs_env and a call to it does not compile there.
-static func _gs_env(name: String) -> String:
-	if name.begins_with("DOT_"):
-		var gs := "GS_" + name.substr(4)
-		if OS.has_environment(gs):
-			return OS.get_environment(gs)
-	return OS.get_environment(name)

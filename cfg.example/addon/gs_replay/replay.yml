@@ -15,7 +15,7 @@
 #   replay save [seconds] [why]  write the ring (or its last N seconds) to replays/clips/
 #   replay list                  the newest files in each directory
 #
-# A clip is an ordinary replay: complete, hash-chained, and readable by dot-replay's
+# A clip is an ordinary replay: complete, hash-chained, and readable by gs-replay's
 # GSReplayFile. Its FINAL HASH is what makes it evidence -- stored somewhere the file's
 # holder cannot rewrite, it proves nobody edited the file since.
 replay_enabled: true
@@ -29,11 +29,11 @@ replay_ring_max_mib: 32
 # --- Evidence ------------------------------------------------------------------
 #
 # A kick or a ban issued on this server saves a clip to replays/evidence/ and files it:
-#   - dot-server's own bans (`ban`, `banid`, `banip`): on the ban record in data/bans.json
+#   - gs-server's own bans (`ban`, `banid`, `banip`): on the ban record in data/bans.json
 #     under "evidence", and as a `replay_evidence` line in data/audit.jsonl.
 #   - an admin's `kick` / `kickid`: a `replay_evidence` audit line naming the same player
 #     (a kick is not a record anywhere else).
-#   - a game's dot-moderation bans and kicks, the guard's included once it is out of dry
+#   - a game's gs-moderation bans and kicks, the guard's included once it is out of dry
 #     run: merged into the punishment's own `evidence` field and stored again.
 # Punishments this many seconds apart share one clip: a ban is followed by its own kick,
 # and a wave of bots removed at once is one incident.

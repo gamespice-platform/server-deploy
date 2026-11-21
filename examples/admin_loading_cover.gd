@@ -64,7 +64,7 @@ func _test_cover_gate() -> void:
 	var cover: TmcGameCover = rig[1]
 	var root: Node = rig[2]
 	_check(TmcGameCover.HOST_META == GSLoadGate.HOST_META and TmcGameCover.GATE_META == GSLoadGate.META,
-		"the cover spells the gate's metadata as dot-core does")
+		"the cover spells the gate's metadata as gs-core does")
 
 	var game := Node3D.new()
 	var gate := GSLoadGate.new()

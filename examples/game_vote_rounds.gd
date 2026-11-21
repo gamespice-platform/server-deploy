@@ -71,12 +71,12 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: the game vote's finish_round through real round ends")
+	print("gs-server-deploy: the game vote's finish_round through real round ends")
 
 	for id: String in NEEDS:
 		if not FileAccess.file_exists("res://dist/%s/manifest.json" % id):
 			print("skipped: dist/%s is not published here" % id)
-			print("  ./server pack fatalcontact --source games/game-arena")
+			print("  ./server pack fatalcontact --source games/game-fatal-contact")
 			print("  ./server pack smash --source games/mg-smash-copter")
 			print("  ./server pack prophunt_maps --source games/mg-prop-hunt-maps")
 			print("  ./server pack prophunt --source games/mg-prop-hunt")

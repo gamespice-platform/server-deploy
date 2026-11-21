@@ -18,7 +18,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: the shell's download line, localised")
+	print("gs-server-deploy: the shell's download line, localised")
 	_test_every_locale_has_every_key()
 	_test_workshop_keys()
 	await _test_two_languages()

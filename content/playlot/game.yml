@@ -26,7 +26,7 @@
 #
 # ONE GAME ID, THREE MAPS. pg_lobby, pg_surf_intro and pg_bhop_intro are a rotation
 # rather than three games: they are the same game on different geometry, and switching
-# between them is dot-map's business rather than dot-server's. Changing a MAP replaces
+# between them is gs-map's business rather than gs-server's. Changing a MAP replaces
 # the world and nothing else; changing a GAME replaces the module, the netcode and every
 # client's scene and puts everybody through signon.
 
@@ -62,8 +62,8 @@ cvars:
 # The MAP vote inside this game — what the players pick between when a map ends, and
 # whether they may extend the one they are on. Its defaults are in the game's own
 # game/playlot_vote.gd; anything written here overrides them, and the server's own
-# user://cfg/playground_vote.json, DOT_VOTE_* and --vote-* override this. Keyed exactly as
-# dot-vote's GSVoteRules, enums by name.
+# user://cfg/playground_vote.json, GS_VOTE_* and --vote-* override this. Keyed exactly as
+# gs-vote's GSVoteRules, enums by name.
 #
 # `vote:` beside it is a different thing: how the SERVER's vote for the next game
 # (cfg/vote.yml) treats this game — its time limit there, its weight, whether it is
@@ -75,7 +75,7 @@ cvars:
 # still put to a ballot at twenty-eight minutes, under people mid-build. `rtv_only` with
 # no duration is the vote's half of the same sentence: no clock, no end-of-map ballot,
 # and rock-the-vote (60% of the players, after three minutes) as the only way a map ends.
-# dot-server-deploy's selftest reads this file and fails if the two halves disagree.
+# gs-server-deploy's selftest reads this file and fails if the two halves disagree.
 #
 # For a timed sandbox instead, set pg_map_seconds and replace the block below with:
 #

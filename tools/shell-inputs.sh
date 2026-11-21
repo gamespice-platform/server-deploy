@@ -24,7 +24,7 @@
 # build as shell-inputs.txt), copied into web/shell-build.inputs when that build is
 # pinned, and checked by the release workflow, by the web-shell workflow (which exports
 # and pins when it does not match), by `./server`'s auto-update (which does not adopt a
-# lock whose shell is not pinned yet), and by dot-ci's server-compat check (which skips
+# lock whose shell is not pinned yet), and by gs-ci's server-compat check (which skips
 # a release whose recorded lock is not the lock it ships). Two lines:
 #
 #   lock    sha256 of addons.lock alone, so a check that can fetch one file

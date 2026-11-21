@@ -4,7 +4,7 @@ extends Node
 ## GameSpice Radio on the server, when the addon is linked and `radio.yml` turns it on. Never fatal.
 
 const CHANNEL := "tmc.radio"
-const SERVICE := &"dot_radio"
+const SERVICE := &"gs_radio"
 ## The notice topic that tells a shell where the station is. See `client/tmc_radio_link.gd`.
 const TOPIC := "tmc.radio"
 const CLASSES := ["GSRadioLibrary", "GSRadioStation", "GSRadioApi", "GSRadioHttp"]
@@ -35,7 +35,7 @@ static func install(host: Node, p_server: GSServer, config: TmcConfig, data_dir:
 	if not config.radio_enabled:
 		return null
 	if not available():
-		GSLog.warn(CHANNEL, "radio_enabled is on but dot-radio is not in this build; add `- repo: dot-radio` to cfg/content/addons.yml and run setup", {})
+		GSLog.warn(CHANNEL, "radio_enabled is on but gs-radio is not in this build; add `- repo: gs-radio` to cfg/content/addons.yml and run setup", {})
 		return null
 	var node := TmcRadio.new()
 	node.name = "Radio"

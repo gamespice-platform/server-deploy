@@ -29,7 +29,7 @@ static func addon_ref(raw: String, namespaces: PackedStringArray, lock_versions:
 	var parsed := parse_entry(raw)
 
 	if not parsed.ok:
-		return GSResult.fail(GSError.CODE_INVALID, "addons: %s" % parsed.error.message, "an addon is owner/repo or owner/repo@version, e.g. gamemann/dot-trail")
+		return GSResult.fail(GSError.CODE_INVALID, "addons: %s" % parsed.error.message, "an addon is owner/repo or owner/repo@version, e.g. gamemann/gs-trail")
 
 	var ref := TmcGameRef.parse(str(parsed.value))
 	var id := str(ref["id"])
@@ -412,7 +412,7 @@ func _read_namespaces(value: Variant) -> GSResult:
 	return GSResult.success(out)
 
 
-## `{dir, repo, id, version}` for each `overlays:` entry, in the shape `addon_set_from` returns. The directory is [method TmcAddonNamespaces.dir_for] (the inverse of `TmcHost.addon_repo`): an overlay of `gamemann/zee-dot-weapons` replaces the lock's `zee_weapons`, not a `zee_dot_weapons` no pack carries (the shell refused that as "not an addon pack" and joined on its own copy). The version decides a renamed directory: `gamemann/fc-weapons@1.4.40` is the legacy `arena_weapons` (with a warning), a newer one `fc_weapons`.
+## `{dir, repo, id, version}` for each `overlays:` entry, in the shape `addon_set_from` returns. The directory is [method TmcAddonNamespaces.dir_for] (the inverse of `TmcHost.addon_repo`): an overlay of `gamemann/zee-gs-weapons` replaces the lock's `zee_weapons`, not a `zee_gs_weapons` no pack carries (the shell refused that as "not an addon pack" and joined on its own copy). The version decides a renamed directory: `gamemann/fc-weapons@1.4.40` is the legacy `arena_weapons` (with a warning), a newer one `fc_weapons`.
 func overlay_set() -> Array:
 	var out: Array = []
 

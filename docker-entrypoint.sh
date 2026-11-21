@@ -44,7 +44,7 @@ tools/content_trust.sh /srv/tmc
 # as stdin with sv_stdin_console_pipes on. TERM/INT become `quit` down it.
 #
 # fd 3 is CLOSED straight after the `quit`. A pipe reader that is never woken makes the
-# process hang inside its own exit (see dot_stdin_console.gd, read_pipes); closing the
+# process hang inside its own exit (see gs_stdin_console.gd, read_pipes); closing the
 # last writer is what ends the read. The server is a child here, not exec'd, so this
 # script is PID 1 and forwards the signal -- and returns the server's own status.
 FIFO=$(mktemp -u /tmp/tmc-stdin.XXXXXX)
@@ -55,7 +55,7 @@ exec 3<>"$FIFO"
 # the line runs after the stdin reader has already decided, and it is too late. Exported
 # only for the child, and only on this path (see the mkfifo fallback above).
 # GS_ first; DOT_ too for a server pinned to a GameSpice Core older than the GS_ names.
-GS_SERVER_STDIN_CONSOLE_PIPES=1 DOT_SERVER_STDIN_CONSOLE_PIPES=1 ./server "$@" <"$FIFO" 3>&- &
+GS_SERVER_STDIN_CONSOLE_PIPES=1 GS_SERVER_STDIN_CONSOLE_PIPES=1 ./server "$@" <"$FIFO" 3>&- &
 CHILD=$!
 
 goodbye() {

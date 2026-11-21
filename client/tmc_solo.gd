@@ -8,7 +8,7 @@ const CHANNEL := "tmc.solo"
 ## Where the shell publishes the solo session: the map roots it mounted and the way back to
 ## the menu. A game looks it up by this name, duck-typed; nothing in a pack may name a
 ## shell class.
-const MAPS_SERVICE := &"dot_solo"
+const MAPS_SERVICE := &"gs_solo"
 
 ## The shell's copy of the stock per-game map packs. See the class description.
 const SOLO_CONFIG := "res://client/solo.json"

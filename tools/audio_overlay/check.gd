@@ -3,12 +3,12 @@ extends Node
 ## Process 2 of tools/audio_overlay_proof.sh: started through GameSpice Cloud's boot scene, plays a stock footstep and a bed.
 ## Names no GSAudio class in typed code: the build's own copy predates stream_at, and the overlay supplies it.
 
-const FOOTSTEP := "res://addons/dot_audio/stock/footsteps/footstep_carpet_0.ogg"
-const BED := "res://addons/dot_audio/stock/ambience/amb_indoor.ogg"
+const FOOTSTEP := "res://addons/gs_audio/stock/footsteps/footstep_carpet_0.ogg"
+const BED := "res://addons/gs_audio/stock/ambience/amb_indoor.ogg"
 
 
 func _ready() -> void:
-	var info := {"overlay": str(ProjectSettings.get_setting("dot_cloud/addon_overlay", ""))}
+	var info := {"overlay": str(ProjectSettings.get_setting("gs_cloud/addon_overlay", ""))}
 	var sink: Script = null
 	for entry in ProjectSettings.get_global_class_list():
 		if str(entry.get("class", "")) == "GSAudioSinkGodot":

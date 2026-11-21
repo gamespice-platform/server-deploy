@@ -13,23 +13,23 @@ timeout 600 "$G" --headless --path . --import >/dev/null 2>&1 || true
 timeout 900 "$G" --headless --path . --export-pack Web "$out" >/dev/null 2>&1
 echo "shell pck: $(stat -c %s "$out") bytes"
 paths="$(strings -n 12 "$out")"
-if grep -Eq 'addons/dot_map/surfaces/[a-z_]+/[^/]+\.(jpg|webp|ctex|import)' <<<"$paths"; then
+if grep -Eq 'addons/gs_map/surfaces/[a-z_]+/[^/]+\.(jpg|webp|ctex|import)' <<<"$paths"; then
     echo "FAIL: surface textures are still in the shell pck"; exit 1
 fi
-grep -q 'addons/dot_map/surfaces/dot_map_surfaces.gd' <<<"$paths" || { echo "FAIL: GSMapSurfaces script missing"; exit 1; }
-if grep -Eq 'addons/dot_audio/stock/(ambience|moods)/' <<<"$paths"; then
+grep -q 'addons/gs_map/surfaces/gs_map_surfaces.gd' <<<"$paths" || { echo "FAIL: GSMapSurfaces script missing"; exit 1; }
+if grep -Eq 'addons/gs_audio/stock/(ambience|moods)/' <<<"$paths"; then
     echo "FAIL: ambience beds or the mood set are still in the shell pck"; exit 1
 fi
-grep -q 'addons/dot_audio/core/dot_audio_stock.gd' <<<"$paths" || { echo "FAIL: GSAudioStock script missing"; exit 1; }
-grep -q 'addons/dot_audio/stock/footsteps/' <<<"$paths" || { echo "FAIL: footsteps should stay in the shell"; exit 1; }
+grep -q 'addons/gs_audio/core/gs_audio_stock.gd' <<<"$paths" || { echo "FAIL: GSAudioStock script missing"; exit 1; }
+grep -q 'addons/gs_audio/stock/footsteps/' <<<"$paths" || { echo "FAIL: footsteps should stay in the shell"; exit 1; }
 # A shell carries the gs-* addons only (tools/check_shell_addons.sh has the why); the game addons are overlay packs.
-others="$(grep -oE 'addons/[a-z0-9_]+/' <<<"$paths" | sort -u | grep -v '^addons/dot_' || true)"
-[ -z "$others" ] || { echo "FAIL: the shell pck carries addons that are not dot-*: $(echo $others)"; exit 1; }
+others="$(grep -oE 'addons/[a-z0-9_]+/' <<<"$paths" | sort -u | grep -v '^addons/gs_' || true)"
+[ -z "$others" ] || { echo "FAIL: the shell pck carries addons that are not gs-*: $(echo $others)"; exit 1; }
 # The exclusions are the Web preset's alone: every desktop preset must still ship the textures, beds and moods.
 python3 - export_presets.example.cfg <<'PY' || exit 1
 import re, sys
 text = open(sys.argv[1]).read()
-need = ["addons/dot_map/surfaces/", "addons/dot_audio/stock/ambience/", "addons/dot_audio/stock/moods/"]
+need = ["addons/gs_map/surfaces/", "addons/gs_audio/stock/ambience/", "addons/gs_audio/stock/moods/"]
 seen = {"Web": 0, "desktop": 0}
 bad = []
 for block in re.split(r"(?m)^(?=\[preset\.\d+\]$)", text):

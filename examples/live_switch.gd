@@ -1,6 +1,6 @@
 extends Node
 # [b]Nothing preloaded out of a game, because no game is in this build.[/b] Buses is a delivered
-# pack: its files are at `res://dot_cloud/tmc/buses/<version>/…` and this file cannot name that
+# pack: its files are at `res://gs_cloud/tmc/buses/<version>/…` and this file cannot name that
 # path, because the version is the game's.
 
 ## Changing the game with a REAL client attached, over a real socket. Exits non-zero on any failure.
@@ -44,7 +44,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: changing games under a live client")
+	print("gs-server-deploy: changing games under a live client")
 
 	if not PublishedPacks.has("tmc/buses"):
 		print("skipped: tmc/buses is not published in dist/ (./setup.sh, or ./server pack buses --source games/mg-buses-from-hell)")

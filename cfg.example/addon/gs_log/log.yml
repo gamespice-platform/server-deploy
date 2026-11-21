@@ -1,6 +1,6 @@
 # What the server logs, and where it goes.
 #
-# Every dot-* addon logs through one levelled, channelled logger, so these settings
+# Every gs-* addon logs through one levelled, channelled logger, so these settings
 # cover all of them at once rather than one subsystem at a time.
 
 # The level below which nothing is emitted.
@@ -59,8 +59,8 @@ log_keep: 10
 log_json: false
 
 # --------------------------------------------------------------------------
-# The sink layer. Everything above this line works with dot-core alone; every
-# setting below it needs the dot-log addon, which setup.sh installs.
+# The sink layer. Everything above this line works with gs-core alone; every
+# setting below it needs the gs-log addon, which setup.sh installs.
 # --------------------------------------------------------------------------
 
 # Whether the sink layer is built at all: auto, on, or off.
@@ -105,7 +105,7 @@ log_syslog: false
 log_syslog_host: "127.0.0.1"
 log_syslog_port: 514
 log_syslog_tcp: false
-log_syslog_app: "dot-server"
+log_syslog_app: "gs-server"
 log_syslog_level: info
 
 # A hosted collector over HTTPS, batched.
@@ -114,7 +114,7 @@ log_syslog_level: info
 # goes; one of: ndjson, elastic, loki, splunk, datadog, gelf, otlp, seq, sentry.
 # For sentry set log_sentry_dsn instead of a URL and a token.
 #
-# THE TOKEN IS A SECRET AND BELONGS IN THE ENVIRONMENT. dot-log refuses a secret
+# THE TOKEN IS A SECRET AND BELONGS IN THE ENVIRONMENT. gs-log refuses a secret
 # from argv, and a token in a YAML file is a token in a pasted bug report.
 log_remote: false
 log_remote_format: ndjson

@@ -36,7 +36,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: reconnecting after the server restarts")
+	print("gs-server-deploy: reconnecting after the server restarts")
 
 	GSPaths.remove_tree(DATA)
 
@@ -317,7 +317,7 @@ func _test_server_goes_down() -> bool:
 		"with nothing left in the tree under that name (%s)" % _link_names()
 	)
 	_check(
-		GSRegistry.get_service(&"dot_client_link") == null,
+		GSRegistry.get_service(&"gs_client_link") == null,
 		"and nothing left in the registry for a game to find"
 	)
 	_done()
@@ -366,7 +366,7 @@ func _test_reconnect() -> void:
 		"the node the server's RPCs resolve to is the shell's live link"
 	)
 	_check(
-		GSRegistry.get_service(&"dot_client_link") == _shell.link,
+		GSRegistry.get_service(&"gs_client_link") == _shell.link,
 		"and it is the one the registry hands a delivered game",
 		"a game that parents its RPC node under any other link renders an empty world"
 	)

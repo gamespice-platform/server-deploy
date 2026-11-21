@@ -4,7 +4,7 @@
 #   tools/check_boot_failures.sh        exit 0 when every broken boot below was refused
 #
 # [b]Why this exists.[/b] On a fresh clone `./setup.sh --only-games <one game>` left
-# `addons/dot_game` unlinked, and `./server check` logged
+# `addons/gs_game` unlinked, and `./server check` logged
 # `Could not find base class "GSGameModule"` and then printed `selftest ok`. A script
 # that fails to parse takes no exit path: Godot logs it, hands back a script nothing can
 # instantiate, and the boot carries on to the end. Nothing else here ever builds a boot
@@ -12,7 +12,7 @@
 #
 # Each case is a one-game content directory whose game cannot compile, booted by the real
 # launcher. The broken scripts are written into `res://.boot_check/` for the length of the
-# run (gitignored, and a dot-directory so the editor never imports them) because a builtin
+# run (gitignored, and a gs-directory so the editor never imports them) because a builtin
 # game's scene must be a res:// path -- and not kept under examples/, where every script
 # is required to parse.
 #

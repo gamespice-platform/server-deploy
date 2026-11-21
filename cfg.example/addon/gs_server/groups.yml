@@ -1,7 +1,7 @@
 # Groups, as sets of permissions.
 #
-# What an operator writes is roles; what dot-server checks is FLAGS. `TmcAdmins` is the
-# translation, and the flag names below have to be dot-server's own — an unrecognised one
+# What an operator writes is roles; what gs-server checks is FLAGS. `TmcAdmins` is the
+# translation, and the flag names below have to be gs-server's own — an unrecognised one
 # is reported at boot and then grants nothing, because a game may define flags this file
 # has never heard of and refusing to boot over one would leave a server unmoderated.
 #

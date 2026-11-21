@@ -15,8 +15,8 @@ mk() { # dir tag holds
 check() { if eval "$2"; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL $1"; fi; }
 ROOT="$T/p"; mkdir -p "$ROOT/addons"; ADDONS_DIR=""; ADDONS_REPOS="$T/repos"
 mk "$T/repos/fc-weapons" v1.4.51 arena_weapons
-out="$(ADDONS=(dot_core fc_weapons); settle_renamed_dirs; echo "LIST ${ADDONS[*]}")"
-check "legacy ref swaps list name to arena_weapons" '[[ "$out" == *"LIST dot_core arena_weapons"* ]]'
+out="$(ADDONS=(gs_core fc_weapons); settle_renamed_dirs; echo "LIST ${ADDONS[*]}")"
+check "legacy ref swaps list name to arena_weapons" '[[ "$out" == *"LIST gs_core arena_weapons"* ]]'
 check "legacy use warns naming the ref" '[[ "$out" == *"WARN addons/arena_weapons is a legacy directory (deprecated): fc-weapons at v1.4.51"* ]]'
 out="$(ADDONS_FROM_GAMES=1; ADDONS=(fc_weapons); settle_renamed_dirs; echo "LIST ${ADDONS[*]}")"
 check "game naming fc_weapons on legacy ref dies" '[[ "$out" == *"DIE A game here declares addons/fc_weapons, but fc-weapons at v1.4.51 holds addons/arena_weapons"* && "$out" != *LIST* ]]'

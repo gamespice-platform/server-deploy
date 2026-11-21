@@ -4,7 +4,7 @@
 #   docker compose logs -f      watch it
 #   docker compose down         stop it
 #
-# The build context is the PARENT directory, not this one. Every dot-* addon is its own
+# The build context is the PARENT directory, not this one. Every gs-* addon is its own
 # repository and there is no way to clone the tree at once, so the addons this project
 # needs are siblings rather than subdirectories. Dockerfile explains it at more length.
 
@@ -12,7 +12,7 @@ services:
   server:
     build:
       context: ..
-      dockerfile: dot-server-deploy/Dockerfile
+      dockerfile: gs-server-deploy/Dockerfile
     image: tmc-server:latest
     container_name: tmc-server
     restart: unless-stopped

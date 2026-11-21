@@ -22,7 +22,7 @@ static func with_groups(entries: Array, groups: Dictionary) -> Array:
 	return out
 
 
-## [param entries] narrowed to what a game needs, for `addons_announce: game`: every framework addon (a `dot-*` repository, which the shell carries anyway) and of
+## [param entries] narrowed to what a game needs, for `addons_announce: game`: every framework addon (a `gs-*` repository, which the shell carries anyway) and of
 ## the game addons (fc-weapons, natural-disasters and the rest) only those whose dir [param needs] names. [param needs] is `{dir: level}` (requires.json) or
 ## null when the game's needs are not known, which returns [param entries] whole: announcing too much costs a download, too little a game that cannot load.
 static func scoped(entries: Array, needs: Variant) -> Array:
@@ -34,7 +34,7 @@ static func scoped(entries: Array, needs: Variant) -> Array:
 	for entry: Dictionary in entries:
 		var dir := str(entry.get("dir", ""))
 
-		if addon_repo(dir).begins_with("dot-") or (needs as Dictionary).has(dir):
+		if addon_repo(dir).begins_with("gs-") or (needs as Dictionary).has(dir):
 			out.append(entry.duplicate(true))
 
 	return out
@@ -170,7 +170,7 @@ static func addon_set_from(lock_text: String, dirs: PackedStringArray) -> Array:
 
 		var repo := addon_repo(dir)
 
-		# An older lock may still name a renamed repository by its old name (fc-weapons was arena-weapons).
+		# An older lock may still name a renamed repository by its old name (fc-weapons was fc-weapons).
 		for old: String in TmcAddonNamespaces.PUBLISHED_AS:
 			if TmcAddonNamespaces.PUBLISHED_AS[old] == repo and not versions.has(repo) and versions.has(old):
 				repo = old
@@ -207,9 +207,9 @@ static func addon_repo(dir: String) -> String:
 
 
 ## Whose namespace a repository's packs are published under. setup.sh's `repo_url`: the
-## `dot-*` addons are the organisation's, everything else (the weapons pack) Christian's.
+## `gs-*` addons are the organisation's, everything else (the weapons pack) Christian's.
 static func content_owner(repo: String) -> String:
-	return TmcAddonNamespaces.ORG if repo.begins_with("dot-") and not TmcAddonNamespaces.AUTHOR_DOT_ADDONS.has(repo) else "gamemann"
+	return TmcAddonNamespaces.ORG if repo.begins_with("gs-") and not TmcAddonNamespaces.AUTHOR_GS_ADDONS.has(repo) else "gamemann"
 
 
 ## `{content id: version}` as compact JSON, from the announced addon set (`addon_set_from` entries) and the mounted packs. Empty string when nothing is pinned.

@@ -19,7 +19,7 @@ const NOT_PREFETCHED := {
 	# (`g2g: fetching a map this build does not have`), as a server does.
 	"game-airdrift": "one large pack per map, fetched by the game when it changes to it",
 	"game-fatal-contact": "39 combat surf packs, lazy delivery like game-airdrift: fetched when the game changes to a map",
-	"game-arena": "39 combat surf packs, lazy delivery like game-airdrift: fetched when the game changes to a map",
+	"game-fatal-contact": "39 combat surf packs, lazy delivery like game-airdrift: fetched when the game changes to a map",
 }
 
 var _passed := 0
@@ -61,10 +61,10 @@ func _ready() -> void:
 func _test_ids() -> void:
 	_section("a page may name a pack and nothing else")
 
-	_check(TmcSolo.valid_id("gamemann/game-arena"), "an owner/repo id is accepted")
-	_check(TmcSolo.valid_id("modcommunity/zee_dot-weapons2"), "digits, '-' and '_' are accepted")
-	_check(not TmcSolo.valid_id("Gamemann/game-arena"), "an upper-case id is refused (it would not mount)")
-	_check(not TmcSolo.valid_id("gamemann/game-arena/0.1.0"), "three segments are refused")
+	_check(TmcSolo.valid_id("gamemann/game-fatal-contact"), "an owner/repo id is accepted")
+	_check(TmcSolo.valid_id("modcommunity/zee_gs-weapons2"), "digits, '-' and '_' are accepted")
+	_check(not TmcSolo.valid_id("Gamemann/game-fatal-contact"), "an upper-case id is refused (it would not mount)")
+	_check(not TmcSolo.valid_id("gamemann/game-fatal-contact/0.1.0"), "three segments are refused")
 	_check(not TmcSolo.valid_id("../x"), "a path is refused")
 	_check(not TmcSolo.valid_id("gamemann"), "an id with no repo is refused")
 	_check(TmcSolo.valid_version("") and TmcSolo.valid_version("0.1.12"), "an empty or dotted version is accepted")
@@ -264,15 +264,15 @@ func _test_session() -> void:
 	GSRegistry.register(TmcSolo.MAPS_SERVICE, session)
 
 	# The way a delivered game asks: by name, duck-typed.
-	var host: Object = GSRegistry.get_service(&"dot_solo")
-	_check(host == session, "the session is published under dot_solo, the name every game looks up")
+	var host: Object = GSRegistry.get_service(&"gs_solo")
+	_check(host == session, "the session is published under gs_solo, the name every game looks up")
 	_check(host.call(&"map_dirs", "maps") == PackedStringArray([root.path_join("a/maps")]), "map_dirs names the packs that have the directory")
 	_check(host.call(&"map_dirs", "routes") == PackedStringArray(), "and none when no pack has it")
-	_check(GSRegistry.get_service(&"dot_client_link") == null, "no client link is published, so the game plays offline")
+	_check(GSRegistry.get_service(&"gs_client_link") == null, "no client link is published, so the game plays offline")
 	session.start_map = &"ph_apartment"
 	_check(&"start_map" in host and host.get(&"start_map") == &"ph_apartment", "a game reads the start map duck-typed as start_map")
 
-	_check(session.is_connected_to_server(), "dot-menu sees a link to leave")
+	_check(session.is_connected_to_server(), "gs-menu sees a link to leave")
 	session.disconnect_from_server("Left")
 	await get_tree().process_frame
 	_check(left[0] == 1, "Leave reaches the shell's leave_fn")
@@ -287,9 +287,9 @@ func _test_sim_child_args() -> void:
 	_section("a solo game's server process is told the packs the shell mounted")
 
 	var session := TmcSoloSession.new()
-	session.content_id = "gamemann/game-arena"
+	session.content_id = "gamemann/game-fatal-contact"
 	session.version = "0.1.40"
-	session.pack_keys = PackedStringArray(["gamemann/dot-weapons@1.2", "gamemann/dot-bots@3"])
+	session.pack_keys = PackedStringArray(["gamemann/gs-weapons@1.2", "gamemann/gs-bots@3"])
 	session.map_keys = PackedStringArray(["gamemann/fc-dm-maps@2.0"])
 	session.cache_dir = "/tmp/solo cache"
 	var args := session.sim_child_args()
@@ -386,13 +386,13 @@ func _checkout_parent() -> String:
 ## [param repo] and every other name projects.tsv gives it (column 1 is current, column 3 the old names).
 func _names(repo: String) -> PackedStringArray:
 	var out := PackedStringArray([repo])
-	var tsv := ProjectSettings.globalize_path("res://").path_join("../dot-bootstrap/projects.tsv").simplify_path()
-	# A worktree under ~/wt has no sibling dot-bootstrap; tools/check.sh exports where it is.
-	var boot := _gs_env("DOT_BOOTSTRAP")
+	var tsv := ProjectSettings.globalize_path("res://").path_join("../gs-bootstrap/projects.tsv").simplify_path()
+	# A worktree under ~/wt has no sibling gs-bootstrap; tools/check.sh exports where it is.
+	var boot := OS.get_environment("GS_BOOTSTRAP")
 	if not FileAccess.file_exists(tsv) and boot != "":
 		tsv = boot.path_join("projects.tsv")
 	if not FileAccess.file_exists(tsv) and _checkout_parent() != "":
-		tsv = _checkout_parent().path_join("dot-bootstrap/projects.tsv")
+		tsv = _checkout_parent().path_join("gs-bootstrap/projects.tsv")
 	if not FileAccess.file_exists(tsv):
 		return out
 	for line in FileAccess.get_file_as_string(tsv).split("\n"):
@@ -416,8 +416,8 @@ func _test_requires_reader() -> void:
 	var shell := load("res://client/tmc_shell_solo.gd") as GDScript
 	_check(shell.SOLO_REQUIRE_FILES.has("requires.json") and shell.SOLO_REQUIRE_FILES.has("requires.floor.json"),
 		"both requires.json and requires.floor.json are read")
-	var got: Dictionary = shell.solo_addons_in('{"addons": {"zee_weapons": 6, "dot_ui": 13}}')
-	_check(got.get("zee_weapons") == 6 and got.get("dot_ui") == 13, "a requires file's addons and levels are read", str(got))
+	var got: Dictionary = shell.solo_addons_in('{"addons": {"zee_weapons": 6, "gs_ui": 13}}')
+	_check(got.get("zee_weapons") == 6 and got.get("gs_ui") == 13, "a requires file's addons and levels are read", str(got))
 	_check((shell.solo_addons_in("not json") as Dictionary).is_empty()
 			and (shell.solo_addons_in('{"addons": []}') as Dictionary).is_empty(),
 		"a file that is not a requires map names nothing")
@@ -434,7 +434,7 @@ func _test_pack_holds_dir() -> void:
 	_section("a published addon pack is taken only when it holds the directory the game needs")
 	var shell := load("res://client/tmc_shell_solo.gd") as GDScript
 	var legacy := PackedStringArray(["LICENSE", "addons/arena_weapons/plugin.cfg", "addons/arena_weapons/arena_weapons_api.gd", "_imported/a.scn"])
-	var current := PackedStringArray(["LICENSE", "addons/fc_weapons/plugin.cfg", "addons/fc_weapons/fc_weapons_api.gd", "addons/dot_sim/plugin.cfg"])
+	var current := PackedStringArray(["LICENSE", "addons/fc_weapons/plugin.cfg", "addons/fc_weapons/fc_weapons_api.gd", "addons/gs_sim/plugin.cfg"])
 	var why: String = shell.pack_holds_dir("fc_weapons", "gamemann/fc-weapons", "1.4.50", legacy)
 	_check(why.contains("addons/arena_weapons") and why.contains("addons/fc_weapons") and why.contains("1.4.50"),
 		"fc-weapons 1.4.50 (legacy arena_weapons) does not supply fc_weapons, and the reason names both and the version", why)
@@ -442,12 +442,12 @@ func _test_pack_holds_dir() -> void:
 		"fc-weapons 1.4.52 (fc_weapons) supplies it: a game met by its addon's overlay is not refused")
 	_check(shell.pack_holds_dir("arena_weapons", "gamemann/fc-weapons", "1.4.50", legacy) == "",
 		"a game that still needs the legacy directory takes the tag that holds it")
-	_check(shell.pack_holds_dir("dot_trail", "gamemann/dot-trail", "0.1.6", PackedStringArray(["plugin.cfg", "trail.gd"])) == "",
+	_check(shell.pack_holds_dir("gs_trail", "gamemann/gs-trail", "0.1.6", PackedStringArray(["plugin.cfg", "trail.gd"])) == "",
 		"a pack that is the addon itself (plugin.cfg at its root) supplies any directory")
-	_check(shell.pack_holds_dir("zee_weapons", "gamemann/zee-dot-weapons", "0.1.66", PackedStringArray(["README.md"])).contains("holds no addon"),
+	_check(shell.pack_holds_dir("zee_weapons", "gamemann/zee-gs-weapons", "0.1.66", PackedStringArray(["README.md"])).contains("holds no addon"),
 		"a pack with no plugin.cfg supplies nothing")
 	# The same rule the overlay mounts by, so the two cannot drift apart.
-	var overlay := load("res://addons/dot_cloud/addon_set/dot_cloud_addon_set_overlay.gd") as GDScript
+	var overlay := load("res://addons/gs_cloud/addon_set/gs_cloud_addon_set_overlay.gd") as GDScript
 	var agree := true
 	for case: Array in [["fc_weapons", legacy], ["fc_weapons", current], ["arena_weapons", legacy], ["x", PackedStringArray(["plugin.cfg"])]]:
 		var manifest := GSCloudManifest.new()
@@ -558,7 +558,7 @@ func _test_overlay_in_place() -> void:
 		DirAccess.remove_absolute(path)
 	var setting_before: Variant = ProjectSettings.get_setting(setting, "")
 
-	# dot-cloud's early requirement check (the "needs a newer version of the client" panel) reads res://addons/<dir>: it refuses a game
+	# gs-cloud's early requirement check (the "needs a newer version of the client" panel) reads res://addons/<dir>: it refuses a game
 	# needing an addon this shell does not carry, and passes once the addon's overlay is mounted (checked after the mount below).
 	var needs := '{"format": 1, "addons": {"%s": 1}}' % dir
 	var before_mount := GSAddonApi.new().check_text(needs, "client")
@@ -575,7 +575,7 @@ func _test_overlay_in_place() -> void:
 	shell.set("restart_fn", func() -> void: restarted[0] = true)
 
 	_check(shell.call("_overlay_additive", plan), "a first visit's overlay only adds addons")
-	_check(not shell.call("_overlay_additive", {"addons": {"dot_core": {}, dir: {}}}),
+	_check(not shell.call("_overlay_additive", {"addons": {"gs_core": {}, dir: {}}}),
 		"an overlay that would replace an addon the shell carries is not mounted in place")
 	# A server's join takes the same overlay the same way (reloading the page for it cost a Fast 4G join about 20 s).
 	var storage := FakeStorage.new()
@@ -584,7 +584,7 @@ func _test_overlay_in_place() -> void:
 	var target := "wss://solo-check.invalid:6100"
 	shell.call("_note_update_attempt", target + "|" + dir + "@0.0.1")
 	shell.call("_note_update_attempt", "wss://other.invalid|x@1")
-	_check(not shell.call("_join_in_place", {"addons": {"dot_core": {}, dir: {}}}, target)
+	_check(not shell.call("_join_in_place", {"addons": {"gs_core": {}, dir: {}}}, target)
 		and str(GSCloudAddonSet.read_plan().get("state", "")) == GSCloudAddonSet.STATE_READY,
 		"a server overlay that would replace an addon the shell carries is left for a restart")
 	var joined: bool = shell.call("_join_in_place", plan, target)
@@ -674,12 +674,3 @@ func _check(ok: bool, what: String, detail: String = "") -> bool:
 		_failures.append(what)
 	return ok
 
-
-## [param name] (a DOT_ name) read as its GS_ spelling first, then as itself: what GSConfig.gs_env does,
-## written out because the dot-core addons.lock pins predates gs_env and a call to it does not compile there.
-static func _gs_env(name: String) -> String:
-	if name.begins_with("DOT_"):
-		var gs := "GS_" + name.substr(4)
-		if OS.has_environment(gs):
-			return OS.get_environment(gs)
-	return OS.get_environment(name)

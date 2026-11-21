@@ -5,8 +5,8 @@
 # are NOT in this pack: they are zombiezone_maps below, mounted on the server only, because the
 # server sends each client the map it is playing as a document.
 #
-# It carries two weapon packs, zee-dot-weapons and zed-dot-weapons, so the client shell must be
-# built with addons/zed_weapons and with a zee-dot-weapons that has ZeeWeaponPack.add_source.
+# It carries two weapon packs, zee-gs-weapons and zed-gs-weapons, so the client shell must be
+# built with addons/zed_weapons and with a zee-gs-weapons that has ZeeWeaponPack.add_source.
 #
 # Keep scene, client_scene and module in step with game-zombie-zone's own game.yml.
 

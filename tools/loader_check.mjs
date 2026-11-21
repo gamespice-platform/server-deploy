@@ -5,7 +5,7 @@
 // No exported shell needed: a stub game page on a second origin posts the exact message
 // the shell posts (client/shell.gd `_report_client_behind`), which is the loader half of
 // the contract. The shell half (that the refusal comes before any pack download) is
-// dot-cloud's delivered_scene_demo; seeing the two joined in a real export needs the
+// gs-cloud's delivered_scene_demo; seeing the two joined in a real export needs the
 // release that bumps addons.lock.
 import http from 'node:http';
 import fs from 'node:fs';
@@ -13,7 +13,7 @@ const pw = (await import(process.env.PLAYWRIGHT_CORE ?? '/home/christian/stack/w
 const { chromium } = pw;
 
 const loader = fs.readFileSync(new URL('../web/tmc-loader.js', import.meta.url), 'utf8');
-const SENTENCE = 'This game needs dot-audio API level 4 or newer; this client has level 1.';
+const SENTENCE = 'This game needs gs-audio API level 4 or newer; this client has level 1.';
 const cors = { 'Access-Control-Allow-Origin': '*' };
 
 function listen(handler) {

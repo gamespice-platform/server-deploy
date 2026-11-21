@@ -34,7 +34,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: the game vote on the shell's HUD")
+	print("gs-server-deploy: the game vote on the shell's HUD")
 
 	GSPaths.remove_tree(DATA)
 

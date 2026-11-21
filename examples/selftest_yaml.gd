@@ -157,7 +157,7 @@ func _test_yaml_refusals() -> void:
 			"got: %s" % (message if message != "" else "accepted")
 		)
 
-	# dot-core v0.1.46 reads one-line flow mappings, so an inline mapping is a value, not a refusal.
+	# gs-core v0.1.46 reads one-line flow mappings, so an inline mapping is a value, not a refusal.
 	var flow := TmcYaml.parse("a: {map: x, mode: ctf}", "<test>")
 	_check(
 		flow.ok and TmcYaml.at(flow.value, "a.map") == "x" and TmcYaml.at(flow.value, "a.mode") == "ctf",

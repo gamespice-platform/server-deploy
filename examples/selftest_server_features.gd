@@ -117,7 +117,7 @@ func _test_bot_record() -> void:
 	var shipped := TmcConfig.new()
 	_check(shipped.bot_record.record and shipped.bot_record.validate().ok, "shipped: on, and valid")
 	# The shipped template parses to the shipped defaults.
-	var tpl := TmcYaml.parse_file("res://cfg.example/addon/dot_bot_record/bot_record.yml")
+	var tpl := TmcYaml.parse_file("res://cfg.example/addon/gs_bot_record/bot_record.yml")
 	_check(tpl.ok and (tpl.value as Dictionary).has("bot_record_token"), "the template documents every key")
 	if tpl.ok:
 		var probe := TmcConfig.new()
@@ -133,11 +133,11 @@ func _test_bot_record() -> void:
 
 
 func _test_radio() -> void:
-	_section("dot-radio, optional")
+	_section("gs-radio, optional")
 	var root := "user://selftest_radio_cfg"
 	GSPaths.remove_tree(root)
 	GSCfgLegacy.reset()
-	var template := TmcYaml.parse_file("res://cfg.example/addon/dot_radio/radio.yml")
+	var template := TmcYaml.parse_file("res://cfg.example/addon/gs_radio/radio.yml")
 	_check(template.ok and template.value is Dictionary, "the shipped radio.yml parses")
 	var shipped: Dictionary = template.value if template.ok else {}
 	var keys_known := true
@@ -223,10 +223,10 @@ func _test_startup_checks() -> void:
 
 	var state_path := OS.get_user_data_dir().path_join("selftest-behind-state.json")
 	var f := FileAccess.open(state_path, FileAccess.WRITE)
-	f.store_string(JSON.stringify({"installed": {}, "behind": {"game-zombie-zone": {"wanted": "latest", "why": "needs dot_core 40"}}}))
+	f.store_string(JSON.stringify({"installed": {}, "behind": {"game-zombie-zone": {"wanted": "latest", "why": "needs gs_core 40"}}}))
 	f.close()
 	var entry := Host.behind_entry(state_path, "game-zombie-zone")
-	_check(str(entry.get("wanted", "")) == "latest" and str(entry.get("why", "")) == "needs dot_core 40",
+	_check(str(entry.get("wanted", "")) == "latest" and str(entry.get("why", "")) == "needs gs_core 40",
 		"a game the installer kept older than asked is read back as behind (%s)" % entry)
 	_check(Host.behind_entry(state_path, "buses").is_empty(), "and a game that is current is not")
 	DirAccess.remove_absolute(state_path)
@@ -292,15 +292,15 @@ func _test_cache_limit() -> void:
 	var cloud := GSCloudConfig.new()
 	var dir := OS.get_user_data_dir().path_join("selftest-cache-limit")
 	cloud.cache_dir = dir
-	_check(cloud.cache_bytes > 0, "dot-cloud's own default is a ceiling (%d), which is why the server sets one" % cloud.cache_bytes)
+	_check(cloud.cache_bytes > 0, "gs-cloud's own default is a ceiling (%d), which is why the server sets one" % cloud.cache_bytes)
 	TmcCloudLimit.apply(cloud, 0, "selftest", dir.path_join("absent.json"))
 	_check(cloud.cache_bytes == 0, "the server's cloud config is unlimited")
-	_check(not ("limit_hint" in cloud) or str(cloud.get("limit_hint")) == TmcCloudLimit.WHERE, "and a dot-cloud that names a hint in its quota refusal names the server's key")
+	_check(not ("limit_hint" in cloud) or str(cloud.get("limit_hint")) == TmcCloudLimit.WHERE, "and a gs-cloud that names a hint in its quota refusal names the server's key")
 	var json := dir.path_join("content.json")
 	var f := FileAccess.open(json, FileAccess.WRITE)
 	f.store_string(JSON.stringify({"cache_bytes": 0, "trusted_keys": []}))
 	f.close()
-	_check(TmcCloudLimit._file_override(json).contains("cache_bytes=0"), "a cache_bytes in the cloud config file, which dot-cloud applies over this, is named")
+	_check(TmcCloudLimit._file_override(json).contains("cache_bytes=0"), "a cache_bytes in the cloud config file, which gs-cloud applies over this, is named")
 	_check(TmcCloudLimit._file_override(dir.path_join("absent.json")) == "", "and a file without one is not")
 	DirAccess.remove_absolute(json)
 	DirAccess.remove_absolute(dir)

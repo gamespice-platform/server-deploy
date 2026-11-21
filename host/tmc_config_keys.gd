@@ -36,7 +36,7 @@ const BOOT_KEYS := {
 	"a2s_enabled": "a2s_enabled",
 	"a2s_port": "a2s_port",
 	"content_manifest_url": "content_manifest_url",
-	# dot-server documents this as the one stdin decision that is a real decision, and it was unreachable because YAML is this deployment's only surface.
+	# gs-server documents this as the one stdin decision that is a real decision, and it was unreachable because YAML is this deployment's only surface.
 	# A server whose stdin carries something other than commands needs it, and so does anything running two servers in one process:
 	# [GSStdinConsole] is a thread blocked in a read the engine cannot cancel, so the second keeps the process alive.
 	"sv_stdin_console": "stdin_console_enabled",
@@ -73,7 +73,7 @@ const NET_KEYS := {
 	"net_stagger_snapshots": "stagger_snapshots",
 }
 
-## Operator-facing name -> [code]GSLogConfig[/code] property, only what dot-log adds: the level, channels, mirror threshold and file settings are in [constant BOOT_KEYS]
+## Operator-facing name -> [code]GSLogConfig[/code] property, only what gs-log adds: the level, channels, mirror threshold and file settings are in [constant BOOT_KEYS]
 ## already (a server without GameSpice Log has them through GameSpice Core's sink) and are copied across in [method build_log_router]; two lists for one fact is this tree's most repeated bug.
 ## [code]log_router[/code] is NOT here: it decides whether the router is built, and is handled by name in [method _apply_settings].
 const LOG_KEYS := {
@@ -107,27 +107,27 @@ const LOG_KEYS := {
 
 ## Each addon owns its key table, so this file keeps no second copy that goes stale.
 const LAYERED := {
-	"security.yml": "dot-server-security",
-	"party.yml": "dot-party",
-	"replay.yml": "dot-replay",
-	"bot_record.yml": "dot-bot-record",
-	"matchmaking.yml": "dot-matchmaking",
-	"groups.yml": "dot-server",
-	"permissions.yml": "dot-server",
-	"admin_menu.yml": "dot-menu",
-	"log.yml": "dot-log",
-	"rcon.yml": "dot-console",
-	"auth.yml": "dot-auth",
-	"vote.yml": "dot-vote",
-	"loading.yml": "dot-core",
-	"radio.yml": "dot-radio",
-	"trail.yml": "dot-trail",
+	"security.yml": "gs-server-security",
+	"party.yml": "gs-party",
+	"replay.yml": "gs-replay",
+	"bot_record.yml": "gs-bot-record",
+	"matchmaking.yml": "gs-matchmaking",
+	"groups.yml": "gs-server",
+	"permissions.yml": "gs-server",
+	"admin_menu.yml": "gs-menu",
+	"log.yml": "gs-log",
+	"rcon.yml": "gs-console",
+	"auth.yml": "gs-auth",
+	"vote.yml": "gs-vote",
+	"loading.yml": "gs-core",
+	"radio.yml": "gs-radio",
+	"trail.yml": "gs-trail",
 }
 
 ## Key prefix in `server.yml` -> the addon folder that owns it now (`cfg/addons/<addon>/`). Still
 ## applied from `server.yml` until GSCfgLegacy's cutoff, with one WARN naming the keys.
 ## `rcon_password` stays where it is: a secret may live in `server.yml` or the addon's folder.
 const LEGACY_KEYS := {
-	"log_": "dot_log",
-	"rcon_": "dot_console",
+	"log_": "gs_log",
+	"rcon_": "gs_console",
 }

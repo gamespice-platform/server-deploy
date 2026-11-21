@@ -1,6 +1,6 @@
 extends Node
 # [b]Not preloaded, and there is nothing left to preload.[/b] Every game here is DELIVERED now: its
-# files exist at `res://dot_cloud/<id>/<version>/…`, a path no constant in this file can name,
+# files exist at `res://gs_cloud/<id>/<version>/…`, a path no constant in this file can name,
 # because the version belongs to the game and this file belongs to the host.
 const HUNGRY_WORLD := &"hungry_world"
 const BUSES_GAME := &"bfh_game"
@@ -37,7 +37,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: changing games")
+	print("gs-server-deploy: changing games")
 
 	if not PublishedPacks.has("tmc/buses"):
 		print("skipped: tmc/buses is not published in dist/ (./setup.sh, or ./server pack buses --source games/mg-buses-from-hell)")
@@ -183,7 +183,7 @@ func _test_finds_a_map_session() -> void:
 	_check(
 		TmcMapGame.session_in(probe) == session,
 		"a real GSMapSession still answers the duck-typed predicate",
-		"if this fails, dot-map renamed a method and `--map` now does nothing at all"
+		"if this fails, gs-map renamed a method and `--map` now does nothing at all"
 	)
 
 	remove_child(probe)
@@ -213,7 +213,7 @@ func _test_registered() -> void:
 		_check(ids.has(wanted), "%s is registered" % wanted)
 		_check(
 			_server().games.find_game(wanted) != null,
-			"and dot-server knows it, so changelevel can reach it"
+			"and gs-server knows it, so changelevel can reach it"
 		)
 
 	_check(
@@ -238,9 +238,9 @@ func _test_registered() -> void:
 
 	# Every game in `content/` is builtin, which is precisely why nothing noticed.
 	_check(
-		GSRegistry.get_service(&"dot_cloud_client") != null,
+		GSRegistry.get_service(&"gs_cloud_client") != null,
 		"a content client is registered, so a pack game could be fetched",
-		"without it dot-server refuses every game with a manifest_url"
+		"without it gs-server refuses every game with a manifest_url"
 	)
 	_done()
 
@@ -281,7 +281,7 @@ func _test_switch_to_hungry() -> void:
 	_check(
 		_server().modules.has_module("hungry"),
 		"hungry's module is loaded",
-		"dot-server changes the scene and tells the modules already loaded; it does not "
+		"gs-server changes the scene and tells the modules already loaded; it does not "
 		+ "load one, so without the host doing it the new game has no netcode at all"
 	)
 	_check(
@@ -317,7 +317,7 @@ func _test_switch_to_hungry() -> void:
 	_check(
 		String(info.get("scene", "")) == "game/client/hungry_client.tscn",
 		"and names its client scene RELATIVELY (%s)" % info.get("scene", ""),
-		"GSClientLink refuses every absolute res:// path outside dot-cloud's mount, so "
+		"GSClientLink refuses every absolute res:// path outside gs-cloud's mount, so "
 		+ "a relative one is the only spelling a client will resolve"
 	)
 	_done()
@@ -567,7 +567,7 @@ func _test_vote_changes_the_game() -> void:
 			and line.text.contains("!%s%s" % [TmcVote.COMMAND_PREFIX, TmcVote.COMMAND_NAMES["vote"]]),
 		"the ballot goes on every HUD, with its time and the command that votes (%s)"
 			% (str(line.describe()) if line != null else "nothing"),
-		"the vote reached players as chat only before dot-server had a notice"
+		"the vote reached players as chat only before gs-server had a notice"
 	)
 	_check(
 		_notice_with_cue(notices, &"tmc_vote_start"),

@@ -1,19 +1,19 @@
 <#
 .SYNOPSIS
-    Unpack the native library of every locked addon that has one (dot-sim): the Windows
+    Unpack the native library of every locked addon that has one (gs-sim): the Windows
     twin of tools/fetch-natives.sh.
 
 .DESCRIPTION
     Not a second copy of the fetcher. The download, the SHA256SUMS.natives check, the stamp
-    and the keep-a-local-build rule are dot-bootstrap's Fetch-Natives; this lifts that
+    and the keep-a-local-build rule are gs-bootstrap's Fetch-Natives; this lifts that
     function (and the helpers it needs) out of bootstrap.ps1 at run time, by parsing it,
     and supplies only what is specific to here: the pin comes from addons.lock instead of
     a game's .gitignore, and the place is the repository addons\<addon> links into.
-    bootstrap.ps1 is looked for in $env:GS_BOOTSTRAP (old name $env:DOT_BOOTSTRAP), beside this checkout and in
+    bootstrap.ps1 is looked for in $env:GS_BOOTSTRAP (old name $env:GS_BOOTSTRAP), beside this checkout and in
     addons\.repos\; with none, it is cloned shallow into addons\.repos\ (unless -NoClone).
 
     Never run for export-web: a .gdextension in a web build stops every script.
-    $env:GS_NATIVES = 'none' (old name DOT_NATIVES) skips everything; a platform with no zip warns and the
+    $env:GS_NATIVES = 'none' (old name GS_NATIVES) skips everything; a platform with no zip warns and the
     GDScript twins run.
 
 .EXAMPLE
@@ -28,12 +28,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
-$NativeRepos = @('dot-sim')          # addons that publish a platform zip
-if (($(if ($env:GS_NATIVES) { $env:GS_NATIVES } else { $env:DOT_NATIVES })) -eq 'none') { exit 0 }
+$NativeRepos = @('gs-sim')          # addons that publish a platform zip
+if (($(if ($env:GS_NATIVES) { $env:GS_NATIVES } else { $env:GS_NATIVES })) -eq 'none') { exit 0 }
 if ($env:TMC_NO_CLONE) { $NoClone = $true }
 
 $boot = $null
-foreach ($c in @($(if ($env:GS_BOOTSTRAP) { $env:GS_BOOTSTRAP } else { $env:DOT_BOOTSTRAP }), (Join-Path $Root '..\dot-bootstrap'), (Join-Path $Root 'addons\.repos\dot-bootstrap'))) {
+foreach ($c in @($(if ($env:GS_BOOTSTRAP) { $env:GS_BOOTSTRAP } else { $env:GS_BOOTSTRAP }), (Join-Path $Root '..\gs-bootstrap'), (Join-Path $Root 'addons\.repos\gs-bootstrap'))) {
     if ($c -and (Test-Path -LiteralPath (Join-Path $c 'bootstrap.ps1'))) { $boot = Join-Path $c 'bootstrap.ps1'; break }
 }
 if (-not $boot -and -not $NoClone -and (Test-Path -LiteralPath (Join-Path $Root 'addons')) -and (Get-Command git -ErrorAction SilentlyContinue)) {
@@ -41,11 +41,11 @@ if (-not $boot -and -not $NoClone -and (Test-Path -LiteralPath (Join-Path $Root 
     New-Item -ItemType Directory -Force -Path $repos | Out-Null
     if (-not (Test-Path -LiteralPath (Join-Path $repos '.gdignore'))) { New-Item -ItemType File -Path (Join-Path $repos '.gdignore') | Out-Null }
     $gitBase = if ($env:TMC_GIT_BASE) { $env:TMC_GIT_BASE } else { 'https://github.com/gamespice-platform' }
-    & git clone --quiet --depth 1 "$gitBase/$(if ($env:TMC_GIT_BASE) { 'dot-' })bootstrap.git" (Join-Path $repos 'dot-bootstrap') 2>$null
-    if ($LASTEXITCODE -eq 0) { $boot = Join-Path $repos 'dot-bootstrap\bootstrap.ps1' }
+    & git clone --quiet --depth 1 "$gitBase/$(if ($env:TMC_GIT_BASE) { 'gs-' })bootstrap.git" (Join-Path $repos 'gs-bootstrap') 2>$null
+    if ($LASTEXITCODE -eq 0) { $boot = Join-Path $repos 'gs-bootstrap\bootstrap.ps1' }
 }
 if (-not $boot) {
-    Write-Host "    !!   dot-sim: native motor=off (dot-bootstrap's bootstrap.ps1 not found; GDScript runs, slower)" -ForegroundColor Yellow
+    Write-Host "    !!   gs-sim: native motor=off (gs-bootstrap's bootstrap.ps1 not found; GDScript runs, slower)" -ForegroundColor Yellow
     exit 0
 }
 

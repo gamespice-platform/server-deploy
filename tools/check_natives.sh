@@ -35,7 +35,7 @@ t "publish-web-shell ships index.side.wasm beside the shared engine" $?
 # threads engine, picked only where every module has one; a failed threaded start goes ?threads=0.
 grep -q 'fetch-natives.sh" --platform web-wasm32-threads' tools/server.in && grep -q 'web_dlink_release.zip' tools/server.in \
     && grep -q 'GDEXTENSION_LIBS_MT' tools/server.in
-t "export-web installs the dlink threads twin with dot-sim's pthread side module" $?
+t "export-web installs the dlink threads twin with gs-sim's pthread side module" $?
 grep -q 'NATIVE_LIBS_MT.length === NATIVE_LIBS.length' web/embed.html && grep -q 'searchParams.set("threads", "0")' web/embed.html
 t "embed.html runs threaded natives only with every pthread module, falls back to ?threads=0" $?
 grep -q 'ENGINE_FILES+=(index-mt.side.wasm)' tools/publish-web-shell.sh
@@ -44,7 +44,7 @@ grep -q 'was older than tools/server.in; regenerated it' tools/server.in && grep
 t "./server regenerates itself from tools/server.in when stale (a stale copy built no threaded twin)" $?
 grep -q 'web_dlink_nothreads_release.zip' tools/fetch-export-templates.sh
 t "fetch-export-templates installs the dlink template" $?
-grep -qP '^dot-sim\tv' addons.lock;                      t "addons.lock pins dot-sim" $?
+grep -qP '^gs-sim\tv' addons.lock;                      t "addons.lock pins gs-sim" $?
 
 # The Windows twins: setup.ps1 and server.ps1.in run tools/fetch-natives.ps1 (export-native for
 # the platforms being built, never export-web), which lifts GameSpice Bootstrap's Fetch-Natives.
@@ -71,50 +71,50 @@ fi
 
 # A fake release unpacks, is checksum-verified, and the library lands in the addon's repository.
 boot=""
-for c in "${GS_BOOTSTRAP:-${DOT_BOOTSTRAP:-}}" ../dot-bootstrap; do [ -n "$c" ] && [ -f "$c/bootstrap.sh" ] && { boot="$c"; break; }; done
+for c in "${GS_BOOTSTRAP:-}" ../gs-bootstrap; do [ -n "$c" ] && [ -f "$c/bootstrap.sh" ] && { boot="$c"; break; }; done
 if [ -z "$boot" ]; then
-    printf '  %sSKIP%s the unpack run: no dot-bootstrap beside this checkout (GS_BOOTSTRAP=)\n' "$YLW" "$OFF"
+    printf '  %sSKIP%s the unpack run: no gs-bootstrap beside this checkout (GS_BOOTSTRAP=)\n' "$YLW" "$OFF"
 else
     T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
     plat="$(eval "$(sed -n '/^native_platform() {/,/^}/p' "$boot/bootstrap.sh")"; native_platform)"
-    mkdir -p "$T/p/dot-sim/addons/dot_sim" "$T/p/srv/tools" "$T/p/srv/addons" "$T/z/addons/dot_sim/bin/$plat"
-    cp tools/fetch-natives.sh "$T/p/srv/tools/"; printf 'dot-sim\tv9.9.9\n' > "$T/p/srv/addons.lock"
-    ln -s ../../dot-sim/addons/dot_sim "$T/p/srv/addons/dot_sim"
-    echo lib > "$T/z/addons/dot_sim/bin/$plat/libdot_sim.so"; echo ext > "$T/z/addons/dot_sim/dot_sim.gdextension"
-    R="$T/rel/dot-sim/releases/download/v9.9.9"; mkdir -p "$R"
-    (cd "$T/z" && python3 -m zipfile -c "$R/dot_sim-9.9.9-$plat.zip" addons)
-    (cd "$R" && sha256sum "dot_sim-9.9.9-$plat.zip" > SHA256SUMS.natives)
+    mkdir -p "$T/p/gs-sim/addons/gs_sim" "$T/p/srv/tools" "$T/p/srv/addons" "$T/z/addons/gs_sim/bin/$plat"
+    cp tools/fetch-natives.sh "$T/p/srv/tools/"; printf 'gs-sim\tv9.9.9\n' > "$T/p/srv/addons.lock"
+    ln -s ../../gs-sim/addons/gs_sim "$T/p/srv/addons/gs_sim"
+    echo lib > "$T/z/addons/gs_sim/bin/$plat/libgs_sim.so"; echo ext > "$T/z/addons/gs_sim/gs_sim.gdextension"
+    R="$T/rel/gs-sim/releases/download/v9.9.9"; mkdir -p "$R"
+    (cd "$T/z" && python3 -m zipfile -c "$R/gs_sim-9.9.9-$plat.zip" addons)
+    (cd "$R" && sha256sum "gs_sim-9.9.9-$plat.zip" > SHA256SUMS.natives)
     out="$(GS_BOOTSTRAP="$boot" GS_NATIVES_BASE="file://$T/rel" bash "$T/p/srv/tools/fetch-natives.sh" 2>&1)"
-    [ -f "$T/p/dot-sim/addons/dot_sim/bin/$plat/libdot_sim.so" ] && [ -f "$T/p/dot-sim/addons/dot_sim/dot_sim.gdextension" ]
+    [ -f "$T/p/gs-sim/addons/gs_sim/bin/$plat/libgs_sim.so" ] && [ -f "$T/p/gs-sim/addons/gs_sim/gs_sim.gdextension" ]
     t "the platform zip unpacks into the addon's repository" $?
-    grep -q 'dot-sim: native motor=on' <<<"$out"; t "it logs 'dot-sim: native motor=on'" $?
-    rm -rf "$T/p/dot-sim/addons/dot_sim/bin" "$T/p/dot-sim/addons/dot_sim/dot_sim.gdextension"
-    echo bad > "$R/dot_sim-9.9.9-$plat.zip"
+    grep -q 'gs-sim: native motor=on' <<<"$out"; t "it logs 'gs-sim: native motor=on'" $?
+    rm -rf "$T/p/gs-sim/addons/gs_sim/bin" "$T/p/gs-sim/addons/gs_sim/gs_sim.gdextension"
+    echo bad > "$R/gs_sim-9.9.9-$plat.zip"
     out="$(GS_BOOTSTRAP="$boot" GS_NATIVES_BASE="file://$T/rel" bash "$T/p/srv/tools/fetch-natives.sh" 2>&1)"
-    [ ! -e "$T/p/dot-sim/addons/dot_sim/bin/$plat" ] && grep -q 'native motor=off' <<<"$out"
+    [ ! -e "$T/p/gs-sim/addons/gs_sim/bin/$plat" ] && grep -q 'native motor=off' <<<"$out"
     t "a checksum mismatch installs nothing and falls back to GDScript" $?
 
     # Two macOS architectures, fetched together twice: the second run downloads nothing.
     for a in arm64 x86_64; do
-        mp="macos-$a"; mkdir -p "$T/m/$mp/addons/dot_sim/bin/$mp"; echo lib > "$T/m/$mp/addons/dot_sim/bin/$mp/libdot_sim.dylib"
-        echo ext > "$T/m/$mp/addons/dot_sim/dot_sim.gdextension"
-        (cd "$T/m/$mp" && python3 -m zipfile -c "$R/dot_sim-9.9.9-$mp.zip" addons)
+        mp="macos-$a"; mkdir -p "$T/m/$mp/addons/gs_sim/bin/$mp"; echo lib > "$T/m/$mp/addons/gs_sim/bin/$mp/libgs_sim.dylib"
+        echo ext > "$T/m/$mp/addons/gs_sim/gs_sim.gdextension"
+        (cd "$T/m/$mp" && python3 -m zipfile -c "$R/gs_sim-9.9.9-$mp.zip" addons)
     done
-    (cd "$R" && sha256sum dot_sim-9.9.9-macos-*.zip > SHA256SUMS.natives)
+    (cd "$R" && sha256sum gs_sim-9.9.9-macos-*.zip > SHA256SUMS.natives)
     natrun() { GS_BOOTSTRAP="$boot" GS_NATIVES_BASE="file://$T/rel" bash "$T/p/srv/tools/fetch-natives.sh" --platform macos-arm64 --platform macos-x86_64 2>&1; }
     natrun >/dev/null
     out="$(natrun)"
-    ! grep -q 'installed into' <<<"$out" && [ -f "$T/p/dot-sim/addons/dot_sim/bin/.natives-macos-arm64" ] && [ -f "$T/p/dot-sim/addons/dot_sim/bin/.natives-macos-x86_64" ]
+    ! grep -q 'installed into' <<<"$out" && [ -f "$T/p/gs-sim/addons/gs_sim/bin/.natives-macos-arm64" ] && [ -f "$T/p/gs-sim/addons/gs_sim/bin/.natives-macos-x86_64" ]
     t "macOS arm64 + x86_64 together: the second run downloads nothing (per-arch stamps)" $?
     # Each zip's .gdextension names only its own platform; after both, it must name both
     # (export-native --platform all shipped linux and windows without their entry).
-    mkdir -p "$T/p/dot-sim/ci"
-    printf '# platform\ttarget\trunner\tfile\tkey\nmacos-arm64\ta\tr\tlib{crate}.dylib\tmacos.arm64\nmacos-x86_64\tx\tr\tlib{crate}.dylib\tmacos.x86_64\nwindows-x86_64\tw\tr\t{crate}.dll\twindows.x86_64\n' > "$T/p/dot-sim/ci/targets.tsv"
-    printf '[configuration]\nentry_symbol = "e"\n\n[libraries]\nmacos.x86_64 = "x"\n' > "$T/p/dot-sim/addons/dot_sim/dot_sim.gdextension"
+    mkdir -p "$T/p/gs-sim/ci"
+    printf '# platform\ttarget\trunner\tfile\tkey\nmacos-arm64\ta\tr\tlib{crate}.dylib\tmacos.arm64\nmacos-x86_64\tx\tr\tlib{crate}.dylib\tmacos.x86_64\nwindows-x86_64\tw\tr\t{crate}.dll\twindows.x86_64\n' > "$T/p/gs-sim/ci/targets.tsv"
+    printf '[configuration]\nentry_symbol = "e"\n\n[libraries]\nmacos.x86_64 = "x"\n' > "$T/p/gs-sim/addons/gs_sim/gs_sim.gdextension"
     natrun >/dev/null
-    g="$T/p/dot-sim/addons/dot_sim/dot_sim.gdextension"
-    grep -qF 'macos.arm64 = "res://addons/dot_sim/bin/macos-arm64/libdot_sim.dylib"' "$g" \
-        && grep -qF 'macos.x86_64 = "res://addons/dot_sim/bin/macos-x86_64/libdot_sim.dylib"' "$g" \
+    g="$T/p/gs-sim/addons/gs_sim/gs_sim.gdextension"
+    grep -qF 'macos.arm64 = "res://addons/gs_sim/bin/macos-arm64/libgs_sim.dylib"' "$g" \
+        && grep -qF 'macos.x86_64 = "res://addons/gs_sim/bin/macos-x86_64/libgs_sim.dylib"' "$g" \
         && ! grep -q windows "$g" && grep -q 'entry_symbol = "e"' "$g"
     t "the .gdextension names every platform whose library is present, and keeps [configuration]" $?
 fi

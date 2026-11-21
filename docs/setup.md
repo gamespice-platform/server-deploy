@@ -20,10 +20,10 @@ This project's most repeated bug is one fact written down twice, and it has ship
 
 | Fact | The one place | Readers |
 | --- | --- | --- |
-| which games to build | `cfg/content/games.yml` over the shipped `content-lists/games.yml` (`setup.sh` builds `GAMES` from it) | `tools/check.sh`, `tools/package_check.sh`, `play.sh` read it through `game_entries` (`tools/content_lists.sh`); `tools/check_lists.sh` fails when a `content/<dir>/pack.json` or a game repository in dot-bootstrap's `projects.tsv` has no entry |
+| which games to build | `cfg/content/games.yml` over the shipped `content-lists/games.yml` (`setup.sh` builds `GAMES` from it) | `tools/check.sh`, `tools/package_check.sh`, `play.sh` read it through `game_entries` (`tools/content_lists.sh`); `tools/check_lists.sh` fails when a `content/<dir>/pack.json` or a game repository in gs-bootstrap's `projects.tsv` has no entry |
 | which addons exist | `cfg/content/addons.yml` over the shipped `content-lists/addons.yml` (`setup.sh` derives `ADDONS_ALL` from it) | `tools/package_check.sh`, `tools/addons-lock.sh` read it through `content_addon_repos`; `setup.ps1`'s `$addons` is a copy (no PowerShell here to prove a parser of a bash array), and `tools/check_lists.sh` (run by `check.sh`) fails when it differs in a name |
-| addon name to repository | `addon_repo()` (underscores to hyphens, except `zee_weapons` → `zee-dot-weapons`) | the exception is repeated in `setup.ps1`'s `Get-AddonRepo`, which `tools/check_lists.sh` compares; the two bash tools take repository names straight from the yml |
-| repository to owner | `repo_url()`: `dot-*` from `$GIT_BASE` (the organisation), everything else from the games owner | the family rule in [family CLAUDE.md](../../../CLAUDE.md#repositories-owners-and-pushing) |
+| addon name to repository | `addon_repo()` (underscores to hyphens, except `zee_weapons` → `zee-gs-weapons`) | the exception is repeated in `setup.ps1`'s `Get-AddonRepo`, which `tools/check_lists.sh` compares; the two bash tools take repository names straight from the yml |
+| repository to owner | `repo_url()`: `gs-*` from `$GIT_BASE` (the organisation), everything else from the games owner | the family rule in [family CLAUDE.md](../../../CLAUDE.md#repositories-owners-and-pushing) |
 | where a game's source is | `tools/game_source.sh` (`--games-dir`, then `games/`, then the parent), with `game_entries` | sourced by `setup.sh`, `play.sh`, `check.sh`, `package_check.sh` |
 
 `setup.sh` resolves every source before it removes anything and refuses a partial set.
@@ -40,7 +40,7 @@ A missing addon is cloned into `addons/.repos/<repo>` and `addons/<name>` is a *
 
 ## The games live in `games/`
 
-`setup.sh` clones a missing game into `games/<repo>` and publishes from there, for the same reasons as the addons, and worse: what comes out is a signed pack every client runs. `games/` has a `.gdignore`, because a game walked as part of this project declares its `class_name` globals here too, and a delivered game's scripts then resolve to this build's stale copy (`Value of type "res://dot_cloud/…" cannot be assigned to a variable of type "G2GIdentity"`).
+`setup.sh` clones a missing game into `games/<repo>` and publishes from there, for the same reasons as the addons, and worse: what comes out is a signed pack every client runs. `games/` has a `.gdignore`, because a game walked as part of this project declares its `class_name` globals here too, and a delivered game's scripts then resolve to this build's stale copy (`Value of type "res://gs_cloud/…" cannot be assigned to a variable of type "G2GIdentity"`).
 
 - **A developer checkout gets a link, not a second clone.** `link_sibling_game` makes `games/<repo> -> ../../<repo>`; a second clone is the arrangement where a fix is committed, pulled and still not running. `--vendor` skips the link.
 - **`--games-dir DIR` (`TMC_GAMES_DIR`) is separate from `--addons-dir`** on purpose: one shared addon library does not imply publishing packs from a shared games tree.
@@ -55,11 +55,11 @@ They filter the `GAMES` array and nothing else; everything below walks only `GAM
 - **The addons are derived, so there is no `--skip-addons`.** Each project declares `/addons/<name>` lines in its own `.gitignore`; a filtered build links the remaining games' union plus `ADDONS_SHELL` (the addons this project's own scripts name). For the full set the derivation reproduces `ADDONS_ALL` name for name, and it runs only when a game was actually dropped.
 - **`ADDONS_SHELL` may be small because a mistake in it is loud**: this project's own scripts fail to compile on the next import.
 - **An addon the build no longer needs is unlinked, and where it pointed is recorded in `addons/.unlinked` first**, because `addon_source` finds a sibling only through its existing link; the first version without the record re-cloned 26 addons on the next unfiltered run. Only symlinks are ever removed.
-- **A filtered build narrows what the server offers**: `vote_exclude` is seeded into a newly created `cfg/addon/dot_vote/vote.yml` (named, not edited, when the file exists) and covers every content directory sharing the dropped `content_id`.
+- **A filtered build narrows what the server offers**: `vote_exclude` is seeded into a newly created `cfg/addon/gs_vote/vote.yml` (named, not edited, when the file exists) and covers every content directory sharing the dropped `content_id`.
 
 ## Addons only this project names
 
-`dot_replay`, `dot_friends` and `dot_log` are named by this project's scripts and by no game, so they are in both `ADDONS_ALL` and `ADDONS_SHELL`. **This project's `.gitignore` is a bare `/addons/`, which dot-bootstrap and dot-ci read as "declares nothing"** on purpose: two named lines under it would make both tools resolve exactly those two into a project that needs all of them.
+`gs_replay`, `gs_friends` and `gs_log` are named by this project's scripts and by no game, so they are in both `ADDONS_ALL` and `ADDONS_SHELL`. **This project's `.gitignore` is a bare `/addons/`, which gs-bootstrap and gs-ci read as "declares nothing"** on purpose: two named lines under it would make both tools resolve exactly those two into a project that needs all of them.
 
 ## The runtime: `tools/fetch-godot.sh`
 
@@ -77,5 +77,5 @@ They filter the `GAMES` array and nothing else; everything below walks only `GAM
 
 `setup.ps1` makes junctions rather than symlinks, `server.ps1` is the launcher and `server.cmd` forwards to it. **Neither has ever been run on Windows from here**: there is no PowerShell on the development machine, so both are reviewed, not tested, and they are the first suspect if anything Windows-shaped misbehaves. Known divergences:
 
-- `tools/server.ps1.in`'s `pack` still runs `res://tools/publish.tscn`, a scene that was never written; the bash launcher builds on `tools/pack.gd` and dot-cloud's CLI. It needs a port, not a patch.
+- `tools/server.ps1.in`'s `pack` still runs `res://tools/publish.tscn`, a scene that was never written; the bash launcher builds on `tools/pack.gd` and gs-cloud's CLI. It needs a port, not a patch.
 - No `TMC_*` environment layer and no `install-games`, deliberately ([installing-games.md](installing-games.md#rules-of-the-installer)).

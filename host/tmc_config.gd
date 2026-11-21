@@ -352,20 +352,12 @@ func _warn_legacy_keys(path: String, tree: Dictionary) -> void:
 		path, GSCfgLegacy.REMOVE_AFTER, ", ".join(moved)], {"path": path})
 
 
-## GSConfig.apply_env with the GS_ spelling too, so GS_X wins over DOT_X even on a GameSpice Core older than gs_env_name (pinned addons).
-func _apply_env_both(cfg: GSConfig, prefix: String = "") -> void:
-	var p := prefix if prefix != "" else cfg.env_prefix()
-	cfg.apply_env(p)
-	if p.begins_with("DOT_"):
-		cfg.apply_env("GS_" + p.substr(4))
-
-
 ## The environment and the command line over `vote.yml`, under GS_GAME_VOTE_* and --game-vote-*, not GameSpice Vote's own prefixes:
 ## a game loaded from `content/` runs its own MAP vote in this process under `GS_VOTE_*`, and one prefix for both would make a flag change two votes. The server-level vote's commands are `game_*` for the same reason.
 func _layer_vote_overrides() -> void:
 	var before := vote.unknown_keys.size()
 
-	_apply_env_both(vote, "DOT_GAME_VOTE_")
+	vote.apply_env("GS_GAME_VOTE_")
 	vote.apply_cli("--game-vote-")
 
 	for i in range(before, vote.unknown_keys.size()):
@@ -378,7 +370,7 @@ func _layer_party_overrides() -> void:
 	for target in [party, matchmaking]:
 		var cfg := target as GSConfig
 		var before := cfg.unknown_keys.size()
-		_apply_env_both(cfg)
+		cfg.apply_env()
 		cfg.apply_cli()
 		for i in range(before, cfg.unknown_keys.size()):
 			unknown.append("%s: %s" % [cfg.cli_prefix(), cfg.unknown_keys[i]])
@@ -388,7 +380,7 @@ func _layer_party_overrides() -> void:
 ## `--replay-ring-seconds 300` for one tournament is the case the prefix exists for. A layered value the addon refuses is caught when [TmcReplay] validates again: the ring is not built, said at ERROR.
 func _layer_replay_overrides() -> void:
 	var before := replay.unknown_keys.size()
-	_apply_env_both(replay)
+	replay.apply_env()
 	replay.apply_cli()
 	for i in range(before, replay.unknown_keys.size()):
 		unknown.append("%s: %s" % [replay.cli_prefix(), replay.unknown_keys[i]])
@@ -397,7 +389,7 @@ func _layer_replay_overrides() -> void:
 ## The environment and the command line over `bot_record.yml`; the token stays file-only.
 func _layer_bot_record_overrides() -> void:
 	var before := bot_record.unknown_keys.size()
-	_apply_env_both(bot_record)
+	bot_record.apply_env()
 	bot_record.apply_cli()
 	for i in range(before, bot_record.unknown_keys.size()):
 		unknown.append("%s: %s" % [bot_record.cli_prefix(), bot_record.unknown_keys[i]])

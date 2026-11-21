@@ -36,7 +36,7 @@ const PACKS := {
 	"buses": ["tmc/buses"],
 	"deathrun": ["tmc/deathrun", "tmc/deathrun_maps"],
 	"delivery": ["tmc/delivery"],
-	"airdrift": ["tmc/g2gfast"],  # legacy id: the published pack id
+	"airdrift": ["tmc/airdrift"],  # legacy id: the published pack id
 	"hideseek": ["tmc/hideseek", "tmc/hideseek_maps"],
 	"murdermystery": ["tmc/murdermystery", "tmc/murdermystery_maps"],
 	"hungry_classic": ["tmc/hungry"],
@@ -354,7 +354,7 @@ func _join_crowd() -> void:
 	var t0 := Time.get_ticks_msec()
 	var all_in := true
 	# One after another, each as soon as the last has its game scene: a client scene finds its
-	# link through GSRegistry's `dot_client_link`, which is last-wins and shared by every client
+	# link through GSRegistry's `gs_client_link`, which is last-wins and shared by every client
 	# in this process, so seven links made at once leave six scenes on the seventh's link.
 	for i in range(CROWD - 1):
 		var side := Node.new()
@@ -403,7 +403,7 @@ func _full_avatar(schema: GSAvatarSchema, n: int) -> GSAvatar:
 
 func _avatars() -> void:
 	_section("every player's avatar arrives at once")
-	var manager: Object = GSRegistry.get_service(&"dot_avatar_manager")
+	var manager: Object = GSRegistry.get_service(&"gs_avatar_manager")
 	var schema: GSAvatarSchema = manager.get("schema") as GSAvatarSchema if manager != null else null
 	var platform: GSModule = _server().modules.get_module("platform")
 	if schema == null or platform == null or not platform.has_method("player_for"):
@@ -453,7 +453,7 @@ func _console(line: String) -> String:
 	return " / ".join(captured)
 
 
-## Every dot-vote director in the server's half of the tree: the game's map vote, and the host's
+## Every gs-vote director in the server's half of the tree: the game's map vote, and the host's
 ## game vote (off here, so never voting).
 func _directors() -> Array:
 	var out: Array = []

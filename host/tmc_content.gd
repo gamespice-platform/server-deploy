@@ -225,7 +225,7 @@ func _build(name: String, tree: Dictionary) -> GSResult:
 				return GSResult.fail(
 					GSError.CODE_INVALID,
 					"A builtin game must not name a client_scene.",
-					"GSClientLink refuses every absolute path outside dot-cloud's mount, "
+					"GSClientLink refuses every absolute path outside gs-cloud's mount, "
 					+ "so the client would refuse it and be timed out in LOADING"
 				)
 		"pack":
@@ -293,7 +293,7 @@ func _build(name: String, tree: Dictionary) -> GSResult:
 	var module := String(TmcYaml.at(tree, "module", ""))
 
 	if kind == "pack" and module != "" and not module.contains("://"):
-		module = "res://dot_cloud/%s/%s/%s" % [
+		module = "res://gs_cloud/%s/%s/%s" % [
 			descriptor.effective_content_id(),
 			descriptor.version if descriptor.version != "" else "0.0.0",
 			module,

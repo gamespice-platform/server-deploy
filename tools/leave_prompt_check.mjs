@@ -2,7 +2,7 @@
 //
 //   node tools/leave_prompt_check.mjs
 //
-// The page guard (dot-core's web/dot_web.js, which dot-game's GSGameClient arms) is loaded and run in a stub
+// The page guard (gs-core's web/gs_web.js, which gs-game's GSGameClient arms) is loaded and run in a stub
 // game on a second origin, inside the frame tmc-loader.js builds. Closing the tab (with
 // beforeunload run, as Ctrl+W does) must raise the dialog once the guard is armed and the
 // player has clicked in the frame, must not before, and must not when the loader's frame
@@ -13,10 +13,10 @@ const pw = (await import(process.env.PLAYWRIGHT_CORE ?? '/home/christian/stack/w
 const { chromium } = pw;
 
 const loader = fs.readFileSync(new URL('../web/tmc-loader.js', import.meta.url), 'utf8');
-const dotWebPath = (process.env.GS_WEB_JS ?? process.env.DOT_WEB_JS)
-  ?? new URL('../../dot-core/addons/dot_core/web/dot_web.js', import.meta.url);
-const guardJs = fs.readFileSync(dotWebPath, 'utf8');
-if (!guardJs.includes('__dotTabGuard')) { console.log('FAIL no __dotTabGuard in ' + dotWebPath); process.exit(1); }
+const gsWebPath = (process.env.GS_WEB_JS)
+  ?? new URL('../../gs-core/addons/gs_core/web/gs_web.js', import.meta.url);
+const guardJs = fs.readFileSync(gsWebPath, 'utf8');
+if (!guardJs.includes('__gsTabGuard')) { console.log('FAIL no __gsTabGuard in ' + gsWebPath); process.exit(1); }
 
 function listen(handler) {
   return new Promise(res => {
@@ -29,7 +29,7 @@ const [game, gamePort] = await listen((req, r) => {
   r.end(`<!doctype html><body style="margin:0"><button id=b style="width:100%;height:100%">play</button>
 <script>parent.postMessage({type:'tmc.auth.ready'}, '*');
 ${guardJs}
-document.getElementById('b').onclick = function () { window.__dotTabGuard.armed = true; };</script>`);
+document.getElementById('b').onclick = function () { window.__gsTabGuard.armed = true; };</script>`);
 });
 const pageHtml = `<!doctype html><div id="tmc-game-canvas" style="position:relative;width:800px;height:500px"></div>
 <script>
@@ -62,7 +62,7 @@ async function closes(variant, click, arm) {
   const f = await p.waitForSelector('iframe').then(h => h.contentFrame());
   await f.waitForSelector('#b');
   if (click) await f.click('#b');
-  if (!arm) await f.evaluate(() => { window.__dotTabGuard.armed = false; });
+  if (!arm) await f.evaluate(() => { window.__gsTabGuard.armed = false; });
   await p.close({ runBeforeUnload: true });
   await ctx.close();
   return dialogs;

@@ -29,7 +29,7 @@ GAME="$(cd "$GAME" && pwd)"
 FAM="${GS_FAMILY_DIR:-$(dirname "$(cd "$ROOT" && cd "$(git rev-parse --git-common-dir)" && pwd)")/..}"
 FAM="$(cd "$FAM" && pwd)"
 if [ "$FETCH" = 1 ]; then
-    git -C "$ROOT" fetch -q origin main || { echo "pack_ready: cannot fetch dot-server-deploy origin main" >&2; exit 2; }
+    git -C "$ROOT" fetch -q origin main || { echo "pack_ready: cannot fetch gs-server-deploy origin main" >&2; exit 2; }
 fi
 git -C "$ROOT" cat-file -e origin/main:addons.lock 2>/dev/null || { echo "pack_ready: no origin/main:addons.lock in $ROOT" >&2; exit 2; }
 OUT="$(mktemp)"; trap 'rm -f "$OUT"' EXIT
@@ -101,7 +101,7 @@ if [ "$NB" = 0 ] && [ "$NA" = 0 ]; then echo "pack_ready: ready: every floor is 
 [ "$NB" = 0 ] && exit 1
 if [ "$PREPARE" = 0 ]; then echo "pack_ready: run again with --prepare to push the lock bump branch"; exit 1; fi
 STAMP="$(date -u +%Y%m%d%H%M%S)"; G="$(basename "$GAME")"; BR="lockbump/$G-$STAMP"
-WT="${WT_DIR:-$HOME/wt}/dot-server-deploy-lockbump-$G-$STAMP"
+WT="${WT_DIR:-$HOME/wt}/gs-server-deploy-lockbump-$G-$STAMP"
 git -C "$ROOT" worktree add -q -b "$BR" "$WT" origin/main || { echo "pack_ready: could not add worktree $WT" >&2; exit 2; }
 python3 -I - "$WT" "$OUT" <<'PY' || exit 2
 import json, re, sys

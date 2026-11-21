@@ -1,6 +1,6 @@
 # The game vote: players choose the next game
 
-`cfg/addon/dot_vote/vote.yml` and `host/tmc_vote.gd`. GameSpice Map votes for maps inside a game; this votes for what the SERVER runs next, which only exists because this project runs more than one game per server.
+`cfg/addon/gs_vote/vote.yml` and `host/tmc_vote.gd`. GameSpice Map votes for maps inside a game; this votes for what the SERVER runs next, which only exists because this project runs more than one game per server.
 
 ```
 !game_nominate airdrift   !game_rtv   !game_vote 2      !game_timeleft   !game_next
@@ -10,7 +10,7 @@ The engine is GameSpice Vote, and the whole policy is `vote.yml`, a `GSVoteRules
 
 ## The `game_` prefix is load-bearing
 
-A loaded game may run its own map vote, and its module registers `rtv`, `nominate`, `timeleft` and `nextmap` before `TmcVote.install` runs. `GSConsole.register_command` keeps the first registration of a name, so an unprefixed server vote does not fail loudly: it gets four dead commands, a player nominating a game is told there is no such map, and the first `changelevel` unregisters the game's four for the rest of the process. For the same reason this director sets `register_service = false`: `dot_vote_director` in `GSRegistry` belongs to the loaded game's vote, and the registry is last-wins.
+A loaded game may run its own map vote, and its module registers `rtv`, `nominate`, `timeleft` and `nextmap` before `TmcVote.install` runs. `GSConsole.register_command` keeps the first registration of a name, so an unprefixed server vote does not fail loudly: it gets four dead commands, a player nominating a game is told there is no such map, and the first `changelevel` unregisters the game's four for the rest of the process. For the same reason this director sets `register_service = false`: `gs_vote_director` in `GSRegistry` belongs to the loaded game's vote, and the registry is last-wins.
 
 ## This deployment's decisions
 
@@ -52,13 +52,13 @@ The ballot, countdown and result reach chat through `announce_fn`, and also go o
 
 - **One HUD line, `NOTICE_TOPIC`, owned by TmcVote.** Each countdown second and the ballot replace it; the client counts the seconds between messages.
 - **Taken down by a poll, not a signal.** `_sync_notice()` runs after every `advance` and clears the line when the director is neither counting down nor voting, because `GSVoteDirector.cancel_countdown` emits nothing.
-- **Lines and ballots are one column down the right-hand side, under 110 px, a third of the frame wide (240 to 360 px); nothing is at the top centre.** The line used to be a bar across the top centre, where nearly every game draws its own second line (the round clock's, the map name, "between rounds", FC's portrait row); rendered over all thirteen games it hid one of them in ten. Judge a change with `game_vote_all -- --shot=<dir>` at 1280x720 and a narrower frame. A shot waits for the shell's loading cover to go (the link reads PLAYING before a delivered game has built its world, and a first game on a cold cache showed "Joining..." or the bar for seconds), and a game with a panel of its own, delivery's lot, gets a `<game>_lot.png` with it open. The lot and the keys plate yield to the column themselves (`dot_hud_cover`); the shell cannot reach into a delivered game, so this stays the game's side.
+- **Lines and ballots are one column down the right-hand side, under 110 px, a third of the frame wide (240 to 360 px); nothing is at the top centre.** The line used to be a bar across the top centre, where nearly every game draws its own second line (the round clock's, the map name, "between rounds", FC's portrait row); rendered over all thirteen games it hid one of them in ten. Judge a change with `game_vote_all -- --shot=<dir>` at 1280x720 and a narrower frame. A shot waits for the shell's loading cover to go (the link reads PLAYING before a delivered game has built its world, and a first game on a cold cache showed "Joining..." or the bar for seconds), and a game with a panel of its own, delivery's lot, gets a `<game>_lot.png` with it open. The lot and the keys plate yield to the column themselves (`gs_hud_cover`); the shell cannot reach into a delivered game, so this stays the game's side.
 - **The ballot names the line it stands for** (`data["line"] = NOTICE_TOPIC`), and the overlay does not draw that line while the ballot is open: the ballot already shows the title, the keys and the time. The line still exists (`line_text`), and a shell older than this ignores the field and draws both.
 - **A closed ballot's result comes down when another ballot opens.** A panel holds "X won" for `result_hold_sec` (4 s), and a game's own ballot often opens inside that, right after the game vote keeps the game: the two stacked down the column to y~650 at 1280x720 and covered the bottom-right HUD of smash, wipeout and deathrun. The result is news only until something else asks a question.
 - **A ballot's background is opaque** (`TmcNoticeOverlay.ballot_theme()`): the theme's 0.92 let a bright HUD under it read through (a lot screen's prices showed under "Don't change won").
 - **A late joiner is sent the line that is still true** from `client_spawned`; notices go to playing sessions only.
-- **The cue ids are written twice and checked against each other.** `cfg.example/addons/dot_vote/vote.yml` names them (`tmc_vote_start`, `tmc_vote_end`, `tmc_vote_warning`, `tmc_vote_count`) because the server decides what plays; `TmcNoticeOverlay.sound_catalogue()` has them because the client plays them and `host/` is not in the client build. `selftest` fails on a cue the overlay lacks (dot-audio plays an unknown id as silence) or one with no synthesised stand-in. Real sounds go in `client/sounds/<id>.ogg`.
-- **The overlay does not register an audio manager or touch buses**: a delivered game registers its own `dot_audio` and sets its own volumes. It plays on `Master` because this project declares no bus layout.
+- **The cue ids are written twice and checked against each other.** `cfg.example/addons/gs_vote/vote.yml` names them (`tmc_vote_start`, `tmc_vote_end`, `tmc_vote_warning`, `tmc_vote_count`) because the server decides what plays; `TmcNoticeOverlay.sound_catalogue()` has them because the client plays them and `host/` is not in the client build. `selftest` fails on a cue the overlay lacks (gs-audio plays an unknown id as silence) or one with no synthesised stand-in. Real sounds go in `client/sounds/<id>.ogg`.
+- **The overlay does not register an audio manager or touch buses**: a delivered game registers its own `gs_audio` and sets its own volumes. It plays on `Master` because this project declares no bus layout.
 
 ## The ballot is drawn, and a click votes
 
@@ -70,7 +70,7 @@ With `addons_announce: game` a joining player fetches only the current game's ad
 
 ## Template changes do not reach existing deployments
 
-`cfg.example/addons/dot_vote/vote.yml` ships `vote_warning_sec: 10`, `runoff_warning_sec: 5` and the four cue ids. `cfg/` is never overwritten, so a deployment whose `vote.yml` predates them has the ballot line and no countdown or sound until those keys are uncommented there.
+`cfg.example/addons/gs_vote/vote.yml` ships `vote_warning_sec: 10`, `runoff_warning_sec: 5` and the four cue ids. `cfg/` is never overwritten, so a deployment whose `vote.yml` predates them has the ballot line and no countdown or sound until those keys are uncommented there.
 
 ## A game that stops its map clock must stop its vote's clock too
 

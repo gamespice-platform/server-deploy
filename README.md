@@ -3,7 +3,7 @@ Everything a server owner needs to run a game on the [**GameSpice**](https://gam
 ## Install and run
 
 ```bash
-git clone https://github.com/gamespice-platform/server-deploy && cd dot-server-deploy
+git clone https://github.com/gamespice-platform/server-deploy && cd gs-server-deploy
 ./setup.sh                      # fetches a Godot runtime, links the addons, writes ./server
 ./server --games fatalcontact   # installs the game if needed, then starts the server
 ./server --help                 # every command and option
@@ -61,21 +61,21 @@ Options include `--port`, `--bind`, `--name`, `--max-players`, `--game`, `--map`
 
 | Feature | Where to set it |
 | --- | --- |
-| Roles such as `admin: [kick, ban, mute]` | `cfg/addon/dot_server/groups.yml` |
-| Bans, kicks, mutes, votes and an audit log | Console or RCON. RCON listens on loopback until you widen `rcon_allowed` in `cfg/addon/dot_console/rcon.yml`. |
-| `/admin` menu for kicks, bans, warnings and game-specific powers | `cfg/addon/dot_menu/admin_menu.yml` |
-| Loading screens (picture, music, tips) during game or map changes | `cfg/addon/dot_core/loading.yml` |
-| Players voting for the next game (`!game_nominate`, `!game_rtv`, `!game_vote`) | `cfg/addon/dot_vote/vote.yml` |
-| Party bookings | `cfg/addon/dot_party/party.yml` |
-| "Save that" clips and evidence with every ban | `cfg/addon/dot_replay/replay.yml` |
-| Shared radio (off by default; add `- repo: dot-radio` to `cfg/content/addons.yml`) | `cfg/addon/dot_radio/radio.yml` |
-| Matchmaking queue (off by default) | `cfg/addon/dot_matchmaking/matchmaking.yml` |
+| Roles such as `admin: [kick, ban, mute]` | `cfg/addon/gs_server/groups.yml` |
+| Bans, kicks, mutes, votes and an audit log | Console or RCON. RCON listens on loopback until you widen `rcon_allowed` in `cfg/addon/gs_console/rcon.yml`. |
+| `/admin` menu for kicks, bans, warnings and game-specific powers | `cfg/addon/gs_menu/admin_menu.yml` |
+| Loading screens (picture, music, tips) during game or map changes | `cfg/addon/gs_core/loading.yml` |
+| Players voting for the next game (`!game_nominate`, `!game_rtv`, `!game_vote`) | `cfg/addon/gs_vote/vote.yml` |
+| Party bookings | `cfg/addon/gs_party/party.yml` |
+| "Save that" clips and evidence with every ban | `cfg/addon/gs_replay/replay.yml` |
+| Shared radio (off by default; add `- repo: gs-radio` to `cfg/content/addons.yml`) | `cfg/addon/gs_radio/radio.yml` |
+| Matchmaking queue (off by default) | `cfg/addon/gs_matchmaking/matchmaking.yml` |
 | Games swapped at runtime with players connected | `game` and `map` in `cfg/server/server.yml` (`sv_game` and `sv_map` still work), or `--game` and `--map` |
 
 ## Known limits
 
 - nginx does not carry UDP. A server listens on both WebSocket (TCP, for browsers) and ENet (UDP, for the desktop client). Behind nginx only WebSocket goes through the proxy, so open the ENet port (`net_enet_port`) on the firewall, or desktop clients fall back to TCP after 2.5 seconds.
-- `cfg/addon/dot_server/permissions.yml` does nothing until `cfg/addon/dot_auth/auth.yml` is turned on, because guests never receive permissions.
+- `cfg/addon/gs_server/permissions.yml` does nothing until `cfg/addon/gs_auth/auth.yml` is turned on, because guests never receive permissions.
 - A connecting player is a guest until the server can prove who they are. Details of the ticket sign-in are in [docs/reference.md](docs/reference.md#known-limits).
 - The server itself has no TLS. `deploy/issue-letsencrypt.sh` and `deploy/install-server-tls.sh` set up a certificate and an nginx proxy for `wss://`.
 

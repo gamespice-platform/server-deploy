@@ -10,10 +10,10 @@ var version: String = ""
 ## The game's display name, from its `game.yml`.
 var display_name: String = ""
 
-## Where the game's pack is mounted: `res://dot_cloud/<id>/<version>`.
+## Where the game's pack is mounted: `res://gs_cloud/<id>/<version>`.
 var mount_root: String = ""
 
-## Each mounted map pack's root, `res://dot_cloud/<id>/<version>`, in `client/solo.json`'s
+## Each mounted map pack's root, `res://gs_cloud/<id>/<version>`, in `client/solo.json`'s
 ## order, and the `<id>@<version>` keys they were mounted from.
 var map_roots: PackedStringArray = PackedStringArray()
 var map_keys: PackedStringArray = PackedStringArray()

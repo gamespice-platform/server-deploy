@@ -4,7 +4,7 @@ Each of these is operator- or shell-level: a game should not have to know about 
 
 ## The log sink layer
 
-`TmcConfig.build_log_router()` and `TmcHost._build_logging()`, configured by `cfg/addon/dot_log/log.yml` below its "sink layer" divider: the in-memory ring behind `log tail`, RFC 5424 syslog, a batched HTTP collector in nine wire formats, redaction, and flood control.
+`TmcConfig.build_log_router()` and `TmcHost._build_logging()`, configured by `cfg/addon/gs_log/log.yml` below its "sink layer" divider: the in-memory ring behind `log tail`, RFC 5424 syslog, a batched HTTP collector in nine wire formats, redaction, and flood control.
 
 - **The shared settings are copied out of `server`, not read twice.** The level, channels, mirror threshold and file settings exist on `GSServerConfig` because a deployment with no GameSpice Log still has them through GameSpice Core's sink; `build_log_router()` carries them across. A second set of keys would let a deployment that turned the router on silently write its log somewhere else.
 - **`log_router: auto` is on.** The router's file target is a strict superset of the plain sink (same directory, basename, rotation, naming, `log_json`), and it adds `log status|tail|grep|targets|test` on the console. `off` restores the plain sink exactly. It accepts a bool as well as the three words ([configuration.md](configuration.md#the-configuration-is-a-surface-not-a-second-parser)).
@@ -12,7 +12,7 @@ Each of these is operator- or shell-level: a game should not have to know about 
 
 ## The guard: GameSpice Server Security
 
-`TmcHost._build_security()`: a `GSSecurityManager` beside the server, one `GSSecurityWatch` wiring it to chat, connections, RCON, the console and GameSpice Auth, and a `GSAntiCheat` reporting into the same rule engine. `cfg/addon/dot_server_security/security.yml` is the whole policy.
+`TmcHost._build_security()`: a `GSSecurityManager` beside the server, one `GSSecurityWatch` wiring it to chat, connections, RCON, the console and GameSpice Auth, and a `GSAntiCheat` reporting into the same rule engine. `cfg/addon/gs_server_security/security.yml` is the whole policy.
 
 - **It ships in dry run**: every trip is logged and ledgered as `WOULD`, nobody is punished. A guard that punishes a community on thresholds nobody chose gets turned off after the first false positive. The intended sequence: read `sec_status` and `sec_log` for a week, then `sec_dryrun: false`.
 - **Every anti-cheat movement threshold ships at 0 ("do not check").** A guessed speed limit bans the best player the first time they chain a surf ramp into a boost. `sec_ac_status` reports the fastest legitimate values seen.
@@ -21,12 +21,12 @@ Each of these is operator- or shell-level: a game should not have to know about 
 
 ## Party, matchmaking and locale
 
-`host/tmc_party.gd` (`TmcParty.install`, from the end of `TmcHost._boot`), from `cfg/addon/dot_party/party.yml` and `cfg/addon/dot_matchmaking/matchmaking.yml` (prefix rules: [configuration.md](configuration.md#prefixes-that-keep-two-copies-of-an-addon-apart)).
+`host/tmc_party.gd` (`TmcParty.install`, from the end of `TmcHost._boot`), from `cfg/addon/gs_party/party.yml` and `cfg/addon/gs_matchmaking/matchmaking.yml` (prefix rules: [configuration.md](configuration.md#prefixes-that-keep-two-copies-of-an-addon-apart)).
 
 - **`GSPartyReservations`, always** (unless `party_enabled: false`); with no booking it admits everybody. `seats_fn` counts sessions past authentication against `max_players`; `bypass_fn` is a session holding `GSAdminFlags.RESERVATION`. Bookings come from the backbone when there is a client and from `party_reserve` at the console either way. `party_reserve` lends the booking a copy of the terms with the gates open and the ceiling kept, because the policy's gates are for site bookings, not an owner at their own console.
 - **`GSPartyServer`, only with a backbone client** (`TmcReport`'s, which exists when `data/listing.json` has a token); one client serves both so one token has one rate limiter.
 - **`GSMatchmaker`, only with `mm_enabled: true`.** Ratings go under `data/matchmaking/` unless the operator names a file.
-- **The booking must be re-chained after every game change.** `GSPartyReservations` chains onto whatever holds `dot_ban_source`, which is the loaded game's GameSpice Moderation; a game change registers a new one and `GSRegistry` is last-wins, so a private booking admitted anybody from the first `changelevel` on, in silence. `TmcParty` watches `GSRegistry.signals()` and puts the booking back on top, deferred, walking the holder's `previous_source` chain first so it never makes a loop. `examples/party_live.tscn` checks the seam before and after a real `changelevel`.
+- **The booking must be re-chained after every game change.** `GSPartyReservations` chains onto whatever holds `gs_ban_source`, which is the loaded game's GameSpice Moderation; a game change registers a new one and `GSRegistry` is last-wins, so a private booking admitted anybody from the first `changelevel` on, in silence. `TmcParty` watches `GSRegistry.signals()` and puts the booking back on top, deferred, walking the holder's `previous_source` chain first so it never makes a loop. `examples/party_live.tscn` checks the seam before and after a real `changelevel`.
 - **A player claims their party with a chat command**, `/party_claim <id>`, not a handshake field: a new handshake key is a signon change in every project, while a prefixed chat line is dispatched to the console before `player_chat` fires, so no game's router can swallow it. `GSPartyServer.claim` checks the roster; one claim per player per ten seconds.
 - **Party chat is GameSpice Chat's grouped members channel** (`GSChatChannel.grouped`, `GSChatRouter.group_fn`). Each game's router found in `GSRegistry` gets `GSChatChannel.group(&"party", "Party")` and a `group_fn` of `party_of(session.uid())` unless the game set either. `/party_say <text>`; a game with no GameSpice Chat router gets system messages.
 - **In the shell**, a signed-in player gets a `GSPartyClient` over `GSPartyBackendApp` with the shell's `GSAuthClient`; its `connect_fn` is the Connect button's `_connect_to`. Refusals go through a `GSLocale` over `client/locales/<lang>/*.json` (English ships); `explain()` uses the site's refusal key when the catalogue has it.
@@ -34,7 +34,7 @@ Each of these is operator- or shell-level: a game should not have to know about 
 
 ## The replay ring
 
-`host/tmc_replay.gd` (`TmcReplay.install`, after `TmcParty`), from `cfg/addon/dot_replay/replay.yml`. Every server keeps a `GSReplayRing` (60 s, capped at 32 MiB) fed by a `GSReplayEventTap` on GameSpice Server's event bus, plus a roster keyframe every 10 s. `replay`, `replay save [seconds] [why]` and `replay list` are on the console, RCON and chat.
+`host/tmc_replay.gd` (`TmcReplay.install`, after `TmcParty`), from `cfg/addon/gs_replay/replay.yml`. Every server keeps a `GSReplayRing` (60 s, capped at 32 MiB) fed by a `GSReplayEventTap` on GameSpice Server's event bus, plus a roster keyframe every 10 s. `replay`, `replay save [seconds] [why]` and `replay list` are on the console, RCON and chat.
 
 - **It records the event bus and a roster, not the netcode.** Which peer's view a net tap records is a game's decision; a game that wants a watchable demo wires `GSReplayNetTap` itself.
 - **The clock is the wall clock at `sv_tickrate`**, not the physics tick, because GameSpice Server hibernates to 5 Hz when empty and "the last sixty seconds" must mean sixty seconds.
@@ -56,20 +56,20 @@ Each of these is operator- or shell-level: a game should not have to know about 
 
 ## The radio (optional)
 
-`host/tmc_radio.gd` (`TmcRadio.install`, after `TmcReplay`) on the server and `client/tmc_radio_link.gd` (`TmcRadioLink`) in the shell, from `cfg/addon/dot_radio/radio.yml`. Listing `- repo: dot-radio` in `cfg/content/addons.yml` only clones the addon; `radio_enabled: true` is what builds a `GSRadioLibrary`, `GSRadioStation`, `GSRadioApi` and `GSRadioHttp`, registers the api in `GSRegistry` as `dot_radio`, and polls the HTTP side from the node's `_process`.
+`host/tmc_radio.gd` (`TmcRadio.install`, after `TmcReplay`) on the server and `client/tmc_radio_link.gd` (`TmcRadioLink`) in the shell, from `cfg/addon/gs_radio/radio.yml`. Listing `- repo: gs-radio` in `cfg/content/addons.yml` only clones the addon; `radio_enabled: true` is what builds a `GSRadioLibrary`, `GSRadioStation`, `GSRadioApi` and `GSRadioHttp`, registers the api in `GSRegistry` as `gs_radio`, and polls the HTTP side from the node's `_process`.
 
-- **The addon is reached through `ProjectSettings.get_global_class_list()`, never by name**, so the host and the shell parse in a build that does not carry dot-radio. Enabled with the addon absent is one WARN naming what to add, not a failure. Every other failure (a missing token file, a port in use) is an ERROR and the server runs without the radio.
+- **The addon is reached through `ProjectSettings.get_global_class_list()`, never by name**, so the host and the shell parse in a build that does not carry gs-radio. Enabled with the addon absent is one WARN naming what to add, not a failure. Every other failure (a missing token file, a port in use) is an ERROR and the server runs without the radio.
 - **The admin token is read from `radio_token_file` only**, by the addon; there is no environment or argv path. Without a token file the radio refuses to start. `radio_bind` is loopback unless the operator says otherwise; put TLS in front before binding wider.
 - **The client is told by notice.** On `client_spawned` the server sends one `tmc.radio` notice carrying `radio_public_url` (nothing is sent when it is empty). The shell makes a `GSRadioClient` with a `GSRadioSinkGodot` and the url; the client's own input handler turns `radio_toggle` (F8) into `tune_in()`, so nothing plays before a key press and nothing starts from `_ready`. Leaving the game frees it.
-- **Needs a new shell build.** `client/shell.gd` gained the notice case, and the client needs dot-radio in the shell's addon set (`addons.lock`), which is not bumped here. A shell built before that ignores the notice and the station still works for anything that opens the admin page or `GET /now`.
+- **Needs a new shell build.** `client/shell.gd` gained the notice case, and the client needs gs-radio in the shell's addon set (`addons.lock`), which is not bumped here. A shell built before that ignores the notice and the station still works for anything that opens the admin page or `GET /now`.
 - **Not built**: `!radio`, `!song`, `!request` chat commands (`GSRadioCommands` exists but nothing hands it a console), a listener HUD, and a tab in the workbench.
 - **Rights**: the operator uploads the audio and is responsible for the right to broadcast it.
 
 ## Trails (optional)
 
-`host/tmc_trail.gd` (`TmcTrail.install`, after `TmcRadio`) on the server and `client/tmc_trail_link.gd` (`TmcTrailLink`) in the shell, from `cfg/addon/dot_trail/trail.yml`; games carry no trail code. `- repo: dot-trail` in `cfg/content/addons.yml` (and `addons.lock`) brings the addon; `trail_enabled: true` loads the trail set from `trail_store_dir` (default `data/trails/`), builds a `GSTrailRelay`, registers it as `dot_trail_relay`, and serves the `dot.trail` envelope kind.
+`host/tmc_trail.gd` (`TmcTrail.install`, after `TmcRadio`) on the server and `client/tmc_trail_link.gd` (`TmcTrailLink`) in the shell, from `cfg/addon/gs_trail/trail.yml`; games carry no trail code. `- repo: gs-trail` in `cfg/content/addons.yml` (and `addons.lock`) brings the addon; `trail_enabled: true` loads the trail set from `trail_store_dir` (default `data/trails/`), builds a `GSTrailRelay`, registers it as `gs_trail_relay`, and serves the `gs.trail` envelope kind.
 
-- **Classes by name**, as for the radio: a build without dot-trail parses, and enabled without the addon is one WARN.
+- **Classes by name**, as for the radio: a build without gs-trail parses, and enabled without the addon is one WARN.
 - **Ownership is the site's.** Groups come from the player's session; bought trails from `GET <trail_site_url><trail_entitlements_path>?user=<userid>` with the key in `trail_api_key_file` (a file only). A request the cached list would refuse refetches first, at most every 2 s, so a trail bought a moment ago can be worn.
 - **The pack**: `trail_pack: <id>@<version>` is advertised as the notify cvar `sv_trail_pack`; the shell's `GSGamePrejoin` fetches it before the socket opens (a failure is a warning, never a failed join).
 - **The shell** adds a Trails page to every game's menu once `GSGameClient` publishes itself (GameSpice Game API 34), with buy, equip and the upload form. It uses the site's store when the shell knows the site, else a local stub. Ribbons go on the figures `GSGameClientAvatars.figure_of` names. Needs a shell build carrying GameSpice Trail. `examples/trail_wiring.tscn` checks the install.

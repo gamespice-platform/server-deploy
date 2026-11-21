@@ -28,7 +28,7 @@ for g in "${games[@]}"; do
         if [ -z "$ref" ]; then ref=HEAD; echo "WARN $g: $repo has no v* tag, using HEAD"; fi
         if [ -d "$SIB/$repo/.git" ] && [ -z "$(git -C "$SIB/$repo" ls-tree "$ref" "addons/$d" 2>/dev/null)" ] &&
            git -C "$SIB/$repo" check-ignore -q "addons/$d" && cp -a "$SIB/$repo/addons/$d" "$p/addons/$d"; then
-            # In no tag: a git-ignored download (godot-sqlite, the GDExtension binary dot-sql fetches). Copy it.
+            # In no tag: a git-ignored download (godot-sqlite, the GDExtension binary gs-sql fetches). Copy it.
             extra="$extra $repo:$d(ignored)"
         elif [ -d "$SIB/$repo/.git" ] && git -C "$SIB/$repo" archive "$ref" "addons/$d" 2>/dev/null | tar -x -C "$p"; then
             extra="$extra $repo@$ref"
@@ -37,7 +37,7 @@ for g in "${games[@]}"; do
         fi
     done
     [ -z "$extra" ] || echo "     $g also pins:$extra"
-    tool="$p/addons/dot_core/tools/dot_parse_all.gd"; [ -f "$tool" ] || { echo "FAIL $g: no dot_parse_all in the pinned dot-core"; fails=$((fails+1)); continue; }
+    tool="$p/addons/gs_core/tools/gs_parse_all.gd"; [ -f "$tool" ] || { echo "FAIL $g: no gs_parse_all in the pinned gs-core"; fails=$((fails+1)); continue; }
     # A crash or hang during import leaves a half-built class cache, so say so rather than parse on.
     timeout 600 "$GODOT" --headless --path "$p" --import >"$W/$g.import.log" 2>&1; irc=$?
     if [ "$irc" -ge 124 ] || grep -aqE 'handle_crash|Program crashed|Segmentation fault' "$W/$g.import.log"; then
@@ -46,7 +46,7 @@ for g in "${games[@]}"; do
         fails=$((fails+1)); continue
     fi
     (cd "$p" && find . -name '*.gd' -not -path './.godot/*' -not -path './addons/*' | sed 's|^\./||' > "$W/$g.list")
-    PARSE_LIST="$W/$g.list" timeout 900 "$GODOT" --headless --path "$p" --script res://addons/dot_core/tools/dot_parse_all.gd >"$W/$g.log" 2>&1
+    PARSE_LIST="$W/$g.list" timeout 900 "$GODOT" --headless --path "$p" --script res://addons/gs_core/tools/gs_parse_all.gd >"$W/$g.log" 2>&1
     bad="$(grep -aE 'PARSE_FAIL|SCRIPT ERROR|Parse Error|not declared|Could not find' "$W/$g.log" | head -5)"
     if ! grep -aq '^PARSED ' "$W/$g.log"; then bad="the parse tool did not finish"; fi
     if [ -n "$bad" ]; then echo "FAIL $g against the pinned addons:"; echo "$bad"; fails=$((fails+1)); else echo "ok   $g"; fi

@@ -7,10 +7,10 @@ extends Node
 const CHANNEL := "tmc.party"
 
 ## The seam GameSpice Server asks on every join. See [method _rechain].
-const BAN_SOURCE := &"dot_ban_source"
+const BAN_SOURCE := &"gs_ban_source"
 
 ## Every chat router a game registers is under this name, or a scoped form of it.
-const CHAT_SERVICE := "dot_chat_router"
+const CHAT_SERVICE := "gs_chat_router"
 
 ## The grouped channel added to each game's router.
 const PARTY_CHANNEL := &"party"
@@ -227,7 +227,7 @@ static func _absolute(path: String) -> String:
 
 
 
-## A game's module registers GameSpice Moderation under `dot_ban_source` when it loads, and the registry
+## A game's module registers GameSpice Moderation under `gs_ban_source` when it loads, and the registry
 ## is last-wins — so the first `changelevel` after boot would quietly take the booking out of every
 ## admission. Re-registering on top, chained to whoever just arrived, keeps both asked.
 func _on_service_registered(service: StringName, instance: Object) -> void:

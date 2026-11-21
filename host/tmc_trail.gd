@@ -5,7 +5,7 @@ extends Node
 ## The addon is reached through the global class list, as [TmcRadio] does, so this project parses without it.
 
 const CHANNEL := "tmc.trail"
-const SERVICE := &"dot_trail_relay"
+const SERVICE := &"gs_trail_relay"
 const CLASSES := ["GSTrailRegistry", "GSTrailStore", "GSTrailEquip", "GSTrailRelay", "GSTrailEnvelope", "GSTrailConfig", "GSTrailClient", "GSTrailBackendHttp"]
 
 ## Every key `trail.yml` accepts, with its type; anything else is reported as unknown.
@@ -55,7 +55,7 @@ static func install(host: Node, p_server: GSServer, config: TmcConfig, data_dir:
 	if not TmcConfig._truthy(cfg.get("trail_enabled", false)):
 		return null
 	if not available():
-		GSLog.warn(CHANNEL, "trail_enabled is on but dot-trail is not in this build; add `- repo: dot-trail` to cfg/content/addons.yml and run setup", {})
+		GSLog.warn(CHANNEL, "trail_enabled is on but gs-trail is not in this build; add `- repo: gs-trail` to cfg/content/addons.yml and run setup", {})
 		return null
 	var node := TmcTrail.new()
 	node.name = "Trails"

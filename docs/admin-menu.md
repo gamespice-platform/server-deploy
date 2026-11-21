@@ -1,6 +1,6 @@
 # `/admin` and the loading screen
 
-Two server-owner features with one shape: the server decides, a `GSNotice` carries it, and the shell draws it. `host/tmc_admin_menu.gd` + `client/admin_menu_panel.gd`, configured by `cfg/addon/dot_menu/admin_menu.yml`; `host/tmc_loading.gd` + `client/loading_screen.gd`, configured by `cfg/addon/dot_core/loading.yml`. Both are installed at the end of `TmcHost._boot`, after the first game. The README's "The admin menu" and "Loading screens" are the owner's view. Players need a shell that has both; an older shell ignores the topics and the server still answers `/admin` with a page nobody draws.
+Two server-owner features with one shape: the server decides, a `GSNotice` carries it, and the shell draws it. `host/tmc_admin_menu.gd` + `client/admin_menu_panel.gd`, configured by `cfg/addon/gs_menu/admin_menu.yml`; `host/tmc_loading.gd` + `client/loading_screen.gd`, configured by `cfg/addon/gs_core/loading.yml`. Both are installed at the end of `TmcHost._boot`, after the first game. The README's "The admin menu" and "Loading screens" are the owner's view. Players need a shell that has both; an older shell ignores the topics and the server still answers `/admin` with a page nobody draws.
 
 ## The menu is a way of typing a command
 
@@ -14,7 +14,7 @@ Two server-owner features with one shape: the server decides, a `GSNotice` carri
 
 ## `warn`
 
-`TmcAdminMenu` registers `warn <player> <reason>` (flag `admin_menu_warn_flag`, default `kick`) **only if the console has no `warn`**. It tells the player on the HUD (`admin_warning`) and in chat without naming the admin, files `issue(4, …)` on the registry's `dot_moderation` by duck type (a number, not the enum), and writes an audit line.
+`TmcAdminMenu` registers `warn <player> <reason>` (flag `admin_menu_warn_flag`, default `kick`) **only if the console has no `warn`**. It tells the player on the HUD (`admin_warning`) and in chat without naming the admin, files `issue(4, …)` on the registry's `gs_moderation` by duck type (a number, not the enum), and writes an audit line.
 
 ## Fun commands: ask the game what it can do
 

@@ -42,19 +42,19 @@ have_packs() {
 }
 
 # [b]Prerequisites of a clean worktree.[/b] A fresh worktree gets addons/ as copies or links
-# of whatever the main checkout holds, which can be stale (an old dot_cloud makes client/shell.gd
-# fail to parse). When the sibling dot-* repositories exist, relink addons/ to them, and let
+# of whatever the main checkout holds, which can be stale (an old gs_cloud makes client/shell.gd
+# fail to parse). When the sibling gs-* repositories exist, relink addons/ to them, and let
 # the natives check find GameSpice Bootstrap. Skipped with TMC_CHECK_NO_RELINK=1.
 if [ -z "${TMC_CHECK_NO_RELINK:-}" ]; then
     for d in "$(cd .. && pwd)" "${TMC_REPOS_DIR:-$HOME/godot}"; do
-        [ -d "$d/dot-core" ] && { REPOS_DIR="$d"; break; }
+        [ -d "$d/gs-core" ] && { REPOS_DIR="$d"; break; }
     done
     if [ -n "${REPOS_DIR:-}" ]; then
-        [ -z "${GS_BOOTSTRAP:-${DOT_BOOTSTRAP:-}}" ] && [ -d "$REPOS_DIR/dot-bootstrap" ] && export GS_BOOTSTRAP="$REPOS_DIR/dot-bootstrap"
-        # stale = addons/dot_core is not (a link into) the GameSpice Core repository
+        [ -z "${GS_BOOTSTRAP:-}" ] && [ -d "$REPOS_DIR/gs-bootstrap" ] && export GS_BOOTSTRAP="$REPOS_DIR/gs-bootstrap"
+        # stale = addons/gs_core is not (a link into) the GameSpice Core repository
         stale=0
-        case "$(readlink -f addons/dot_core 2>/dev/null)" in */dot-core/addons/dot_core) ;; *) stale=1 ;; esac
-        if [ "$stale" = 1 ] || [ ! -e addons/dot_core ]; then
+        case "$(readlink -f addons/gs_core 2>/dev/null)" in */gs-core/addons/gs_core) ;; *) stale=1 ;; esac
+        if [ "$stale" = 1 ] || [ ! -e addons/gs_core ]; then
             echo "relinking addons/ to $REPOS_DIR"
             ./setup.sh --no-games --no-import --no-clone --no-download --godot "$GODOT" --addons-dir "$REPOS_DIR" >/dev/null 2>&1 \
                 || echo "  (setup.sh relink failed; continuing with the addons present)"
@@ -110,7 +110,7 @@ done < <(find host client examples -name '*.gd' 2>/dev/null | sort)
 
 echo
 echo "shell scripts"
-for f in setup.sh tools/server.in docker-entrypoint.sh docker-healthcheck.sh tools/content_trust.sh tools/check_content_trust.sh tools/check.sh tools/check_boot_failures.sh tools/check_default_aliases_boot.sh tools/check_lists.sh tools/check_overrides_seed.sh tools/check_tickrate.sh tools/check_physics_thread.sh tools/check_deploy_modes.sh tools/check_self_update.sh tools/check_supervise.sh tools/check_gs_env.sh tools/gs-env.sh tools/check_channels.sh tools/check_client_host_only.sh tools/check_shell_addons.sh tools/shell_lock.sh tools/check_renamed_dirs.sh tools/import_defs.sh tools/check_import_defs.sh tools/check_game_listing.sh tools/deploy-modes.sh tools/enet_relay_all_games.sh tools/check_mobile.sh tools/fetch-android-sdk.sh; do
+for f in setup.sh tools/server.in docker-entrypoint.sh docker-healthcheck.sh tools/content_trust.sh tools/check_content_trust.sh tools/check.sh tools/check_boot_failures.sh tools/check_default_aliases_boot.sh tools/check_lists.sh tools/check_overrides_seed.sh tools/check_tickrate.sh tools/check_physics_thread.sh tools/check_deploy_modes.sh tools/check_self_update.sh tools/check_supervise.sh tools/check_channels.sh tools/check_client_host_only.sh tools/check_shell_addons.sh tools/shell_lock.sh tools/check_renamed_dirs.sh tools/import_defs.sh tools/check_import_defs.sh tools/check_game_listing.sh tools/deploy-modes.sh tools/enet_relay_all_games.sh tools/check_mobile.sh tools/fetch-android-sdk.sh; do
     [ -f "$f" ] || continue
     if bash -n "$f" 2>/dev/null; then
         printf '  %sok%s   %s\n' "$GRN" "$OFF" "$f"
@@ -139,7 +139,6 @@ bash tools/check_deploy_modes.sh || fails=$((fails + 1))
 bash tools/check_publish_manifest.sh || fails=$((fails + 1))
 bash tools/check_self_update.sh || fails=$((fails + 1))
 bash tools/check_supervise.sh || fails=$((fails + 1))
-bash tools/check_gs_env.sh || fails=$((fails + 1))
 bash tools/check_channels.sh || fails=$((fails + 1))
 bash tools/check_client_host_only.sh || fails=$((fails + 1))
 bash tools/check_shell_addons.sh || fails=$((fails + 1))
@@ -157,7 +156,7 @@ echo "the published games"
 #
 # [b]The list is setup.sh's, and it is READ from setup.sh rather than repeated.[/b] The
 # line here used to say "it has to stay setup.sh's" and the two had already drifted: this
-# one still named `dot-2d-hungry` long after it was renamed, so
+# one still named `gs-2d-hungry` long after it was renamed, so
 # nothing was checked at all and the line printed looked like the release-tarball case
 # working correctly. Two copies of one list is the bug the list was guarding against, one
 # level up.
@@ -380,7 +379,7 @@ fi
 # --- Absolute res:// references into a game's own files --------------------
 #
 # [b]The third form of the same bug, and the one still open.[/b] A delivered game
-# mounts at `res://dot_cloud/<id>/<version>/`, so any reference it makes to its own
+# mounts at `res://gs_cloud/<id>/<version>/`, so any reference it makes to its own
 # content by an ABSOLUTE path resolves against the host project root instead -- which
 # holds either somebody else's file or nothing at all.
 #
@@ -392,7 +391,7 @@ fi
 # builtin, and because a hard failure on work that has not been scheduled is a check
 # people learn to skip. It is here so the number is visible and shrinks on purpose.
 #
-# `screenshots` is a tool's output directory and never shipped; `dot_cloud` is the
+# `screenshots` is a tool's output directory and never shipped; `gs_cloud` is the
 # mount prefix itself, which is a delivered game reading delivered content correctly.
 if [ "$checked_any" -eq 1 ]; then
     absolute=0
@@ -503,11 +502,11 @@ echo
 echo "a real client in a delivered game"
 if have_packs smash; then "$GODOT" --headless --path . res://examples/smash_client.tscn || fails=$((fails + 1)); fi
 echo
-# The template a third-party developer starts from, packaged by dot-ci's package.sh the way its
+# The template a third-party developer starts from, packaged by gs-ci's package.sh the way its
 # release packages it, signed the way the site signs a -pack.zip, and joined by a real client
 # that collects a coin. It packages the template's git HEAD, and says "skipped" when the
-# template or dot-ci is not beside this project. Capped: it drives package.sh and a server.
-echo "a game made from dot-game-template, delivered and joined"
+# template or gs-ci is not beside this project. Capped: it drives package.sh and a server.
+echo "a game made from gs-game-template, delivered and joined"
 timeout 300 "$GODOT" --headless --path . res://examples/template_client.tscn || fails=$((fails + 1))
 echo
 # Wipeout's courses are not in its pack: they are a second pack, named in its game.yml as a
@@ -549,7 +548,7 @@ echo
 echo "returning to a game: its netcode for the client and a fresh joiner"
 timeout 600 "$GODOT" --headless --path . res://examples/return_to_game.tscn < /dev/null || fails=$((fails + 1))
 
-# The game vote on the real shell's HUD. The director counts, dot-server carries a
+# The game vote on the real shell's HUD. The director counts, gs-server carries a
 # GSNotice, the overlay draws and plays -- each tested on its own elsewhere, and this is
 # the only place a countdown the SERVER counts becomes a line and a sound on a client it
 # admitted. Armed: with TmcVote's cue wiring or its clear removed, checks fail here and in
@@ -587,7 +586,7 @@ echo
 echo "the game vote plays a round out"
 timeout 600 "$GODOT" --headless --path . res://examples/game_vote_rounds.tscn < /dev/null || fails=$((fails + 1))
 
-# Parties on a real server. The booking chains onto dot_ban_source, and a game's module
+# Parties on a real server. The booking chains onto gs_ban_source, and a game's module
 # puts GameSpice Moderation there when it loads -- so the first `changelevel` after boot took
 # every booking off the seam, in silence, until the host started putting it back. Armed:
 # with the rechain disabled, two of its checks fail.
@@ -605,7 +604,7 @@ echo "the admin menu and the loading screen"
 "$GODOT" --headless --path . res://examples/admin_loading_selftest.tscn || fails=$((fails + 1))
 if have_packs buses; then "$GODOT" --headless --path . res://examples/admin_live.tscn < /dev/null || fails=$((fails + 1)); fi
 echo
-echo "dot-trail's install (addon linked or not)"
+echo "gs-trail's install (addon linked or not)"
 "$GODOT" --headless --path . res://examples/trail_wiring.tscn || fails=$((fails + 1))
 if [ -n "$cfg_aside" ]; then mv "$cfg_aside" cfg; cfg_aside=""; fi
 

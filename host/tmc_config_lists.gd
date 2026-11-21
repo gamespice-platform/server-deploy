@@ -6,7 +6,7 @@ extends RefCounted
 
 ## `games`: the directories a host offers, deduplicated.
 static func apply_games(cfg: TmcConfig, file: String, value: Variant) -> void:
-	# A list, or one string, as `content_urls` below takes either (`games: fatalcontact` is what an operator with one game writes). Not a console line: dot-server has no cvar for the set of games a host offers; `sv_game` picks one OF these, so the two spellings are deliberately unalike. Each entry through TmcGameRef, as the command-line override is, so `gamemann/game-airdrift@1.2.0` in a file means the same directory as in a panel field. A game listed twice is one game: kept once, and ONE warning naming every repeat, never an error (a panel's list is edited by hand and copied around).
+	# A list, or one string, as `content_urls` below takes either (`games: fatalcontact` is what an operator with one game writes). Not a console line: gs-server has no cvar for the set of games a host offers; `sv_game` picks one OF these, so the two spellings are deliberately unalike. Each entry through TmcGameRef, as the command-line override is, so `gamemann/game-airdrift@1.2.0` in a file means the same directory as in a panel field. A game listed twice is one game: kept once, and ONE warning naming every repeat, never an error (a panel's list is edited by hand and copied around).
 	var repeats := PackedStringArray()
 	var entries: Array = (value as Array) if value is Array else [value]
 	for entry in entries:
@@ -56,15 +56,15 @@ static func apply_content_urls(cfg: TmcConfig, file: String, value: Variant) -> 
 			cfg.content_urls.append(one)
 
 	# The same list to the clients, from the same line of YAML: the server downloads maps from these and the client must download them from somewhere, and a shipped build can only guess its page's origin, wrong for every CDN.
-	# Assigned only if this dot-server has the property: addons are separately cloned, so pulling one and not another is ordinary, and assigning a missing property is a FATAL script error
+	# Assigned only if this gs-server has the property: addons are separately cloned, so pulling one and not another is ordinary, and assigning a missing property is a FATAL script error
 	# that aborts `TmcConfig._apply_settings` mid-way and returns null into a caller that reads `.ok` off it. (A key from a NEWER file than the code is the opposite skew: never fatal.)
 	if "content_base_urls" in cfg.server:
 		cfg.server.content_base_urls = cfg.content_urls
 	else:
 		cfg.unknown.append(
-			"%s: content_urls was read, but this dot-server has no " % file
+			"%s: content_urls was read, but this gs-server has no " % file
 			+ "content_base_urls to put it in -- clients will not be told "
-			+ "where the content is. Update the dot-server addon."
+			+ "where the content is. Update the gs-server addon."
 		)
 
 

@@ -5,14 +5,14 @@ extends RefCounted
 
 ## The organisation's (both its ids), and the game addons published under their author (the weapons packs, natural-disasters).
 ## A shell carries none of those (it is gs-* addons only), so these are what it fetches them under when a server announces them.
-## `modcommunity/` and `gamemann/arena-weapons` (fc-weapons' old id) stay for servers that still announce the old ids.
-const DEFAULTS: PackedStringArray = ["gamespice-platform/", "modcommunity/", "gamemann/zee-dot-weapons", "gamemann/zed-dot-weapons", "gamemann/fc-weapons", "gamemann/arena-weapons", "gamemann/natural-disasters", "gamemann/dot-trail", "gamemann/dot-radio"]
+## `modcommunity/` and `gamemann/fc-weapons` (fc-weapons' old id) stay for servers that still announce the old ids.
+const DEFAULTS: PackedStringArray = ["gamespice-platform/", "modcommunity/", "gamemann/zee-gs-weapons", "gamemann/zed-gs-weapons", "gamemann/fc-weapons", "gamemann/fc-weapons", "gamemann/natural-disasters", "gamemann/gs-trail", "gamemann/gs-radio"]
 
-## Old repository names a lock or content list may still use, to the current one (fc-weapons was arena-weapons).
-const PUBLISHED_AS := {"arena-weapons": "fc-weapons"}
+## Old repository names a lock or content list may still use, to the current one (fc-weapons was fc-weapons).
+const PUBLISHED_AS := {"fc-weapons": "fc-weapons"}
 
-## The `dot-*` addons that are their author's, not the organisation's: published as `gamemann/<repo>` (the repository name, `dot-` kept), like the weapons packs.
-const AUTHOR_DOT_ADDONS: PackedStringArray = ["dot-trail", "dot-radio"]
+## The `gs-*` addons that are their author's, not the organisation's: published as `gamemann/<repo>` (the repository name, `gs-` kept), like the weapons packs.
+const AUTHOR_GS_ADDONS: PackedStringArray = ["gs-trail", "gs-radio"]
 
 ## Addon directories a repository has renamed, current to legacy. fc-weapons (Fatal Contact's weapons) holds `addons/fc_weapons`; its tags up to [constant LEGACY_LAST] hold the legacy `addons/arena_weapons`. The legacy name is used only where the ref holds it, and every use logs a deprecation warning naming that ref.
 ## A game naming one while its ref holds the other is an error, never an alias: `res://` paths name the directory.
@@ -107,23 +107,23 @@ static func load_shell() -> PackedStringArray:
 ## (`fc_weapons` and its legacy `arena_weapons` are both fc-weapons).
 static func lock_repo(dir: String) -> String:
 	if dir == "zee_weapons":
-		return "zee-dot-weapons"
+		return "zee-gs-weapons"
 	if dir == "zed_weapons":
-		return "zed-dot-weapons"
+		return "zed-gs-weapons"
 	if dir == "fc_weapons" or is_legacy_dir(dir):
 		return "fc-weapons"
 
 	return dir.replace("_", "-")
 
 
-## The addon directory a pack repository (as published or as the lock names it) installs to at [param version]: the inverse of [method lock_repo] and [constant PUBLISHED_AS], so `fc-weapons` is `fc_weapons` and `zee-dot-weapons` is `zee_weapons`. A version at or below the repository's [constant LEGACY_LAST] holds the legacy directory, which is returned with a warning naming the ref. No version means the current name.
+## The addon directory a pack repository (as published or as the lock names it) installs to at [param version]: the inverse of [method lock_repo] and [constant PUBLISHED_AS], so `fc-weapons` is `fc_weapons` and `zee-gs-weapons` is `zee_weapons`. A version at or below the repository's [constant LEGACY_LAST] holds the legacy directory, which is returned with a warning naming the ref. No version means the current name.
 static func dir_for(repo: String, version: String = "") -> String:
 	var lock := str(PUBLISHED_AS.get(repo, repo))
 	var dir := lock.replace("-", "_")
 
-	if lock == "zee-dot-weapons":
+	if lock == "zee-gs-weapons":
 		dir = "zee_weapons"
-	elif lock == "zed-dot-weapons":
+	elif lock == "zed-gs-weapons":
 		dir = "zed_weapons"
 
 	if LEGACY_DIRS.has(dir) and holds_legacy(lock, version):
@@ -181,13 +181,13 @@ static func warn_legacy(dir: String, ref: String) -> void:
 
 
 ## The pack [param dir]'s code is published as: `{repo, id, old_repo, old_id}`, where `repo` is the id's name ([GSCloudAddonSet] refuses any other).
-## `dot-*` packs are the organisation's (`gamespice-platform/<name>`, with the `modcommunity/dot-<name>` alias as `old_*`), the game addons their author's (no alias).
+## `gs-*` packs are the organisation's (`gamespice-platform/<name>`, with the `modcommunity/dot-<name>` alias as `old_*`), the game addons their author's (no alias).
 static func pack_for(dir: String) -> Dictionary:
 	var lock := lock_repo(dir)
 	var repo := str(PUBLISHED_AS.get(lock, lock))
 
-	if repo.begins_with("dot-") and not AUTHOR_DOT_ADDONS.has(repo):
-		var name := repo.trim_prefix("dot-")
+	if repo.begins_with("gs-") and not AUTHOR_GS_ADDONS.has(repo):
+		var name := repo.trim_prefix("gs-")
 		return {"repo": name, "id": "%s/%s" % [ORG, name], "old_repo": repo, "old_id": "%s/%s" % [OLD_ORG, repo]}
 
 	return {"repo": repo, "id": "gamemann/%s" % repo, "old_repo": "", "old_id": ""}
@@ -208,7 +208,7 @@ static func announced_pack_for(dir: String) -> Dictionary:
 ## (at [param version], which decides a renamed repository's directory).
 static func dir_for_id(id: String, version: String = "") -> String:
 	if id.begins_with(ORG + "/"):
-		return "dot_" + id.get_file().replace("-", "_")
+		return "gs_" + id.get_file().replace("-", "_")
 
 	return dir_for(id.get_file(), version)
 

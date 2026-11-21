@@ -6,7 +6,7 @@ extends Node
 
 const ServerWorld := preload("res://examples/server_world.gd")
 const Installer := preload("res://tools/install_games.gd")
-const Relay := preload("res://addons/dot_net/testing/dot_net_udp_relay.gd")
+const Relay := preload("res://addons/gs_net/testing/gs_net_udp_relay.gd")
 
 const CONTENT := "res://content"
 
@@ -16,7 +16,7 @@ const PACKS := {
 	"buses": ["tmc/buses"],
 	"deathrun": ["tmc/deathrun", "tmc/deathrun_maps"],
 	"delivery": ["tmc/delivery"],
-	"airdrift": ["tmc/g2gfast"],  # legacy id: the published pack id
+	"airdrift": ["tmc/airdrift"],  # legacy id: the published pack id
 	"hideseek": ["tmc/hideseek", "tmc/hideseek_maps"],
 	"murdermystery": ["tmc/murdermystery", "tmc/murdermystery_maps"],
 	"hungry_classic": ["tmc/hungry"],
@@ -35,8 +35,8 @@ const CVARS := {
 }
 
 ## The template, published the way template_client publishes it (the site's half stood in for).
-const TEMPLATE := "dot-game-template"
-const TEMPLATE_ID := "someone/dot-game-template"
+const TEMPLATE := "gs-game-template"
+const TEMPLATE_ID := "someone/gs-game-template"
 const TEMPLATE_VERSION := "0.0.1"
 
 ## Picked free at start so suites run side by side.
@@ -111,10 +111,10 @@ func _run() -> void:
 	if _game == TEMPLATE:
 		content = _publish_template()
 		if content == "":
-			_skip("no dot-game-template or dot-ci beside this project")
+			_skip("no gs-game-template or gs-ci beside this project")
 			return
 		if content == FAILED:
-			print("  FAIL  dot-game-template's HEAD did not package and publish")
+			print("  FAIL  gs-game-template's HEAD did not package and publish")
 			print("RELAY " + JSON.stringify(_result))
 			GSPaths.remove_tree(_root)
 			get_tree().quit(1)
@@ -241,18 +241,18 @@ func _write_config(trusted_key: String) -> void:
 		}))
 
 
-## The template's HEAD packaged by dot-ci's package.sh, signed under someone/dot-game-template with
+## The template's HEAD packaged by gs-ci's package.sh, signed under someone/gs-game-template with
 ## a key made for this run, into a content directory of this run's own. Returns that directory, ""
-## when the template or dot-ci is not here, or [constant FAILED].
+## when the template or gs-ci is not here, or [constant FAILED].
 func _publish_template() -> String:
 	var here := ProjectSettings.globalize_path("res://")
 	var source := ""
-	for dir in [OS.get_environment("TEMPLATE_SOURCE"), here.path_join("games/dot-game-template"),
-			here.path_join("../dot-game-template").simplify_path()]:
+	for dir in [OS.get_environment("TEMPLATE_SOURCE"), here.path_join("games/gs-game-template"),
+			here.path_join("../gs-game-template").simplify_path()]:
 		if dir != "" and FileAccess.file_exists(str(dir).path_join("game.yml")):
 			source = dir
 			break
-	var package_sh := here.path_join("../dot-ci/scripts/package.sh").simplify_path()
+	var package_sh := here.path_join("../gs-ci/scripts/package.sh").simplify_path()
 	if source == "" or not FileAccess.file_exists(package_sh):
 		return ""
 
@@ -449,7 +449,7 @@ func _measure() -> Dictionary:
 	var consumed := buffer.last_consumed_tick() if buffer != null else 0
 	var starved := buffer.starved_count if buffer != null else 0
 	return {
-		"link": "dot-net",
+		"link": "gs-net",
 		"inputs_sent": consumed,
 		"inputs_got": consumed - starved,
 		"snaps_sent": cn.stats.snapshots_received + cn.stats.snapshots_lost,
@@ -612,7 +612,7 @@ func _window(window: Array) -> void:
 	_check(inputs_got > MIN_INPUTS and (walked[1] == 0 or walked[0] >= (MIN_MOVE_2D if walked[2] else MIN_MOVE)),
 		"the held keys move the player on the server",
 		("%d inputs; walked %.2f %s (%.2f in the idle second before)" % [inputs_got, walked[0], unit, idle[0]]) if walked[1] > 0
-			else "%d inputs; no positioned entity the client's peer owns in dot-net's registry" % inputs_got)
+			else "%d inputs; no positioned entity the client's peer owns in gs-net's registry" % inputs_got)
 	_check(_link.phase == GSClientLink.Phase.PLAYING and _gone[0] == "", "the client is still connected", _gone[0])
 	_done()
 

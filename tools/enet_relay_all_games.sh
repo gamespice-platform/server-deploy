@@ -8,7 +8,7 @@
 # MUST fail: its throttle checks have to see the throttle fall below 32 somewhere, or the pass
 # above proved nothing about GameSpice Core's fix. Needs each game's pack in dist/
 # (./server pack <id> --source games/<repo>); a game without one is listed as skipped.
-# dot-game-template is packaged from its HEAD by the suite itself (needs ../dot-ci).
+# gs-game-template is packaged from its HEAD by the suite itself (needs ../gs-ci).
 # Exit 0 when every game that ran held and every control failed, 1 otherwise. About 30 s a run.
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -20,7 +20,7 @@ for a in "$@"; do
         *) games+=("$a") ;;
     esac
 done
-[ ${#games[@]} -eq 0 ] && games=(fatalcontact buses deathrun delivery airdrift hideseek hungry_classic lookatme murdermystery playlot prophunt smash wipeout zombiezone dot-game-template)
+[ ${#games[@]} -eq 0 ] && games=(fatalcontact buses deathrun delivery airdrift hideseek hungry_classic lookatme murdermystery playlot prophunt smash wipeout zombiezone gs-game-template)
 mkdir -p .godot/test-logs
 failed=0
 started=$(date +%s)

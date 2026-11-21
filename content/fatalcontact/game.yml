@@ -1,5 +1,5 @@
 # fatalcontact (renamed; its former id is in metadata.former_ids). Zee's Fatal Contact. The default game, which a server runs when nothing names another, and the reference game: a 3D dev-textured deathmatch, and the only place
-# dot-player-controller, dot-combat, dot-loadout, dot-match and dot-ui run in one process.
+# gs-player-controller, gs-combat, gs-loadout, gs-match and gs-ui run in one process.
 #
 #     changelevel fatalcontact
 #
@@ -19,7 +19,7 @@
 #
 # kind: pack -- the code is DELIVERED, and the build contains none of it.
 #
-# A mounted dot-cloud pack's `class_name` globals are NOT registered in the host, so every
+# A mounted gs-cloud pack's `class_name` globals are NOT registered in the host, so every
 # cross-file type reference inside a pack fails to compile: the pack mounts, its scenes
 # load, and every script in it is dead. That is a property of the engine. Every game here
 # references its own files by relative path and rebases its own `res://` strings instead,
@@ -30,16 +30,16 @@
 # client build, no upload, nothing in an admin panel.
 #
 # `client_scene` is relative and MUST be. GSClientLink refuses every absolute res://
-# path outside dot-cloud's mount -- a server that could name one could ask every client
+# path outside gs-cloud's mount -- a server that could name one could ask every client
 # to load any scene in its build -- so a relative path is the only spelling that resolves.
 #
 # game-fatal-contact references its own files by relative path and rebases its own res:// strings,
-# which is what makes it correct both in a build and at res://dot_cloud/arena/<version>/.
+# which is what makes it correct both in a build and at res://gs_cloud/arena/<version>/.
 # Published with `./server pack fatalcontact --source games/game-fatal-contact`.
 #
 # ONE MAP, AND THAT IS THE GAME. `dm_box` is an FcMap -- a list of AABBs that becomes
 # meshes, static bodies and analytic trace geometry from ONE description, so the server's
-# idea of a wall cannot drift from the one clients can see. There is no dot-map rotation
+# idea of a wall cannot drift from the one clients can see. There is no gs-map rotation
 # here on purpose: this game's geometry IS its gameplay, and a rotation would be the
 # thing to add after a second map exists rather than before.
 
@@ -81,8 +81,8 @@ cvars:
 # The MAP vote inside this game — what the players pick between when a map ends, and
 # whether they may extend the one they are on. Its defaults are in the game's own
 # game/fc_vote.gd; anything written here overrides them, and the server's own
-# user://cfg/arena_vote.json, DOT_VOTE_* and --vote-* override this. Keyed exactly as
-# dot-vote's GSVoteRules, enums by name.
+# user://cfg/arena_vote.json, GS_VOTE_* and --vote-* override this. Keyed exactly as
+# gs-vote's GSVoteRules, enums by name.
 #
 # `vote:` beside it is a different thing: how the SERVER's vote for the next game
 # (cfg/vote.yml) treats this game — its time limit there, its weight, whether it is
@@ -99,7 +99,7 @@ cvars:
 #     time_limit_sec: 2400
 
 
-# What this game adds to a TMC server's /admin menu (dot-server-deploy reads it; any other
+# What this game adds to a TMC server's /admin menu (gs-server-deploy reads it; any other
 # host ignores it). Each item is the console line an admin could type, shown only to an
 # admin holding that command's flag. A server owner can rename or remove these in their own
 # cfg/admin_menu.yml, which always wins.

@@ -1,6 +1,6 @@
 extends Node
 # [b]Nothing preloaded out of the game, because no game is in this build.[/b] The template is a
-# delivered pack: its files are at `res://dot_cloud/someone/dot-game-template/0.0.1/…`, and
+# delivered pack: its files are at `res://gs_cloud/someone/gs-game-template/0.0.1/…`, and
 # everything about it is reached through the host's module table and `get()`.
 
 const Installer := preload("res://tools/install_games.gd")
@@ -9,14 +9,14 @@ const Installer := preload("res://tools/install_games.gd")
 const ServerWorld := preload("res://examples/server_world.gd")
 
 ## A game made from GameSpice Game Template, delivered the way a third-party developer's is. Exits non-
-## zero on any failure, and exits 0 with a line saying so when the template or dot-ci is not beside
+## zero on any failure, and exits 0 with a line saying so when the template or gs-ci is not beside
 ## this project (a release tarball, a container), because there is then nothing to deliver.
 
 const CONFIG_FIXTURE := "res://examples/fixtures/template"
 const ROOT := "user://tmc_template_client"
 
-const GAME := "dot-game-template"
-const CONTENT_ID := "someone/dot-game-template"
+const GAME := "gs-game-template"
+const CONTENT_ID := "someone/gs-game-template"
 const VERSION := "0.0.1"
 const MODULE := "tpl"
 
@@ -43,13 +43,13 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: a game made from dot-game-template, delivered and joined")
+	print("gs-server-deploy: a game made from gs-game-template, delivered and joined")
 
 	var source := _template_source()
-	var package_sh := ProjectSettings.globalize_path("res://").path_join("../dot-ci/scripts/package.sh").simplify_path()
+	var package_sh := ProjectSettings.globalize_path("res://").path_join("../gs-ci/scripts/package.sh").simplify_path()
 
 	if source == "" or not FileAccess.file_exists(package_sh):
-		print("  --    skipped: no dot-game-template or dot-ci beside this project; nothing to deliver")
+		print("  --    skipped: no gs-game-template or gs-ci beside this project; nothing to deliver")
 		get_tree().quit(0)
 		return
 
@@ -85,8 +85,8 @@ func _run() -> void:
 func _template_source() -> String:
 	var candidates := PackedStringArray([OS.get_environment("TEMPLATE_SOURCE")])
 	var here := ProjectSettings.globalize_path("res://")
-	candidates.append(here.path_join("games/dot-game-template"))
-	candidates.append(here.path_join("../dot-game-template").simplify_path())
+	candidates.append(here.path_join("games/gs-game-template"))
+	candidates.append(here.path_join("../gs-game-template").simplify_path())
 
 	for dir in candidates:
 		if dir != "" and FileAccess.file_exists(dir.path_join("game.yml")):
@@ -111,7 +111,7 @@ func _package(source: String, package_sh: String) -> String:
 	# `--name`, as the release workflow passes it: the checkout's directory is not always the
 	# repository's name, and the artifact is named for the second.
 	var status := OS.execute("bash", [package_sh, source, VERSION, "--out", out, "--name", GAME, "--pack"], said, true)
-	var zip := out.path_join("dot-game-template-%s-pack.zip" % VERSION)
+	var zip := out.path_join("gs-game-template-%s-pack.zip" % VERSION)
 
 	if not _check(status == 0 and FileAccess.file_exists(zip), "package.sh --pack makes the pack zip", str(said)):
 		_done()
@@ -225,7 +225,7 @@ func _test_connect() -> bool:
 
 	var scene := _client_scene()
 	var path := String((scene.get_script() as Resource).resource_path) if scene != null else ""
-	_check(path.begins_with("res://dot_cloud/%s/%s/" % [CONTENT_ID, VERSION]),
+	_check(path.begins_with("res://gs_cloud/%s/%s/" % [CONTENT_ID, VERSION]),
 		"the client scene the server named is the mounted copy", path)
 
 	var told := await _until(func() -> bool: return scene != null and int(scene.get("local_id")) != 0, 20.0)
@@ -243,7 +243,7 @@ func _test_the_pack_mounted() -> void:
 		return
 
 	var path := String((module.get_script() as Resource).resource_path)
-	_check(path.begins_with("res://dot_cloud/%s/%s/" % [CONTENT_ID, VERSION]),
+	_check(path.begins_with("res://gs_cloud/%s/%s/" % [CONTENT_ID, VERSION]),
 		"from the mount, not from any build", path)
 	_check(module.get("net") != null and (module.get("net") as GSNetManager).is_running(),
 		"with its netcode running")

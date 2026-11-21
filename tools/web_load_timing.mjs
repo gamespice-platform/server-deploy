@@ -2,7 +2,7 @@
 // when the first canvas is up, which WebGL renderer drew it, and what the page printed.
 //
 //   python3 -m http.server 8099 -d web/build &
-//   dot-bootstrap/tools/gpu.sh cdp-run --serve 8099 -- node tools/web_load_timing.mjs [pageUrl] [--runs N]
+//   gs-bootstrap/tools/gpu.sh cdp-run --serve 8099 -- node tools/web_load_timing.mjs [pageUrl] [--runs N]
 //
 // Run through gpu.sh cdp-run so Chrome has a real GPU (without GPU_CDP_URL it launches SwiftShader, which is
 // software WebGL: the renderer line says so). The numbers are for before/after comparisons of an export change
@@ -22,7 +22,7 @@ const url = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--runs')
 const gpu = !!process.env.GPU_CDP_URL;
 
 // An embed.html that export-web did not stamp starts the dlink engine with no side modules, which then 404s on
-// addons/dot_sim/bin/...: say so up front rather than as eight page errors per run.
+// addons/gs_sim/bin/...: say so up front rather than as eight page errors per run.
 if (/embed\.html/.test(url)) {
   const html = await fetch(url).then(r => r.text()).catch(() => '');
   if (html.includes('/*GDEXTENSION_LIBS*/[]') || html.includes('/*FILE_SIZES*/{}')) {

@@ -8,8 +8,8 @@
 # (docs/setup.md, "One fact, one place"). Another place cannot read them and so carries a copy:
 #
 #   - setup.ps1's $addons and Get-AddonRepo: PowerShell has never run here, so it does not
-#     parse a bash array; its copy had stopped at dot_friends, nineteen names, with no
-#     dot_sql or dot_menu, and nothing noticed because nothing on this machine runs it.
+#     parse a bash array; its copy had stopped at gs_friends, nineteen names, with no
+#     gs_sql or gs_menu, and nothing noticed because nothing on this machine runs it.
 #
 # Also: tools/addons-lock.sh and tools/package_check.sh read the same list through
 # tools/content_lists.sh, so no addon can fall out of the lock and the staged tree.
@@ -33,7 +33,7 @@ good() { printf '  %sok%s   %s\n' "$GRN" "$OFF" "$1"; }
 
 . tools/content_lists.sh
 # The addon names setup.sh derives (ADDONS_ALL): repository names with underscores, in list order.
-mapfile -t SH_LIST < <(content_addon_repos "$PWD/cfg" | sed 's/^zee-dot-weapons$/zee_weapons/; s/^zed-dot-weapons$/zed_weapons/; s/^fc-weapons$/fc_weapons/; s/-/_/g')
+mapfile -t SH_LIST < <(content_addon_repos "$PWD/cfg" | sed 's/^zee-gs-weapons$/zee_weapons/; s/^zed-gs-weapons$/zed_weapons/; s/^fc-weapons$/fc_weapons/; s/-/_/g')
 # Every quoted name between `$addons = @(` and `)`.
 mapfile -t PS_LIST < <(tr -d '\r' < setup.ps1 | sed -n '/^\$addons = @(/,/)/p' | grep -oE "'[^']+'" | tr -d "'")
 
@@ -98,7 +98,7 @@ else
     [ -z "$unlisted" ] && good "every content/<dir>/pack.json is published by a games.yml line" \
         || bad "content directories no games.yml line publishes:$unlisted"
 
-    TSV=../dot-bootstrap/projects.tsv
+    TSV=../gs-bootstrap/projects.tsv
     if [ -f "$TSV" ]; then
         missing=""; strange=""
         while IFS=$'\t' read -r repo url aliases; do
@@ -116,10 +116,10 @@ else
         done
         [ -z "$missing" ] && good "every game repository in projects.tsv with a game.yml is in games.yml" \
             || bad "game repositories with a game.yml that games.yml does not name:$missing"
-        [ -z "$strange" ] && good "every games.yml repository is in dot-bootstrap's projects.tsv" \
+        [ -z "$strange" ] && good "every games.yml repository is in gs-bootstrap's projects.tsv" \
             || bad "games.yml names repositories projects.tsv does not:$strange"
     else
-        echo "  --   no ../dot-bootstrap/projects.tsv: game repositories not compared"
+        echo "  --   no ../gs-bootstrap/projects.tsv: game repositories not compared"
     fi
 fi
 

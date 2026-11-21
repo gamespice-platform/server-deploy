@@ -1,6 +1,6 @@
 # Web inventory bridge
 
-The web shell lets an embedding page (the account site's Downloads page) list and manage the content this browser has downloaded, through `window.postMessage`. The logic is dot-cloud's `GSCloudInventoryBridge`; `client/tmc_inventory_link.gd` (`TmcInventoryLink`) is the transport.
+The web shell lets an embedding page (the account site's Downloads page) list and manage the content this browser has downloaded, through `window.postMessage`. The logic is gs-cloud's `GSCloudInventoryBridge`; `client/tmc_inventory_link.gd` (`TmcInventoryLink`) is the transport.
 
 ## Enabling it
 
@@ -8,7 +8,7 @@ Off by default. `client/content.json` takes `"inventory_origins": ["https://exam
 
 ## Messages
 
-Request, posted to the shell's window (a JSON string or an object): `{"dot": "dot-inventory", "v": 1, "id": <any>, "op": <op>, ...}`.
+Request, posted to the shell's window (a JSON string or an object): `{"dot": "gs-inventory", "v": 1, "id": <any>, "op": <op>, ...}`.
 
 | op | fields | value |
 | --- | --- | --- |
@@ -19,7 +19,7 @@ Request, posted to the shell's window (a JSON string or an object): `{"dot": "do
 | `delete` | `pack`, optional `version` | bytes freed |
 | `clear` | | bytes freed, unpinned packs not in use |
 | `clear_all` | | queues the shell's clear-on-restart |
-| `sync` | optional `pending` (array of `{packId, version, action}` from the site's last answer) | `{packs, ack, done, refused}`: carries out the pending delete, pin and unpin, then returns the body to forward to the account site's report (`clientContent.report` / `PUT /api/app/v1/content-inventory`). Needs dot-cloud API 21 |
+| `sync` | optional `pending` (array of `{packId, version, action}` from the site's last answer) | `{packs, ack, done, refused}`: carries out the pending delete, pin and unpin, then returns the body to forward to the account site's report (`clientContent.report` / `PUT /api/app/v1/content-inventory`). Needs gs-cloud API 21 |
 
 Reply, posted to the sender's origin as a JSON string: `{"dot", "v", "id", "op", "ok": true, "value": ...}` or `{..., "ok": false, "error": {"code", "message"}}`. Branch on `error.code`: `INVALID` (unknown op or bad field), `VERSION` (unsupported `v`), `STATE` (the pack is mounted; delete it after a restart), `QUOTA`, `UNSUPPORTED`.
 

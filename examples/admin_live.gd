@@ -42,7 +42,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: the admin menu and the loading screen, live")
+	print("gs-server-deploy: the admin menu and the loading screen, live")
 
 	GSPaths.remove_tree(DATA)
 	GSPaths.remove_tree(CONFIG)

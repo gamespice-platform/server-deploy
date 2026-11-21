@@ -1,7 +1,7 @@
 extends Node
 # [b]Nothing preloaded out of the game, because no game is in this build.[/b] Prop Hunt is a
-# delivered pack at `res://dot_cloud/tmc/prophunt/<version>/…`, and its maps are a second pack at
-# `res://dot_cloud/tmc/prophunt_maps/<version>/…`.
+# delivered pack at `res://gs_cloud/tmc/prophunt/<version>/…`, and its maps are a second pack at
+# `res://gs_cloud/tmc/prophunt_maps/<version>/…`.
 
 ## A REAL client, over a REAL socket, in a DELIVERED Prop Hunt, with its maps delivered as a server-
 ## only pack beside it. Exits non-zero on any failure.
@@ -44,7 +44,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: a real client in a delivered Prop Hunt")
+	print("gs-server-deploy: a real client in a delivered Prop Hunt")
 
 	GSPaths.remove_tree(DATA)
 
@@ -255,7 +255,7 @@ func _test_the_packs_mounted() -> void:
 	var module: GSModule = _server().modules.get_module(MODULE)
 	var script: Variant = module.get_script() if module != null else null
 	var path := String((script as Resource).resource_path) if script != null else ""
-	_check(path.begins_with("res://dot_cloud/tmc/prophunt/"), "its module is the mounted copy", path)
+	_check(path.begins_with("res://gs_cloud/tmc/prophunt/"), "its module is the mounted copy", path)
 
 	var server_only: PackedStringArray = _server().games.current_server_dependencies()
 	_check(server_only.has(MAPS_KEY), "the maps are its server-only dependency", str(server_only))

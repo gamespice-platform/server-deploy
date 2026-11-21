@@ -1,7 +1,7 @@
 extends Node
 # [b]Nothing preloaded out of the game, because no game is in this build.[/b] PLAYLOT is a
-# delivered pack at `res://dot_cloud/tmc/playground/<version>/…`, and its custom maps are a second
-# pack at `res://dot_cloud/tmc/playground_maps/<version>/…`.
+# delivered pack at `res://gs_cloud/tmc/playground/<version>/…`, and its custom maps are a second
+# pack at `res://gs_cloud/tmc/playground_maps/<version>/…`.
 
 ## A REAL client, over a REAL socket, in a DELIVERED Playlot — with its custom maps delivered as
 ## a `dependencies` pack beside it, mounted on the server AND the client. Exits non-zero on any
@@ -48,7 +48,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: a real client in a delivered Playlot, with its maps pack")
+	print("gs-server-deploy: a real client in a delivered Playlot, with its maps pack")
 
 	GSPaths.remove_tree(DATA)
 
@@ -267,7 +267,7 @@ func _test_the_packs_mounted() -> void:
 	var module: GSModule = _server().modules.get_module(MODULE)
 	var script: Variant = module.get_script() if module != null else null
 	var path := String((script as Resource).resource_path) if script != null else ""
-	_check(path.begins_with("res://dot_cloud/tmc/playground/"), "its module is the mounted copy", path)
+	_check(path.begins_with("res://gs_cloud/tmc/playground/"), "its module is the mounted copy", path)
 
 	var deps: PackedStringArray = _server().games.current_dependencies()
 	_check(deps.has(MAPS_KEY), "the maps are a CLIENT dependency, not server-only", str(deps))

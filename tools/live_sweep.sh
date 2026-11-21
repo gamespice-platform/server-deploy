@@ -18,7 +18,7 @@
 # --audit-only --quiet is the cron/CI form: reads the content origin only (no browser, no playwright, no token), prints nothing
 # when every pack is sound and one line per game with a problem otherwise, and exits 1 so the scheduler flags it. It catches the
 # site's GitHub-release sync (X.Y.Z+rN) re-publishing a pack without bundle/runs_code/requires, which the site does not scan.
-#   */30 * * * * sudo -u gamedev /home/gamedev/godot/dot-server-deploy/tools/live_sweep.sh --audit-only --quiet
+#   */30 * * * * sudo -u gamedev /home/gamedev/godot/gs-server-deploy/tools/live_sweep.sh --audit-only --quiet
 #
 # Writes OUT/table.md (a markdown table, one row per game, ready for the board) and exits 1 on any FAIL.
 # Env: CONTENT_ORIGIN, CONTENT_OWNER, GPU_SH, MAP_LOADED (regex of the console line that says a map is up).
@@ -26,8 +26,8 @@
 #   sudo -u gamedev tools/live_sweep.sh
 set -u
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-GPU=${GPU_SH:-$HERE/../dot-bootstrap/tools/gpu.sh}
-[ -x "$GPU" ] || GPU=/home/gamedev/godot/dot-bootstrap/tools/gpu.sh
+GPU=${GPU_SH:-$HERE/../gs-bootstrap/tools/gpu.sh}
+[ -x "$GPU" ] || GPU=/home/gamedev/godot/gs-bootstrap/tools/gpu.sh
 ORIGIN=${CONTENT_ORIGIN:-https://content.gamespice.net}
 OWNER=${CONTENT_OWNER:-gamemann}
 # What a game logs once its map is up: the check's own default plus the wording the map games use (zz "world drawn", "map began"; dd "the mountain is ready").

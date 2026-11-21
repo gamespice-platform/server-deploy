@@ -13,8 +13,8 @@
 //   fresh     a new profile: nothing stored.
 //   counter2  sessionStorage tmc.addon_updates counting two restarts for the set, in the flat form shells kept up to
 //             20261113-0522 (what the player's tab held), and in the keyed form when --fp is known.
-//   failed    the overlay plan in IndexedDB (user://dot_cloud_addons/plan.json) marked failed for the set, stamped with the
-//             page's shell build. Its `build` is --fp, or the fingerprint of --lock with the export's dot-only filter;
+//   failed    the overlay plan in IndexedDB (user://gs_cloud_addons/plan.json) marked failed for the set, stamped with the
+//             page's shell build. Its `build` is --fp, or the fingerprint of --lock with the export's gs-only filter;
 //             without either the mark names no build and every shell ignores it.
 //
 // --serve serves a local web export as /godot/<build>/ (the build from --url's path, so the shell reads a build id) with
@@ -26,7 +26,7 @@
 //   started   "solo game started" with no broken sign.
 //   blocked   "not starting it without them" or "did not start in this tab": the shell refused and offers Retry.
 //   unpublished  no published pack holds an addon the game needs (the shell says which; a publish fixes it, not a client).
-//   client_behind  dot-cloud's requirement check refused the game after the overlay step: an addon it needs never arrived.
+//   client_behind  gs-cloud's requirement check refused the game after the overlay step: an addon it needs never arrived.
 //   none      none of these within --secs.
 // --map <slug> opens the page with &map=<slug> (the site's "Play map": a solo game on one map, fetching only that map's pack).
 // A started game is then watched for --linger seconds (default 8, or 120 with --map: a downloaded map takes longer to load
@@ -38,7 +38,7 @@
 // fetched it all again). The shell mounts an overlay that only adds addons in place. Printed as `loads: N`.
 // --threads 1 serves --serve with COOP/COEP so the page runs the threaded engine (index-mt), and fails unless it did; --threads 0
 // adds ?threads=0. The threaded run is the check for web-mt-shell-unpack-hang-1 (2026-11-14): FC sat at "Unpacking 0 of 1" for
-// minutes because dot-cloud hashed every object on worker threads, whose user:// reads the browser serves one a frame. Run it as
+// minutes because gs-cloud hashed every object on worker threads, whose user:// reads the browser serves one a frame. Run it as
 //   --serve web/build --url http://x/godot/<build>/embed.html?solo=gamemann/game-fatal-contact --threads 1 --expect started --secs 240
 // Exit 0 when the verdict is in --expect, the loads are within --max-loads and the engine is the one --threads asked for, 1 otherwise,
 // 2 on usage.
@@ -88,14 +88,14 @@ if (!url || !['fresh', 'counter2', 'failed'].includes(state)) {
 const buildId = (new URL(url).pathname.match(/\/(\d{8}-\d{4})\//) || [])[1] || '';
 const game = new URL(url).searchParams.get('solo') || '';
 
-// The export's addons.lock fingerprint: tools/server.in's shell_lock_begin keeps comments, blanks and dot-* rows, and
+// The export's addons.lock fingerprint: tools/server.in's shell_lock_begin keeps comments, blanks and gs-* rows, and
 // GSCloudAddonSet.build_fingerprint is the first 16 hex of its sha256.
 let fp = opt('fp', '');
 const lock = opt('lock', '');
 if (!fp && lock) {
   const kept = fs.readFileSync(lock, 'utf8').split('\n').filter((l, i, all) => {
     if (i === all.length - 1 && l === '') return true;
-    return /^[\s]*(#|$)/.test(l) || l.split('\t')[0].startsWith('dot-');
+    return /^[\s]*(#|$)/.test(l) || l.split('\t')[0].startsWith('gs-');
   });
   fp = crypto.createHash('sha256').update(kept.join('\n')).digest('hex').slice(0, 16);
 }
@@ -128,7 +128,7 @@ if (serve) {
   try { ({ srv, url } = await serveShell({ dir: serve, port, buildId, upstream, givenUrl: url, coi: threads === '1' })); } catch (e) { console.error(String(e.message)); process.exit(2); }
 }
 
-// GPU_CDP_URL (set by dot-bootstrap's `gpu.sh cdp-run -- node tools/browser_solo_overlay_check.mjs ...`) drives a real
+// GPU_CDP_URL (set by gs-bootstrap's `gpu.sh cdp-run -- node tools/browser_solo_overlay_check.mjs ...`) drives a real
 // GPU's Chrome on a staging box. Without it, Chrome here renders WebGL in software, and the shot can come out black
 // while the game runs.
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'solo-overlay-profile-'));
@@ -182,9 +182,9 @@ try {
       const store = tx.objectStore('FILE_DATA');
       const now = new Date();
       const dirs = [];
-      for (let p = `${userDir}/dot_cloud_addons`; p.length > '/userfs'.length; p = p.slice(0, p.lastIndexOf('/'))) dirs.unshift(p);
+      for (let p = `${userDir}/gs_cloud_addons`; p.length > '/userfs'.length; p = p.slice(0, p.lastIndexOf('/'))) dirs.unshift(p);
       for (const d of dirs) store.put({ timestamp: now, mode: 0o40777 }, d);
-      store.put({ timestamp: now, mode: 0o100666, contents: new TextEncoder().encode(plan) }, `${userDir}/dot_cloud_addons/plan.json`);
+      store.put({ timestamp: now, mode: 0o100666, contents: new TextEncoder().encode(plan) }, `${userDir}/gs_cloud_addons/plan.json`);
       await new Promise((ok, no) => { tx.oncomplete = ok; tx.onerror = () => no(tx.error); });
       db.close();
       return plan;
@@ -200,7 +200,7 @@ try {
     if (/not starting it without them|did not start in this tab/.test(text)) return 'blocked';
     // The content store has no pack holding an addon the game needs (2026-11-17: fc-weapons 1.4.50 held only arena_weapons).
     if (/not published in a pack that holds it/.test(text)) return 'unpublished';
-    // dot-cloud's requirement check refused the game: the overlay did not supply an addon it needs.
+    // gs-cloud's requirement check refused the game: the overlay did not supply an addon it needs.
     if (/tmc\.build\.mismatch|client_behind|does not have it\./.test(text)) return 'client_behind';
     return 'none';
   };

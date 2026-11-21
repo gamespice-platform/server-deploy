@@ -44,7 +44,7 @@ func _solo_map_packs(content_id: String) -> PackedStringArray:
 	return out
 
 
-## The Workshop sync for a solo launch, before its overlay is decided: a game whose `provides.json` states `accepts` has its subscribed packs planned and registered with the launch job (mounted after [method _prefetch_solo] downloads them, by [method GSCloudWorkshop.mount_pending]). The value is the summary's `addons` (dot-cloud 28), the subscribed addon packs for [method _solo_overlay]; empty for any other game.
+## The Workshop sync for a solo launch, before its overlay is decided: a game whose `provides.json` states `accepts` has its subscribed packs planned and registered with the launch job (mounted after [method _prefetch_solo] downloads them, by [method GSCloudWorkshop.mount_pending]). The value is the summary's `addons` (gs-cloud 28), the subscribed addon packs for [method _solo_overlay]; empty for any other game.
 func _solo_workshop_plan(content_id: String, version: String) -> Array:
 	var game: GSResult = await shell._cloud.resolve_manifest(StringName(content_id), version)
 	if not game.ok:
@@ -70,7 +70,7 @@ func _prefetch_solo(content_id: String, version: String) -> void:
 		return
 	var manifest := game.value as GSCloudManifest
 	var all_groups := PackedStringArray(["*"]) # solo has no server to say which map, so total every group
-	var takes_groups := GSAddonApi.build_level("dot_cloud") >= 23
+	var takes_groups := GSAddonApi.build_level("gs_cloud") >= 23
 	if takes_groups:
 		await shell._cloud.job_register_manifest(manifest, all_groups)
 	else:
@@ -195,7 +195,7 @@ func _pack_script_paths(keys: Array[String]) -> PackedStringArray:
 	return scripts + others
 
 
-## True for a file under a directory the warm-up skips at any depth (the list dot-cloud's script warm uses).
+## True for a file under a directory the warm-up skips at any depth (the list gs-cloud's script warm uses).
 static func _in_tooling_dir(path: String) -> bool:
 	var parts := path.split("/")
 	for i in parts.size() - 1:

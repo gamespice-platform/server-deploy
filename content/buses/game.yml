@@ -12,7 +12,7 @@
 #
 # kind: pack -- delivered, like every other game here. game-buses-from-hell references its
 # own files by relative path and rebases its own `res://` strings (`BfhPaths`), which is
-# what makes it correct both in a build and at res://dot_cloud/buses/<version>/. It was
+# what makes it correct both in a build and at res://gs_cloud/buses/<version>/. It was
 # written with `class_name` on seven of its scripts and converted when it was added here;
 # `tools/check.sh` is what stops that coming back.
 #
@@ -21,9 +21,9 @@
 # NO MAP FILES: A BOWL IS A NUMBER. The bowl is `BfhArena.build(radius)` run on both ends —
 # a disc, a ring of wall, a ledge and eight pillars, from one number — so the map travels
 # in the HELLO as a radius rather than as a file, and a client that joined a server
-# running a smaller bowl rebuilds its own to match. There is no dot-map rotation and no
+# running a smaller bowl rebuilds its own to match. There is no gs-map rotation and no
 # maps pack; the players vote between three bowls instead (`BfhBowls`: the operator's
-# arena_radius, a small one and a big one) over dot-vote, and the winner is rebuilt
+# arena_radius, a small one and a big one) over gs-vote, and the winner is rebuilt
 # between rounds and sent as a BOWL event (see the game's `game/bfh_vote.gd`).
 
 name: Buses From Hell

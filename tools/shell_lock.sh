@@ -2,7 +2,7 @@
 # What a client shell carries, from the explicit list in tools/shell-addons.list (see there for the owner rule).
 #
 #   tools/shell_lock.sh lock <addons.lock>   the lock a shell export carries: comments and the listed repositories only
-#   tools/shell_lock.sh dirs                 the addon directories a shell carries (dot-x is addons/dot_x), one per line
+#   tools/shell_lock.sh dirs                 the addon directories a shell carries (gs-x is addons/gs_x), one per line
 #   tools/shell_lock.sh check <addons.lock>  only the list's own rules (below); prints nothing when they hold
 #
 # Fails (exit 3, the reason on stderr) when the list names anything but a gs-* addon, or when the lock names a gs-* addon
@@ -22,8 +22,8 @@ mapfile -t allowed < <(sed 's/#.*//; s/[[:space:]]//g; /^$/d' "$list")
 
 for repo in "${allowed[@]}"; do
     case "$repo" in
-        dot-*) ;;
-        *) die "$list names $repo, which is not a dot-* addon. A shell carries no game addon; $repo reaches players as an overlay pack." ;;
+        gs-*) ;;
+        *) die "$list names $repo, which is not a gs-* addon. A shell carries no game addon; $repo reaches players as an overlay pack." ;;
     esac
 done
 
@@ -39,9 +39,9 @@ check_lock() {
     while IFS=$'\t' read -r repo _; do
         repo="${repo%%#*}"; repo="${repo//[[:space:]]/}"
         [ -n "$repo" ] || continue
-        case "$repo" in dot-*) listed "$repo" || missing="$missing $repo" ;; esac
+        case "$repo" in gs-*) listed "$repo" || missing="$missing $repo" ;; esac
     done < "$lock"
-    [ -z "$missing" ] || die "$lock names dot-* addons that $list does not:$missing. Add each one the shell should carry to $list."
+    [ -z "$missing" ] || die "$lock names gs-* addons that $list does not:$missing. Add each one the shell should carry to $list."
 }
 
 case "${1:-}" in

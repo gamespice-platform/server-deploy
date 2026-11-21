@@ -166,7 +166,7 @@ static func build(auth: Dictionary, config_dir: String, data_dir: String = "") -
 ## The auth.yml files that exist under [param config_dir], lowest tier first.
 static func auth_files(config_dir: String) -> PackedStringArray:
 	var found := PackedStringArray()
-	for rel in ["addons/dot_auth/auth.yml", "server/addons/dot_auth/auth.yml", "auth.yml"]:
+	for rel in ["addons/gs_auth/auth.yml", "server/addons/gs_auth/auth.yml", "auth.yml"]:
 		if FileAccess.file_exists(config_dir.path_join(rel)):
 			found.append(config_dir.path_join(rel))
 	return found

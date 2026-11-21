@@ -1,7 +1,7 @@
 extends SceneTree
 
 # [b]Loaded out of the MOUNT, not preloaded, because the game is not in this build.[/b] game-airdrift
-# is a delivered pack: its scripts exist at `res://dot_cloud/airdrift/<version>/game/…`, a path no
+# is a delivered pack: its scripts exist at `res://gs_cloud/airdrift/<version>/game/…`, a path no
 # constant here can name, because the version belongs to the game and this file belongs to the host.
 
 ## Does a client with NO maps get one from the content origin? `cloud_fetch_probe.gd` proved fetch-
@@ -103,7 +103,7 @@ func _init() -> void:
 	# [b]Which client the game will actually find.[/b] `GSRegistry.register` replaces, and
 	# `GSCloudClient.register_service` defaults to on -- so anything else in the tree that builds one
 	# takes the name, and the configured client this probe made is still in the tree.
-	var found: Object = GSRegistry.get_service(&"dot_cloud_client")
+	var found: Object = GSRegistry.get_service(&"gs_cloud_client")
 	print("-- registered content client: %s (probe built %d)" % [
 		"none" if found == null else str(found.get_instance_id()), cloud.get_instance_id()
 	])

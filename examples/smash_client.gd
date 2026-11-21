@@ -1,6 +1,6 @@
 extends Node
 # [b]Nothing preloaded out of the game, because no game is in this build.[/b] Smash Copter is a
-# delivered pack: its files are at `res://dot_cloud/tmc/smash/<version>/…` and this file cannot name
+# delivered pack: its files are at `res://gs_cloud/tmc/smash/<version>/…` and this file cannot name
 # that path, because the version is the game's.
 
 ## A REAL client, over a REAL socket, in a DELIVERED game. Exits non-zero on any failure.
@@ -48,7 +48,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: a real client in a delivered Smash Copter")
+	print("gs-server-deploy: a real client in a delivered Smash Copter")
 
 	GSPaths.remove_tree(DATA)
 
@@ -299,7 +299,7 @@ func _test_the_pack_mounted() -> void:
 	var path := String((script as Resource).resource_path) if script != null else ""
 
 	_check(
-		path.begins_with("res://dot_cloud/"),
+		path.begins_with("res://gs_cloud/"),
 		"and its script is the mounted copy, not a built-in one",
 		path
 	)
@@ -439,8 +439,8 @@ func _test_two_builds_on_one_socket() -> void:
 
 	var client_dropped := _link.envelope.dropped_arrivals
 	var server_dropped := _server().envelope.dropped_arrivals
-	_server()._dot_down_event.rpc_id(peer, "skew.server_news", {"x": 1})
-	_link._dot_up.rpc_id(1, "skew.client_news", {"x": 1})
+	_server()._gs_down_event.rpc_id(peer, "skew.server_news", {"x": 1})
+	_link._gs_up.rpc_id(1, "skew.client_news", {"x": 1})
 
 	var both := await _until(
 		func() -> bool:

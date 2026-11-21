@@ -3,155 +3,155 @@
 entries:
   - repo: fc-weapons
     pin: v1.4.61
-  - repo: dot-2d
+  - repo: gs-2d
     pin: v0.1.9
-  - repo: dot-achievements
+  - repo: gs-achievements
     pin: v0.1.13
-  - repo: dot-audio
+  - repo: gs-audio
     pin: v0.1.23
-  - repo: dot-auth
+  - repo: gs-auth
     pin: v0.1.17
-  - repo: dot-bot
+  - repo: gs-bot
     pin: v0.1.32
-  - repo: dot-bot-record
+  - repo: gs-bot-record
     pin: v0.1.5
-  - repo: dot-browser
+  - repo: gs-browser
     pin: v0.1.10
-  - repo: dot-chat
+  - repo: gs-chat
     pin: v0.1.9
-  - repo: dot-cloud
+  - repo: gs-cloud
     pin: v0.1.59
-  - repo: dot-combat
+  - repo: gs-combat
     pin: v0.1.24
-  - repo: dot-console
+  - repo: gs-console
     pin: v0.1.12
-  - repo: dot-core
+  - repo: gs-core
     pin: v0.1.53
-  - repo: dot-economy
+  - repo: gs-economy
     pin: v0.1.8
-  - repo: dot-effects
+  - repo: gs-effects
     pin: v0.1.11
-  - repo: dot-entity
+  - repo: gs-entity
     pin: v0.1.11
-  - repo: dot-friends
+  - repo: gs-friends
     pin: v0.1.8
-  - repo: dot-flashlight
+  - repo: gs-flashlight
     pin: v0.1.5
-  - repo: dot-fx
+  - repo: gs-fx
     pin: v0.3.14
-  - repo: dot-game
+  - repo: gs-game
     pin: v0.1.61
-  - repo: dot-input
+  - repo: gs-input
     pin: v0.2.0
-  - repo: dot-inventory
+  - repo: gs-inventory
     pin: v0.1.7
-  - repo: dot-leaderboard
+  - repo: gs-leaderboard
     pin: v0.3.5
-  - repo: dot-lighting
+  - repo: gs-lighting
     pin: v0.1.13
-  - repo: dot-loadout
+  - repo: gs-loadout
     pin: v0.1.18
-  - repo: dot-locale
+  - repo: gs-locale
     pin: v0.1.8
-  - repo: dot-log
+  - repo: gs-log
     pin: v0.1.10
-  - repo: dot-map
+  - repo: gs-map
     pin: v0.1.94
-  - repo: dot-match
+  - repo: gs-match
     pin: v0.1.8
-  - repo: dot-matchmaking
+  - repo: gs-matchmaking
     pin: v0.1.10
-  - repo: dot-menu
+  - repo: gs-menu
     pin: v0.1.34
-  - repo: dot-mobile
+  - repo: gs-mobile
     pin: v0.1.1
-  - repo: dot-moderation
+  - repo: gs-moderation
     pin: v0.1.7
-  - repo: dot-net
+  - repo: gs-net
     pin: v0.1.37
-  - repo: dot-npc
+  - repo: gs-npc
     pin: v0.1.25
-  - repo: dot-npc-ai
+  - repo: gs-npc-ai
     pin: v0.1.14
-  - repo: dot-npc-ai-director
+  - repo: gs-npc-ai-director
     pin: v0.1.12
-  - repo: dot-objective
+  - repo: gs-objective
     pin: v0.1.9
-  - repo: dot-party
+  - repo: gs-party
     pin: v0.1.8
-  - repo: dot-peer-to-peer
+  - repo: gs-peer-to-peer
     pin: v0.1.6
-  - repo: dot-physics
+  - repo: gs-physics
     pin: v0.1.12
-  - repo: dot-platform
+  - repo: gs-platform
     pin: v0.1.11
-  - repo: dot-player
+  - repo: gs-player
     pin: v0.1.7
-  - repo: dot-player-char
+  - repo: gs-player-char
     pin: v0.1.76
-  - repo: dot-player-class
+  - repo: gs-player-class
     pin: v0.1.11
-  - repo: dot-player-controller
+  - repo: gs-player-controller
     pin: v0.4.16
-  - repo: dot-procedural-generation
+  - repo: gs-procedural-generation
     pin: v0.1.6
-  - repo: dot-profile
+  - repo: gs-profile
     pin: v0.1.26
-  - repo: dot-profiler
+  - repo: gs-profiler
     pin: v0.1.5
-  - repo: dot-props
+  - repo: gs-props
     pin: v0.1.17
-  - repo: dot-radio
+  - repo: gs-radio
     pin: v0.1.4
-  - repo: dot-trail
+  - repo: gs-trail
     pin: v0.1.6
-  - repo: dot-save
+  - repo: gs-save
     pin: v0.2.1
-  - repo: dot-replay
+  - repo: gs-replay
     pin: v0.1.21
-  - repo: dot-server
+  - repo: gs-server
     pin: v0.1.34
-  - repo: dot-server-query
+  - repo: gs-server-query
     pin: v0.1.10
-  - repo: dot-server-security
+  - repo: gs-server-security
     pin: v0.1.8
-  - repo: dot-settings
+  - repo: gs-settings
     pin: v0.1.9
-  - repo: dot-sim
+  - repo: gs-sim
     pin: v0.2.10
-  - repo: dot-spawn
+  - repo: gs-spawn
     pin: v0.2.5
-  - repo: dot-spectate
+  - repo: gs-spectate
     pin: v0.1.13
-  - repo: dot-sql
+  - repo: gs-sql
     pin: v0.1.8
-  - repo: dot-stats
+  - repo: gs-stats
     pin: v0.1.21
-  - repo: dot-team
+  - repo: gs-team
     pin: v0.1.11
-  - repo: dot-timer
+  - repo: gs-timer
     pin: v0.1.13
-  - repo: dot-ui
+  - repo: gs-ui
     pin: v0.2.0
-  - repo: dot-user
+  - repo: gs-user
     pin: v0.1.8
-  - repo: dot-user-avatar
+  - repo: gs-user-avatar
     pin: v0.1.13
-  - repo: dot-vehicle
+  - repo: gs-vehicle
     pin: v0.1.12
-  - repo: dot-voice
+  - repo: gs-voice
     pin: v0.1.13
-  - repo: dot-vote
+  - repo: gs-vote
     pin: v0.1.19
-  - repo: dot-weapon
+  - repo: gs-weapon
     pin: v0.1.56
-  - repo: dot-weather
+  - repo: gs-weather
     pin: v0.1.4
-  - repo: dot-workbench
+  - repo: gs-workbench
     pin: v0.3.5
   - repo: natural-disasters
     pin: v0.1.4
-  - repo: zed-dot-weapons
+  - repo: zed-gs-weapons
     pin: v0.1.15
-  - repo: zee-dot-weapons
+  - repo: zee-gs-weapons
     pin: v0.1.67

@@ -108,9 +108,9 @@ func _addons_advertised() -> bool:
 		return false
 
 	for entry in announced:
-		if str(entry.get("dir", "")) == "dot_server" \
-				and not (str(entry.get("id", "")) in ["modcommunity/dot-server", "gamespice-platform/server"]):
-			printerr("selftest FAILED: dot_server is advertised as %s" % str(entry.get("id", "")))
+		if str(entry.get("dir", "")) == "gs_server" \
+				and not (str(entry.get("id", "")) in ["modcommunity/gs-server", "gamespice-platform/server"]):
+			printerr("selftest FAILED: gs_server is advertised as %s" % str(entry.get("id", "")))
 			return false
 
 	print("addons advertised: %d" % (announced as Array).size())  # check-logging: allow print

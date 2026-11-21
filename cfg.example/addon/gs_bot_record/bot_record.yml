@@ -2,7 +2,7 @@
 # they ride ramps, how quickly they react in a fight) so its bots can learn from it. Only a game
 # that declares a schema records anything; for the others this file changes nothing.
 #
-# Rules text for your server's rules page and server info (also in dot-bot-record's docs):
+# Rules text for your server's rules page and server info (also in gs-bot-record's docs):
 #
 #   This server records anonymous movement (where players move and how they ride ramps, and
 #   how quickly they react in a fight) to teach its bots. No names, account ids, addresses or
@@ -36,7 +36,7 @@ bot_record_store: json
 # The JSON store's directory, or the SQLite file. Empty is under data/ (data/bot/demos).
 bot_record_path: ""
 
-# The dot-sql gateway for postgres and mysql. A credential belongs here and nowhere else:
+# The gs-sql gateway for postgres and mysql. A credential belongs here and nowhere else:
 # the environment and the command line refuse it.
 bot_record_url: ""
 bot_record_token: ""

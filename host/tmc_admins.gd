@@ -110,7 +110,7 @@ static func from(groups: Dictionary, users: Dictionary) -> GSResult:
 		# unmoderated rather than under-moderated. But SILENCE was worse than either.
 		GSLog.warn(
 			CHANNEL,
-			"%d permission name(s) are not flags dot-server knows" % source.unknown_flags.size(),
+			"%d permission name(s) are not flags gs-server knows" % source.unknown_flags.size(),
 			{
 				"names": ", ".join(source.unknown_flags),
 				"note": "a game may define its own; check the spelling if you did not",

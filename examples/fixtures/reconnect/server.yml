@@ -9,6 +9,6 @@ game: "buses"
 # this terminal's stdin that the engine offers no way to cancel. The checks all pass and
 # the process then never exits, which reads as a hung suite rather than as a console
 # nobody asked for.
-# Still off after dot-server 5f46687 (a pipe is not read by default any more): a
+# Still off after gs-server 5f46687 (a pipe is not read by default any more): a
 # terminal would still be, and a suite takes no commands.
 sv_stdin_console: false

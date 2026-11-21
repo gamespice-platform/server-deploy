@@ -137,9 +137,9 @@ GAME2_NAME="${TMC_DEMO_GAME2_NAME:-TMC Hungry Server}"
 # The relay stays off regardless unless `data/listing.json` holds a server-scoped
 # integration token: with no credential there is no backbone client, and a relay with no
 # backbone client refuses to start rather than polling a URL it cannot authenticate to.
-export DOT_CHAT_RELAY_ENABLED="${TMC_DEMO_RELAY:-1}"
-export DOT_CHAT_RELAY_ALLOW_COMMANDS="${TMC_DEMO_RELAY_COMMANDS:-1}"
-export DOT_CHAT_RELAY_COMMAND_SOURCE="${TMC_DEMO_RELAY_SOURCE:-2}"
+export GS_CHAT_RELAY_ENABLED="${TMC_DEMO_RELAY:-1}"
+export GS_CHAT_RELAY_ALLOW_COMMANDS="${TMC_DEMO_RELAY_COMMANDS:-1}"
+export GS_CHAT_RELAY_COMMAND_SOURCE="${TMC_DEMO_RELAY_SOURCE:-2}"
 
 # A THIRD SERVER, and the first one in this demonstration that is not a 2D game.
 #
@@ -201,7 +201,7 @@ GAME4_TICKRATE="${TMC_DEMO_GAME4_TICKRATE:-128}"
 #
 # It is here because the four servers above are a bus chase, an eating game, a timer and a
 # sandbox: not one of them is a game where players SHOOT each other, which is the shape
-# most of dot-combat exists for and the only one that exercises lag compensation on a
+# most of gs-combat exists for and the only one that exercises lag compensation on a
 # real link. It is also the only server here whose hits are rewound.
 #
 # 6110, again not 6101: GameSpice Server puts RCON on its game port + 1, so servers one port
@@ -411,7 +411,7 @@ do_up() {
 
     # WHICH BACKBONE THE WEB PLAYER SIGNS IN AGAINST.
     #
-    # A browser has no environment and no argv, so `DOT_AUTH_BACKBONE_URL` -- which is
+    # A browser has no environment and no argv, so `GS_AUTH_BACKBONE_URL` -- which is
     # how every other deployment sets this -- cannot reach it. The shell reads
     # `res://client/auth.json` instead, shipped inside the export, and this writes it
     # before the export is built.

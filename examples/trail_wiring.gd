@@ -16,7 +16,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy trail wiring (addon %s)" % ("linked" if TmcTrail.available() else "absent"))
+	print("gs-server-deploy trail wiring (addon %s)" % ("linked" if TmcTrail.available() else "absent"))
 	_test_config()
 	_test_host()
 	_test_link()
@@ -30,7 +30,7 @@ func _run() -> void:
 
 func _test_config() -> void:
 	_section("trail.yml")
-	var shipped := TmcYaml.parse_file("res://cfg.example/addon/dot_trail/trail.yml")
+	var shipped := TmcYaml.parse_file("res://cfg.example/addon/gs_trail/trail.yml")
 	_check(shipped.ok and shipped.value is Dictionary, "the shipped trail.yml parses")
 	var tree: Dictionary = shipped.value if shipped.ok else {}
 	var cfg := TmcConfig.new()
@@ -60,7 +60,7 @@ func _test_host() -> void:
 		session.groups = PackedStringArray(["vip"])
 		server.client_spawned.emit(session)
 		_check(on.relay.peers().has(7) and on._groups(7) == PackedStringArray(["vip"]), "a spawned player is a relay peer with its groups")
-		_check(server.envelope.dispatch(7, &"dot.trail", {"id": ""}), "the server handles the dot.trail kind")
+		_check(server.envelope.dispatch(7, &"gs.trail", {"id": ""}), "the server handles the dot.trail kind")
 		server.client_disconnected.emit(session, "bye")
 		_check(not on.relay.peers().has(7), "a player who leaves is forgotten")
 	host.free()
@@ -80,7 +80,7 @@ func _test_link() -> void:
 	_check(after == before + (1 if present and &"extra_steps" in prejoin else 0), "the pack fetch is one extra prejoin step")
 	var client_link := GSClientLink.new()
 	link.attach(client_link)
-	_check(not present or client_link.envelope.knows(&"dot.trail"), "the link carries the dot.trail kind")
+	_check(not present or client_link.envelope.knows(&"gs.trail"), "the link carries the dot.trail kind")
 	link.reset()
 	_check(link._menu == null, "reset forgets the menu")
 	client_link.free()

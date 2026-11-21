@@ -14,7 +14,7 @@
 
     The failure this avoids does not look like a link problem. If Git checks a
     symlink out as a regular file -- which is what it does when core.symlinks is
-    false -- then addons\dot_core is a ~30 byte text file containing a path.
+    false -- then addons\gs_core is a ~30 byte text file containing a path.
     Godot loads it, finds no scripts, and every class_name the addon defines
     fails to resolve. A GDScript file that merely MENTIONS an unknown class_name
     fails to parse and takes every script referencing it down too, so the
@@ -212,46 +212,46 @@ Ok "$exe ($version)"
 # setup.sh's ADDONS_ALL, name for name and in its order. It is written out rather than read
 # from setup.sh because nothing here has ever run under PowerShell to prove a parser of a
 # bash array; tools/check_lists.sh fails when the two differ, which is how this copy ended
-# at dot_friends, nineteen names long, while setup.sh's kept growing.
-$addons = @('dot_core','dot_log','dot_net','dot_game','dot_entity','dot_server','dot_server_query','dot_server_security',
-            'dot_2d','dot_ui','dot_auth','dot_cloud','dot_user','dot_user_avatar','dot_platform','dot_loadout',
-            'dot_match','dot_player_controller','dot_timer','dot_map','dot_leaderboard','dot_stats','dot_props','dot_profile','dot_profiler','dot_vote',
-            'dot_combat','dot_chat','dot_voice','dot_moderation','dot_browser','dot_npc','dot_npc_ai','dot_npc_ai_director',
-            'dot_vehicle','dot_achievements','dot_objective','dot_effects','dot_spectate','dot_economy','dot_settings','dot_console',
-            'dot_audio','dot_fx','dot_lighting','dot_weather','dot_procedural_generation','dot_inventory','dot_peer_to_peer','dot_weapon','dot_physics',
-            'dot_spawn','dot_team','dot_player','dot_player_class','dot_player_char','zee_weapons','dot_party','dot_matchmaking',
-            'dot_locale','dot_replay','dot_friends','dot_sql','dot_menu','dot_mobile','dot_bot','zed_weapons','dot_radio','dot_trail','dot_flashlight','dot_bot_record','dot_workbench','natural_disasters','fc_weapons','dot_sim')
+# at gs_friends, nineteen names long, while setup.sh's kept growing.
+$addons = @('gs_core','gs_log','gs_net','gs_game','gs_entity','gs_server','gs_server_query','gs_server_security',
+            'gs_2d','gs_ui','gs_auth','gs_cloud','gs_user','gs_user_avatar','gs_platform','gs_loadout',
+            'gs_match','gs_player_controller','gs_timer','gs_map','gs_leaderboard','gs_stats','gs_props','gs_profile','gs_profiler','gs_vote',
+            'gs_combat','gs_chat','gs_voice','gs_moderation','gs_browser','gs_npc','gs_npc_ai','gs_npc_ai_director',
+            'gs_vehicle','gs_achievements','gs_objective','gs_effects','gs_spectate','gs_economy','gs_settings','gs_console',
+            'gs_audio','gs_fx','gs_lighting','gs_weather','gs_procedural_generation','gs_inventory','gs_peer_to_peer','gs_weapon','gs_physics',
+            'gs_spawn','gs_team','gs_player','gs_player_class','gs_player_char','zee_weapons','gs_party','gs_matchmaking',
+            'gs_locale','gs_replay','gs_friends','gs_sql','gs_menu','gs_mobile','gs_bot','zed_weapons','gs_radio','gs_trail','gs_flashlight','gs_bot_record','gs_workbench','natural_disasters','fc_weapons','gs_sim')
 
 # The repository an addon lives in: setup.sh's addon_repo(), exception for exception (also
-# compared by tools/check_lists.sh). The weapons packs (zee_weapons -> zee-dot-weapons,
-# zed_weapons -> zed-dot-weapons) are the names that are not themselves with hyphens; the bare
+# compared by tools/check_lists.sh). The weapons packs (zee_weapons -> zee-gs-weapons,
+# zed_weapons -> zed-gs-weapons) are the names that are not themselves with hyphens; the bare
 # -replace this used to be would have looked for zee-weapons.
 function Get-AddonRepo([string]$name) {
     switch ($name) {
-        'zee_weapons' { return 'zee-dot-weapons' }
-        'zed_weapons' { return 'zed-dot-weapons' }
+        'zee_weapons' { return 'zee-gs-weapons' }
+        'zed_weapons' { return 'zed-gs-weapons' }
         'fc_weapons'    { return 'fc-weapons' }
-        'arena_weapons' { return 'fc-weapons' }
+        'fc_weapons' { return 'fc-weapons' }
         default       { return ($name -replace '_', '-') }
     }
 }
 
-Step "dot-* addons"
+Step "gs-* addons"
 New-Item -ItemType Directory -Force -Path 'addons' | Out-Null
 
 $missing = @()
 foreach ($name in $addons) {
     $repo   = Get-AddonRepo $name
     $source = Join-Path $Root "..\$repo\addons\$name"
-    # fc-weapons moved addons\arena_weapons to addons\fc_weapons; its tags up to v1.4.51 hold
+    # fc-weapons moved addons\fc_weapons to addons\fc_weapons; its tags up to v1.4.51 hold
     # the legacy name. The checkout decides which one is linked (setup.sh: settle_renamed_dirs).
     if ($name -eq 'fc_weapons' -and -not (Test-Path -LiteralPath $source -PathType Container)) {
-        $legacy = Join-Path $Root "..\$repo\addons\arena_weapons"
+        $legacy = Join-Path $Root "..\$repo\addons\fc_weapons"
         if (Test-Path -LiteralPath $legacy -PathType Container) {
             $ref = (& git -C (Join-Path $Root "..\$repo") describe --tags --always 2>$null)
             if (-not $ref) { $ref = '?' }
-            Warn "addons\arena_weapons is a legacy directory (deprecated): $repo at $ref still holds it; a newer tag holds addons\fc_weapons"
-            $name = 'arena_weapons'; $source = $legacy
+            Warn "addons\fc_weapons is a legacy directory (deprecated): $repo at $ref still holds it; a newer tag holds addons\fc_weapons"
+            $name = 'fc_weapons'; $source = $legacy
         }
     }
     $link   = Join-Path $Root "addons\$name"
@@ -286,7 +286,7 @@ These addon repositories are not beside this one:
 
     $($missing -join ', ')
 
-Each dot-* project is a separate repository and there is no way to clone the
+Each gs-* project is a separate repository and there is no way to clone the
 tree at once. Clone them as siblings of this directory, or vendor their
 addons\<name> folders into .\addons\.
 "@ 4
@@ -366,7 +366,7 @@ foreach ($template in (Get-ChildItem -LiteralPath $templates -Recurse -File |
     # the encoding is stated rather than inherited.
     $text = [System.IO.File]::ReadAllText($template.FullName)
 
-    if ($rel -eq 'server\addon\dot_console\rcon.yml') {
+    if ($rel -eq 'server\addon\gs_console\rcon.yml') {
         $bytes = New-Object byte[] 18
         [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
         $rcon = [Convert]::ToBase64String($bytes) -replace '[/+=]', ''
@@ -514,7 +514,7 @@ Ok "server.cmd written, forwarding to server.ps1"
 
 if ($newRcon) {
     Write-Host ""
-    Write-Host "  RCON password (printed once, it is in cfg\server\addon\dot_console\rcon.yml):" -ForegroundColor White
+    Write-Host "  RCON password (printed once, it is in cfg\server\addon\gs_console\rcon.yml):" -ForegroundColor White
     Write-Host "      $rcon"
 }
 

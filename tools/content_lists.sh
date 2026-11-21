@@ -151,7 +151,7 @@ content_addon_repos() {
 # exact addon ids (the same list as client/tmc_addon_namespaces.gd DEFAULTS, and a test keeps them equal), or an owner/ or
 # owner/repo under `namespaces:` in cfg/content/addons.yml. `gamespice-platform/<name>` is the repository `dot-<name>`.
 # Nothing is guessed: an id that does not parse or is not trusted fails, so a typo cannot install nothing quietly.
-_cl_trusted_ids="gamemann/zee-dot-weapons gamemann/zed-dot-weapons gamemann/fc-weapons gamemann/arena-weapons gamemann/natural-disasters gamemann/dot-trail gamemann/dot-radio"
+_cl_trusted_ids="gamemann/zee-gs-weapons gamemann/zed-gs-weapons gamemann/fc-weapons gamemann/fc-weapons gamemann/natural-disasters gamemann/gs-trail gamemann/gs-radio"
 
 content_server_addons() {
     local cfg="${1:-${CONFIG_DIR:-$CL_ROOT/cfg}}" file="" f entry id pin owner repo trusted ns rc=0
@@ -176,7 +176,7 @@ content_server_addons() {
             echo "$file: addons: '$id' is not from a trusted owner (first-party, the author's own addons, or one listed under namespaces: in cfg/content/addons.yml)" >&2
             rc=1; continue
         fi
-        [ "$owner" = gamespice-platform ] && repo="dot-$repo"
+        [ "$owner" = gamespice-platform ] && repo="gs-$repo"
         printf '%s\t%s\n' "$repo" "$pin"
     done < <(awk '
         /^addons:/ { v = $0; sub(/^addons:[[:space:]]*/, "", v); sub(/[[:space:]]*#.*/, "", v)

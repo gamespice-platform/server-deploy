@@ -3,17 +3,17 @@ extends RefCounted
 
 ## One line saying which GameSpice Sim modules run native (the Rust GDExtension) and which run their GDScript twins, for the server's and the shell's startup log. Both give the same results; the twins are slower, which a 32-player server with bots pays for, and nothing else says which one a process got. The native classes are reached only through ClassDB by name, and GSSim itself is loaded by path, so this compiles in a build without GameSpice Sim (the line then says so) and in a web export, where the library is never shipped.
 
-const DOT_SIM_SCRIPT := "res://addons/dot_sim/dot_sim.gd"
+const GS_SIM_SCRIPT := "res://addons/gs_sim/gs_sim.gd"
 
 
 ## "GS sim native: bots=yes motor=yes snapshot=no", or a line saying the GS sim (GameSpice Sim) is absent.
 static func line() -> String:
-	if not ResourceLoader.exists(DOT_SIM_SCRIPT):
-		return "GS sim native: no (dot-sim is not in this build)"
+	if not ResourceLoader.exists(GS_SIM_SCRIPT):
+		return "GS sim native: no (gs-sim is not in this build)"
 
-	var script := load(DOT_SIM_SCRIPT) as Script
+	var script := load(GS_SIM_SCRIPT) as Script
 	if script == null:
-		return "GS sim native: no (%s did not load)" % DOT_SIM_SCRIPT
+		return "GS sim native: no (%s did not load)" % GS_SIM_SCRIPT
 
 	var modules: Variant = script.get_script_constant_map().get("MODULES", {})
 	if not (modules is Dictionary) or (modules as Dictionary).is_empty():

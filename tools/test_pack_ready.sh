@@ -15,8 +15,8 @@ g "$X" mv addons/old_x addons/addon_x; g "$X" mv addons/addon_x/old_x_api.gd add
 echo 'const LEVEL := 3' > "$X/addons/addon_x/addon_x_api.gd"; g "$X" commit -am b; g "$X" tag v0.1.1
 echo 'const LEVEL := 5' > "$X/addons/addon_x/addon_x_api.gd"; g "$X" commit -am c
 git init -q --bare "$W/bare/addon-x.git"; g "$X" remote add origin "$W/bare/addon-x.git"; g "$X" push -q origin main --tags
-# dot-server-deploy with the lock at the pre-rename tag, and its bare origin.
-D="$W/fam/dot-server-deploy"; git init -q -b main "$D"; mkdir -p "$D/tools" "$D/content-lists"
+# gs-server-deploy with the lock at the pre-rename tag, and its bare origin.
+D="$W/fam/gs-server-deploy"; git init -q -b main "$D"; mkdir -p "$D/tools" "$D/content-lists"
 printf '# lock\naddon-x\tv0.1.0\n' > "$D/addons.lock"; printf 'entries:\n  - repo: addon-x\n    pin: v0.1.0\n' > "$D/content-lists/addons.yml"
 cp "$HERE/pack_ready.sh" "$D/tools/"; g "$D" add -A; g "$D" commit -m lock
 git init -q --bare "$W/bare/dsd.git"; g "$D" remote add origin "$W/bare/dsd.git"; g "$D" push -q origin main

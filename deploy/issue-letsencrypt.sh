@@ -301,7 +301,7 @@ install_acme_vhost() {
 
     tmp="$(mktemp)" || return 1
     {
-        printf '# Written by dot-server-deploy/deploy/issue-letsencrypt.sh.\n#\n'
+        printf '# Written by gs-server-deploy/deploy/issue-letsencrypt.sh.\n#\n'
         printf '# Answers the HTTP-01 challenge for %s. KEEP IT: the renewal\n' "$names"
         printf '# in sixty days is the same challenge over the same port.\n\n'
         printf 'server {\n'
@@ -700,7 +700,7 @@ if [ -z "$NO_HOOK" ]; then
     hook_tmp="$(mktemp)"
     {
         printf '#!/bin/sh\n'
-        printf '#\n# Written by dot-server-deploy/deploy/issue-letsencrypt.sh. Runs after a renewal.\n'
+        printf '#\n# Written by gs-server-deploy/deploy/issue-letsencrypt.sh. Runs after a renewal.\n'
         printf '#\n# Deploy hooks run for EVERY renewed lineage, so this one checks it is ours\n'
         printf '# before touching anything.\n\n'
         printf 'set -u\n'
@@ -741,7 +741,7 @@ cat <<NEXT
 
 $BLD  Done.$OFF  ${domains[*]}
 
-    Put TLS in front of a dot-server with it:
+    Put TLS in front of a gs-server with it:
 
       sudo ./deploy/install-server-tls.sh --domain $CERT_NAME \\
            --port 6065 --backend 127.0.0.1:6071 \\

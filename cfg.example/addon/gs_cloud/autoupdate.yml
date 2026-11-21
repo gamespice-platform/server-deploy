@@ -1,6 +1,6 @@
-# Server auto-update (dot-cloud): a running server checks for a newer published version of
+# Server auto-update (gs-cloud): a running server checks for a newer published version of
 # the packs it runs and restarts itself to install it. Every key is optional; the values
-# below are the defaults. Override per box in cfg/server/addons/dot_cloud/autoupdate.yml,
+# below are the defaults. Override per box in cfg/server/addons/gs_cloud/autoupdate.yml,
 # with GS_CLOUD_AUTOUPDATE_<KEY>, --autoupdate-<key>=value, or live with sv_autoupdate_* cvars.
 # The restart is exit code 75; systemd, docker compose and the panel restart on it.
 

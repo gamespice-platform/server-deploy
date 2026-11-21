@@ -10,9 +10,9 @@ const CHANNEL := "tmc.game_cover"
 ## The metadata a [GSLoadGate] looks for on an ancestor; spelled out so this file does not
 ## depend on the gate's class being present (GameSpice Core's own constant is the same string,
 ## and the suite checks they agree).
-const HOST_META := &"dot_load_gate_host"
+const HOST_META := &"gs_load_gate_host"
 ## The metadata a gate puts on its parent.
-const GATE_META := &"dot_load_gate"
+const GATE_META := &"gs_load_gate"
 
 ## Physics frames a game with no gate and no contract runs, after its camera appears, before
 ## it is shown: enough for a body spawned in the air to land and a level built that frame to

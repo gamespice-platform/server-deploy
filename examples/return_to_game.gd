@@ -77,7 +77,7 @@ func _expected_checks() -> int:
 
 
 func _run() -> void:
-	print("dot-server-deploy: returning to a game, its netcode for the client and a fresh joiner")
+	print("gs-server-deploy: returning to a game, its netcode for the client and a fresh joiner")
 
 	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://dist/tmc")):
 		print("skipped: nothing is published in dist/ here")

@@ -48,7 +48,7 @@ const BUILTIN_KINDS := ["player", "anyone", "game", "map", "item", "text"]
 ## the manager is found in the registry and spoken to by duck type, for the reason
 ## [TmcReplay] gives.
 const PUNISHMENT_WARN := 4
-const MODERATION_SERVICE := &"dot_moderation"
+const MODERATION_SERVICE := &"gs_moderation"
 
 ## The lists a step may name. A layer's `lists:` merges over these by key.
 const DEFAULT_LISTS := {

@@ -64,7 +64,7 @@ Usage: publish-web-shell.sh --zip FILE [options]
                     Refused unless the zip's shell-inputs.txt
                     matches --repo (it was exported from this lock)
   --no-push         with --pin: commit and tag, push nothing      (SHELL_NO_PUSH=1)
-  --repo DIR        dot-server-deploy checkout for --pin         (SHELL_DEPLOY_REPO,
+  --repo DIR        gs-server-deploy checkout for --pin         (SHELL_DEPLOY_REPO,
                                                                  this script's own)
   --wait-registered [SEC]
                     after the upload, poll read-only (default 300 s)  (SHELL_WAIT_REGISTERED)
@@ -324,7 +324,7 @@ if [ -f "$work/build/index-mt.wasm" ] && grep -q '"index-mt";' "$work/build/embe
 fi
 # A dlink build (GameSpice Sim native on the web) adds the engine's side module: Godot fetches it
 # at <executable>.side.wasm, so it must sit beside the shared index.wasm. Its own natives
-# (dot_sim.wasm) are fetched beside the page and go with the build below.
+# (gs_sim.wasm) are fetched beside the page and go with the build below.
 [ -f "$work/build/index.side.wasm" ] && ENGINE_FILES+=(index.side.wasm)
 engine_hash=
 if [ "$ENTRY" = embed.html ] && [ "${SHELL_SHARED_ENGINE:-1}" = 1 ] && [ "${SHELL_NO_BROTLI:-0}" != 1 ] \

@@ -1,7 +1,7 @@
 extends SceneTree
 
 ## Does a client actually FETCH, VERIFY and MOUNT a published pack over HTTP? Publishing was proven
-## by `dot_cloud_cli publish`; mounting was proven by `pack_probe.gd` with a pack already on disk.
+## by `gs_cloud_cli publish`; mounting was proven by `pack_probe.gd` with a pack already on disk.
 
 const CONTENT_CONFIG := "res://client/content.json"
 

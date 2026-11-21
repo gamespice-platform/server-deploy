@@ -6,7 +6,7 @@ extends Node
 
 const CHANNEL := "tmc.host"
 
-## Exit codes, so a supervisor can tell a misconfiguration from a crash (the set `dotserve` uses): a server that cannot find its config
+## Exit codes, so a supervisor can tell a misconfiguration from a crash (the set `gsserve` uses): a server that cannot find its config
 ## will not find it on the ninetieth attempt either, and retrying turns one clear error into a journal full of them.
 const EXIT_OK := 0
 const EXIT_USAGE := 2
@@ -466,7 +466,7 @@ func _boot() -> bool:
 	# arrive the moment the listener opens.
 	addons.advertise()
 
-	# Before boot() for a second reason, the challenge: `GSServer` answers a connecting client with the strategy it wants by asking the registry for `dot_auth_server`,
+	# Before boot() for a second reason, the challenge: `GSServer` answers a connecting client with the strategy it wants by asking the registry for `gs_auth_server`,
 	# so one registered after the listener opens was reported to every client in flight as absent.
 	if not _build_auth():
 		return false
@@ -579,7 +579,7 @@ func _build_server_node() -> bool:
 	# The operator's net_max_* as ceilings on whatever game loads: GameSpice Game's
 	# GSGameModule reads this meta before its netcode starts. The name is spelled out
 	# (it is GSGameNetcode.CEILING_META) so the host does not need GameSpice Game linked to boot.
-	server.set_meta(&"dot_net_ceiling", config.net_ceiling())
+	server.set_meta(&"gs_net_ceiling", config.net_ceiling())
 	add_child(server)
 
 	# Queries are their own addon now and only answer if a host is plugged in; `a2s_enabled: true` ships in cfg/server.yml,
@@ -648,7 +648,7 @@ func _start_listener_and_admins() -> bool:
 
 ## The backbone credential and the site listing, before the first game loads.
 func _enroll_and_report() -> void:
-	# Before the first game, because the game's identity layer needs the credential: `GSPlatformIdentity` finds `dot_backbone_client` while the module loads
+	# Before the first game, because the game's identity layer needs the credential: `GSPlatformIdentity` finds `gs_backbone_client` while the module loads
 	# and reads avatars through it; built after, every booted game kept avatars in a local file the site never sees. Reports are on the client's timer, so nothing is reported early.
 	# The credential is asked for first when there is none: an unenrolled box proves it is the server at its listed address and is issued one (see [TmcEnroll]); awaited, bounded.
 	var listing_path := "%s/listing.json" % _data_dir
@@ -685,7 +685,7 @@ func _install_services() -> void:
 	votes = TmcVote.install(self, server, config.vote, config.vote_exclude, games_rotation)
 
 	# After the listing, because that is where the backbone client is: a second client for the same token would be two rate limiters for one budget.
-	# With no token there is no client and bookings still come from the console. After the first game too: the booking chains onto `dot_ban_source`, which the game's module registers GameSpice Moderation on, and would be displaced.
+	# With no token there is no client and bookings still come from the console. After the first game too: the booking chains onto `gs_ban_source`, which the game's module registers GameSpice Moderation on, and would be displaced.
 	parties = TmcParty.install(
 		self, server, config,
 		listing.backbone if listing != null else null,
@@ -714,7 +714,7 @@ func _install_services() -> void:
 
 	# After the first game too: it watches that game's map session for per-map screens.
 	var reread := func() -> GSResult:
-		return TmcConfig.merged_file("dot-core", "loading.yml", _config_dir)
+		return TmcConfig.merged_file("gs-core", "loading.yml", _config_dir)
 
 	loading = TmcLoading.install(self, server, config.loading, reread, map_session)
 
@@ -861,7 +861,7 @@ func _publish_requires() -> void:
 var _mounted_versions: Dictionary = {}
 
 
-## Registers `sv_pack_pins`: compact JSON of content id to version for every pack this server runs at a pinned version -- the addons its lock names (`gamespice-platform/*` and their `modcommunity/dot-*` aliases)
+## Registers `sv_pack_pins`: compact JSON of content id to version for every pack this server runs at a pinned version -- the addons its lock names (`gamespice-platform/*` and their `modcommunity/gs-*` aliases)
 ## and each pack mounted from the site. The site's content-retention sweep reads it so it never deletes a map or addon version a live server is pinned to.
 ## Always registered (NOTIFY, so the query reports it); empty until something is pinned.
 func _register_pack_pins() -> void:
@@ -1199,7 +1199,7 @@ func _attach_addon_entries() -> void:
 		return
 
 	var descriptor := content.find(current.game_id)
-	var cloud := GSRegistry.get_service(&"dot_cloud_client")
+	var cloud := GSRegistry.get_service(&"gs_cloud_client")
 
 	if descriptor == null or cloud == null:
 		return
@@ -1350,7 +1350,7 @@ func _ensure_map_content(id: StringName, root: Variant = null) -> void:
 
 		return
 
-	var cloud := GSRegistry.get_service(&"dot_cloud_client")
+	var cloud := GSRegistry.get_service(&"gs_cloud_client")
 
 	if cloud == null or not cloud.has_method("ensure"):
 		return

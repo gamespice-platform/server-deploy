@@ -40,7 +40,7 @@
 #       nextmap: next
 #       vote: vote
 #
-# The roles are dot-vote's. A name another command already has logs a WARN and is skipped.
+# The roles are gs-vote's. A name another command already has logs a WARN and is skipped.
 # Players are told to type the first of server.yml's `chat_command_prefixes` before it.
 #
 # This template changes nothing until you uncomment something.

@@ -1,7 +1,7 @@
 # Godot
 .godot/
 
-# Every dot-* addon is a separate repository. setup.sh links or copies them in.
+# Every gs-* addon is a separate repository. setup.sh links or copies them in.
 /addons/
 
 # The games were VENDORED here once — copied into one game/ and one scenes/ at this
@@ -96,7 +96,7 @@ node_modules/
 /keys/
 
 # Published content packs -- manifest.json + content-addressed objects/, written by
-# `dot_cloud_cli publish`. Build output of a build: megabytes per map, regenerable
+# `gs_cloud_cli publish`. Build output of a build: megabytes per map, regenerable
 # from maps/ and the signing key, and belonging on a CDN rather than in history.
 /dist/
 

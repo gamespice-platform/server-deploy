@@ -31,8 +31,8 @@ mapfile -t REPOS < <(content_addon_repos "$ROOT/cfg" | sort -u)
 # pack that is not is its author's.
 url_of() {
     case "$1" in
-        dot-radio|dot-trail) printf 'https://github.com/zees-games/%s.git\n' "$1" ;;
-        dot-*) printf 'https://github.com/gamespice-platform/%s.git\n' "${1#dot-}" ;;
+        gs-radio|gs-trail) printf 'https://github.com/zees-games/%s.git\n' "$1" ;;
+        gs-*) printf 'https://github.com/gamespice-platform/%s.git\n' "${1#gs-}" ;;
         *)     printf 'https://github.com/zees-games/%s.git\n' "$1" ;;
     esac
 }
@@ -124,8 +124,8 @@ cmd_check() {
     for repo in "${REPOS[@]}"; do
         ref="$(awk -v r="$repo" '$1 == r { print $2 }' "$LOCK")"
         name="${repo//-/_}"
-        [ "$repo" = "zee-dot-weapons" ] && name="zee_weapons"
-        [ "$repo" = "zed-dot-weapons" ] && name="zed_weapons"
+        [ "$repo" = "zee-gs-weapons" ] && name="zee_weapons"
+        [ "$repo" = "zed-gs-weapons" ] && name="zed_weapons"
         # fc-weapons moved addons/arena_weapons to addons/fc_weapons: whichever setup.sh linked
         # (it follows the checkout's ref) is checked; the legacy one is deprecated and said so.
         if [ "$repo" = "fc-weapons" ]; then

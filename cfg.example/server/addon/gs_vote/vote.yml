@@ -12,7 +12,7 @@
 # talking to two systems at once. !rtv is about the game in front of you;
 # !game_rtv is about which game is next.
 #
-# This is dot-vote's GSVoteRules, so every setting below is documented on the
+# This is gs-vote's GSVoteRules, so every setting below is documented on the
 # property of the same name and layers the way everything else in this family
 # layers: these defaults < this file < GS_GAME_VOTE_* < --game-vote-* (see below).
 #
@@ -27,11 +27,11 @@
 # own clock and its own ballot.
 #
 # THE ENVIRONMENT AND THE COMMAND LINE use GS_GAME_VOTE_* and --game-vote-*, not
-# dot-vote's own GS_VOTE_* and --vote-*. Those belong to the MAP vote inside a game,
+# gs-vote's own GS_VOTE_* and --vote-*. Those belong to the MAP vote inside a game,
 # which runs in this same process and reads its own layers; one prefix for both would
 # make `--vote-extend-seconds 900` change two votes at once.
 #
-# docs/parity.md in dot-vote maps every setting of the long-standing community
+# docs/parity.md in gs-vote maps every setting of the long-standing community
 # map-chooser plugins onto these, if you are coming from one.
 
 enabled: true
@@ -218,7 +218,7 @@ on_no_quorum: winner_anyway
 # --- History --------------------------------------------------------------
 
 # Games excluded after being played. Deliberately small: there are five games here,
-# and a cooldown of five would exclude all of them. dot-vote clamps it against the
+# and a cooldown of five would exclude all of them. gs-vote clamps it against the
 # pool anyway, and says so in the log when it does.
 cooldown: 1
 cooldown_mode: plays
@@ -233,10 +233,10 @@ apply_delay_sec: 5
 
 # --- Sound cues -----------------------------------------------------------
 #
-# dot-audio ids for the ballot opening and closing, the countdown starting (and the
+# gs-audio ids for the ballot opening and closing, the countdown starting (and the
 # runoff one), and each second of it (%d is the second). Empty is silent.
 #
-# Sent to every playing client as a dot-server notice and played by the client
+# Sent to every playing client as a gs-server notice and played by the client
 # shell, out of its own catalogue (client/notice_overlay.gd). These four are the ids
 # it has; an id it does not have is silence, not an error, so a cue named here that
 # the players' build predates costs a sound and nothing else.

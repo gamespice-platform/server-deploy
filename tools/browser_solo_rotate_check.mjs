@@ -8,7 +8,7 @@
 //       [--loaded 'map change map:{map} to playable'] [--cmd solo_map] [--max-growth-mb 400]
 //
 // Every map is typed into the game's local console as `solo_map <id>` once the match is live (backtick opens it; FC's
-// command that runs the M menu's change, as the in-process match has no server console for dot-map's `map`). A map is loaded when the game logs --loaded (default
+// command that runs the M menu's change, as the in-process match has no server console for gs-map's `map`). A map is loaded when the game logs --loaded (default
 // "map change map:{map} to playable") after the command. After each load: the wasm heap (every WebAssembly.Memory the page made; it only grows),
 // the JS heap (CDP Performance.getMetrics) and the browser's own tally when it gives one.
 // Fails (exit 1) on an abort, an OOM, a RangeError, a wasm trap, a map that never loads, or a final wasm heap more than

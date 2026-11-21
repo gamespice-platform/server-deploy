@@ -37,8 +37,8 @@ func advertise() -> void:
 	# a property an older GSServer does not declare is a script error at boot, so the
 	# question is asked of the object rather than assumed.
 	if not ("addon_set" in host.server):
-		GSLog.info(CHANNEL, "this dot-server cannot announce addons; clients keep their own", {
-			"needs": "dot-server with GSServer.addon_set",
+		GSLog.info(CHANNEL, "this gs-server cannot announce addons; clients keep their own", {
+			"needs": "gs-server with GSServer.addon_set",
 		})
 		return
 

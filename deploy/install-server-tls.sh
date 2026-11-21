@@ -82,8 +82,8 @@ map $http_upgrade $connection_upgrade {
     ''      close;
 }
 MAP
-    sudo install -m 644 "$map_file" "$CONF_DIR/dot-websocket-upgrade.conf" \
-        || die "could not write $CONF_DIR/dot-websocket-upgrade.conf"
+    sudo install -m 644 "$map_file" "$CONF_DIR/gs-websocket-upgrade.conf" \
+        || die "could not write $CONF_DIR/gs-websocket-upgrade.conf"
     rm -f "$map_file"
     ok "installed the websocket upgrade map in $CONF_DIR"
 fi

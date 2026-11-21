@@ -1,7 +1,7 @@
 # General server settings.
 #
-# Anything dot-server exposes as a console variable can go here too, under its own
-# name -- this file is compiled to a .cfg and handed to dot-server's console, which
+# Anything gs-server exposes as a console variable can go here too, under its own
+# name -- this file is compiled to a .cfg and handed to gs-server's console, which
 # is the parser and the validator. data/from_yaml.cfg is what it became; read that
 # when a setting appears not to work.
 
@@ -90,7 +90,7 @@ sv_tickrate: 66
 # What an empty server does. 1 (the default): it idles at a low tick rate while nobody is
 # connected, and every map clock waits and starts again from the top when somebody joins. 0: it
 # keeps running, and when a map's time limit runs out on nobody it changes to a map from the
-# rotation (dot-vote's `empty_choice`, random by default; set it in a game's map_vote metadata).
+# rotation (gs-vote's `empty_choice`, random by default; set it in a game's map_vote metadata).
 # Live: `sv_hibernate_when_empty 0` wakes an empty server at once. A game always loads awake.
 # sv_hibernate_when_empty: 1
 
@@ -143,7 +143,7 @@ sv_tags: [tmc]
 
 # Server queries.
 #
-# `query_enabled` is on by dot-server's own default and answers the dot query
+# `query_enabled` is on by gs-server's own default and answers the dot query
 # protocol (DQP). `a2s_enabled` adds the twenty-year-old one beside it on the same
 # socket -- told apart by the first four bytes -- because the trackers, uptime
 # monitors and server browsers that already exist speak A2S and nothing else. TMC's
@@ -183,7 +183,7 @@ query_bind_ip: "*"
 # A game's imported maps are not in its repository -- `maps/imported/` is gitignored,
 # because 66 MB of converted geometry does not belong in a git history -- so a server
 # stood up by cloning the repositories has the game and none of its maps. They are
-# published as signed dot-cloud packs instead, and this is where it looks for them.
+# published as signed gs-cloud packs instead, and this is where it looks for them.
 #
 # `content/` and `dist/` on this box are searched FIRST and need no entry here: a pack
 # sitting beside the game, or one this server published itself with `./server pack`,
@@ -244,15 +244,15 @@ net_max_update_rate: 0
 # sv_physics_thread: 0
 
 # Physics engine: godot (default) or jolt. Read by ./server, which writes override.cfg before the engine
-# starts (the engine reads physics/3d/physics_engine once). Jolt passed the dot-player-controller, dot-physics,
-# dot-combat, game-fatal-contact and game-zombie-zone suites; see docs/operator-config.md. TMC_PHYSICS_ENGINE=jolt does the same.
+# starts (the engine reads physics/3d/physics_engine once). Jolt passed the gs-player-controller, gs-physics,
+# gs-combat, game-fatal-contact and game-zombie-zone suites; see docs/operator-config.md. TMC_PHYSICS_ENGINE=jolt does the same.
 # sv_physics_engine: godot
 
 # Addons to install and announce, by id: owner/repo or owner/repo@version (no version = addons.lock's).
 # ./setup.sh installs them; the owner must be trusted (see docs/addon-packs.md).
 # addons:
-#   - gamemann/dot-trail
-#   - gamemann/dot-radio
+#   - gamemann/gs-trail
+#   - gamemann/gs-radio
 
 # Which addons joining players are told to fetch: all (default, every installed game's) or game (the framework's
 # plus the current game's requires.json; a voted game's are announced when the vote passes). Anything else refuses

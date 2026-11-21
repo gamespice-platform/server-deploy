@@ -122,7 +122,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: the game vote in every game")
+	print("gs-server-deploy: the game vote in every game")
 
 	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://dist/tmc")):
 		print("skipped: nothing is published in dist/ here")

@@ -46,7 +46,7 @@ static func describe(raw: Variant) -> String:
 
 
 ## Puts [param bytes] on a server's cloud config before it starts and says, once, what the ceiling is and how much disk it has to fill.
-## A `cache_bytes` in the cloud config file ([param config_file], the client's) or DOT_CLOUD_CACHE_BYTES still wins (GameSpice Cloud applies those at start), and the line says so.
+## A `cache_bytes` in the cloud config file ([param config_file], the client's) or GS_CLOUD_CACHE_BYTES still wins (GameSpice Cloud applies those at start), and the line says so.
 static func apply(cloud_config: Object, bytes: int, channel: String, config_file: String = "") -> void:
 	cloud_config.cache_bytes = bytes
 
@@ -69,8 +69,8 @@ static func apply(cloud_config: Object, bytes: int, channel: String, config_file
 	if overridden != "":
 		fields["overridden_by"] = overridden
 
-	if OS.get_environment("DOT_CLOUD_CACHE_BYTES") != "":
-		fields["overridden_by"] = "DOT_CLOUD_CACHE_BYTES"
+	if OS.get_environment("GS_CLOUD_CACHE_BYTES") != "":
+		fields["overridden_by"] = "GS_CLOUD_CACHE_BYTES"
 
 	GSLog.info(channel, "content cache limit", fields)
 

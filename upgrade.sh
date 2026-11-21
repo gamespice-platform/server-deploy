@@ -13,7 +13,7 @@
 # was wrong in three separate ways once the games became delivered packs, each of which
 # cost a production evening and none of which reported an error:
 #
-#   * It pulled `../dot-*` and never `../game-*`. The games are separate clones and
+#   * It pulled `../gs-*` and never `../game-*`. The games are separate clones and
 #     setup.sh republishes a pack from each one on every run, so the documented upgrade
 #     published whatever commit those happened to be on. A stale game still declares
 #     `class_name`, and a pack whose scripts do that mounts and is DEAD -- the scene
@@ -154,7 +154,7 @@ pull_one() {
 # not. games/<repo> is a LINK to the sibling in a developer checkout, so `-d` matches
 # both names for one repository -- pull_one is given the resolved path, and pulling the
 # same checkout twice would print it twice and do nothing the second time.
-for d in "$ROOT"/addons/.repos/dot-* "$ROOT"/../dot-* \
+for d in "$ROOT"/addons/.repos/gs-* "$ROOT"/../gs-* \
          "$ROOT"/games/game-* "$ROOT"/../game-*; do
     [ -d "$d" ] && pull_one "$(cd "$d" && pwd -P)"
 done
@@ -181,7 +181,7 @@ fi
 # --- 2. This repository, and then start again ------------------------------
 
 if [ "$DRY_RUN" -eq 1 ]; then
-    printf '    %s--%s   %s (at %s)\n' "$YLW" "$OFF" "dot-server-deploy" \
+    printf '    %s--%s   %s (at %s)\n' "$YLW" "$OFF" "gs-server-deploy" \
         "$(git -C "$ROOT" rev-parse --short HEAD)"
     printf '\n  dry run: nothing was pulled, rebuilt or verified\n\n'
     exit 0
@@ -199,7 +199,7 @@ if [ "${TMC_UPGRADE_REEXEC:-0}" -ne 1 ]; then
     after="$(git -C "$ROOT" rev-parse --short HEAD)"
 
     if [ "$before" != "$after" ]; then
-        ok "dot-server-deploy $before..$after"
+        ok "gs-server-deploy $before..$after"
         # [b]Re-exec, because this script has just been rewritten under itself.[/b]
         # Everything below runs from the version that was pulled, which is also the
         # version that knows what the new setup.sh needs.
@@ -209,7 +209,7 @@ if [ "${TMC_UPGRADE_REEXEC:-0}" -ne 1 ]; then
             $([ "$CLEAN_CACHE" -eq 1 ] && echo --clean-cache)
     fi
 
-    ok "dot-server-deploy was already up to date"
+    ok "gs-server-deploy was already up to date"
 fi
 
 # --- 3. Rebuild -------------------------------------------------------------

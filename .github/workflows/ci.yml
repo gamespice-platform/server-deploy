@@ -19,10 +19,10 @@ on:
 
 jobs:
     # [b]Godot is ON, against the lock.[/b] It ran with `godot: false` -- shell syntax only --
-    # because dot-ci could not resolve a bare `/addons/`, and on 2026-10-04 a host script
-    # calling an addon API no tag had yet passed here and broke a live server. dot-ci
+    # because gs-ci could not resolve a bare `/addons/`, and on 2026-10-04 a host script
+    # calling an addon API no tag had yet passed here and broke a live server. gs-ci
     # v1.2.3 and later resolve a project with an addons.lock at its locked refs, which is what a
-    # box installs. Pinned (v1.3.12 adds dot-trail's owner) rather than @v1 because v1 is older and moving
+    # box installs. Pinned (v1.3.12 adds gs-trail's owner) rather than @v1 because v1 is older and moving
     # it moves every repository in the family.
     #
     # selftest and admin_loading_selftest only (the second needs nothing but a loopback
@@ -38,7 +38,7 @@ jobs:
             efficiency: true
             hygiene: true
         secrets:
-            DEPS_TOKEN: ${{ secrets.DOT_DEPS_TOKEN }}
+            DEPS_TOKEN: ${{ secrets.GS_DEPS_TOKEN }}
 
     # Hand-edited addons.lock bumps left the yml pins stale once; setup.sh prefers the pin.
     addon-pins:
@@ -49,7 +49,7 @@ jobs:
             - name: content-lists/addons.yml pins equal addons.lock
               run: bash tools/addons-lock.sh check-pins
 
-    # A shell carries the addons tools/shell-addons.list names (dot-* only) and no game addon:
+    # A shell carries the addons tools/shell-addons.list names (gs-* only) and no game addon:
     # fc-weapons and the other game packs reach players as overlays. Text only, no Godot.
     shell-addons:
         runs-on: ubuntu-latest
@@ -61,7 +61,7 @@ jobs:
 
     # The Godot pin is in two places: tools/fetch-godot.sh here, which is
     # authoritative because it is what the containers, the release tarballs and every
-    # developer box are built from, and dot-ci/godot.pin, which is what the family's
+    # developer box are built from, and gs-ci/godot.pin, which is what the family's
     # checks run on. CI cannot read this file before it can fetch anything, so it
     # holds a copy -- and a copy with nothing comparing it is a pin that goes stale in
     # the direction nobody notices, because moving it HERE is what makes it wrong
@@ -78,12 +78,12 @@ jobs:
                   theirs="$(curl -fsSL https://raw.githubusercontent.com/gamespice-platform/ci/v1/godot.pin \
                       | grep -oE '^GODOT_VERSION=.+$' | head -1 | cut -d= -f2-)"
                   echo "here:   $mine"
-                  echo "dot-ci: $theirs"
+                  echo "gs-ci: $theirs"
                   if [ "$mine" != "$theirs" ]; then
                       echo
-                      echo "The pin moved here and not in dot-ci, so every check in the family is"
+                      echo "The pin moved here and not in gs-ci, so every check in the family is"
                       echo "still running on $theirs while everything built from this repository"
-                      echo "is on $mine. Update dot-ci/godot.pin -- version AND the sha512, taken"
+                      echo "is on $mine. Update gs-ci/godot.pin -- version AND the sha512, taken"
                       echo "from that release's own SHA512-SUMS.txt -- and tag it."
                       exit 1
                   fi

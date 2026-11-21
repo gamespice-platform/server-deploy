@@ -39,7 +39,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: subscribed packs in solo play")
+	print("gs-server-deploy: subscribed packs in solo play")
 	GSPaths.remove_tree(WORK)
 	GSCloudAddonSet.forget()
 

@@ -3,12 +3,12 @@
 **For**: a server operator changing a setting. **Quick start**:
 
 ```bash
-mkdir -p cfg/server/addon/dot_party
-echo 'party_seat_hold_sec: 30' > cfg/server/addon/dot_party/party.yml
+mkdir -p cfg/server/addon/gs_party
+echo 'party_seat_hold_sec: 30' > cfg/server/addon/gs_party/party.yml
 ./server            # restart; data/from_yaml.cfg shows what your files became
 ```
 
-1. Find the addon's folder name (`dot-party` is `dot_party`).
+1. Find the addon's folder name (`gs-party` is `gs_party`).
 2. Put a file with only the keys you change in `cfg/server/addon/<addon>/`, or in `cfg/server/game/<game>/` for one game.
 3. Restart and read `data/from_yaml.cfg`.
 
@@ -17,7 +17,7 @@ Everything you tune lives in the `cfg/server/` folder beside your server. **Neve
 
 ## Where a setting can live
 
-Each addon (the party system, the map rotation, the vote) has a folder named after it with `-` written as `_`: `dot-party` is `dot_party`. From weakest to strongest, the first two layers are shipped with the addon and the game, and the last two are yours:
+Each addon (the party system, the map rotation, the vote) has a folder named after it with `-` written as `_`: `gs-party` is `gs_party`. From weakest to strongest, the first two layers are shipped with the addon and the game, and the last two are yours:
 
 | Layer | Folder | Who writes it |
 | --- | --- | --- |
@@ -30,9 +30,9 @@ The strongest layer wins. A flat file such as `cfg/party.yml` still works until 
 
 ## Worked examples
 
-**Change a setting.** Make a party's seats be held for 30 seconds: create `cfg/server/addon/dot_party/party.yml` containing `party_seat_hold_sec: 30`. Only the keys you write change; every other setting keeps its default.
+**Change a setting.** Make a party's seats be held for 30 seconds: create `cfg/server/addon/gs_party/party.yml` containing `party_seat_hold_sec: 30`. Only the keys you write change; every other setting keeps its default.
 
-**Replace the map list.** (The replace and `merge: true` rule for `maps.yml` is in GameSpice Core; GameSpice Map adopts it in a follow-up, until then its own file lookup applies.) A list file (a map rotation) is replaced whole by yours, which is what you want when you say "exactly these maps". Create `cfg/server/addon/dot_map/maps.yml` and list only the maps you want.
+**Replace the map list.** (The replace and `merge: true` rule for `maps.yml` is in GameSpice Core; GameSpice Map adopts it in a follow-up, until then its own file lookup applies.) A list file (a map rotation) is replaced whole by yours, which is what you want when you say "exactly these maps". Create `cfg/server/addon/gs_map/maps.yml` and list only the maps you want.
 
 **Two ways to choose the maps.** List only what plays (`maps:`), or keep every installed map and exempt some (`exempt:`). A file with only `exempt:` plays every installed map except those, sorted by name, including maps from workshop or suggested packs that arrive later. Entries are map ids, `owner/map` refs or name globs; quote one that starts with `*`. A pattern that matches nothing logs a warning. An exempt map stays installed: `map <id>` still loads it and the map list marks it "not in rotation".
 
@@ -64,7 +64,7 @@ A `maps.yml` rotation file (weights, per-map settings) still wins when it exists
 
 ## Threads and who is sent what
 
-Two groups of settings decide how much a busy server costs. All of them go in `cfg/server/server.yml` (the server's own file; restart to apply), and the first group is also live at the console and in dot-workbench's **Server threads** panel.
+Two groups of settings decide how much a busy server costs. All of them go in `cfg/server/server.yml` (the server's own file; restart to apply), and the first group is also live at the console and in gs-workbench's **Server threads** panel.
 
 ```yaml
 # threads: the count, then the opt-ins (nothing is threaded until its own switch is on)
@@ -73,8 +73,8 @@ sv_threads_net: 1          # build each player's snapshot on the workers (not on
 sv_threads_npc: 0          # NPC decisions and path searches, for brains that support it
 sv_physics_thread: 0       # physics/3d/run_on_separate_thread, read at startup (see below)
 sv_physics_engine: godot   # godot (default) or jolt: physics/3d/physics_engine, read at startup (see below)
-map_load_threads: 0       # worker threads for the CPU-only stages of a map load (0 inline, -1 automatic, never on the web; needs dot-map)
-net_native: 1              # build snapshots in dot-net's native library (same bytes; GDScript where it cannot load)
+map_load_threads: 0       # worker threads for the CPU-only stages of a map load (0 inline, -1 automatic, never on the web; needs gs-map)
+net_native: 1              # build snapshots in gs-net's native library (same bytes; GDScript where it cannot load)
 net_native_interest: 1     # with net_native, also pick each player's relevant entities natively (GDScript for a strategy it cannot port)
 
 # relevance: what a player is sent
@@ -83,14 +83,14 @@ net_far_every: 4           # anything farther than net_far_distance is sent in o
 net_far_distance: 60       # metres; 0 is never far
 ```
 
-`sv_physics_thread` (off) is read by `./server`, not the game: before the engine starts it writes `override.cfg` beside `project.godot` with `physics/3d/run_on_separate_thread=true` (the engine reads that setting once, so a cvar could not carry it), and `TMC_PHYSICS_THREAD=1` does the same when no cfg file sets the key. A measured server gains nothing from it (the tick that queries the space waits for the step), and with it on a ray or shape query is safe only inside the physics step (dot-physics `docs/threading.md`); leave it off unless a game's notes say otherwise. Only an `override.cfg` that `./server` wrote (its first line names `TMC_PHYSICS_THREAD`) is rewritten or removed; one you wrote yourself is left alone and the setting warns and is ignored. 
+`sv_physics_thread` (off) is read by `./server`, not the game: before the engine starts it writes `override.cfg` beside `project.godot` with `physics/3d/run_on_separate_thread=true` (the engine reads that setting once, so a cvar could not carry it), and `TMC_PHYSICS_THREAD=1` does the same when no cfg file sets the key. A measured server gains nothing from it (the tick that queries the space waits for the step), and with it on a ray or shape query is safe only inside the physics step (gs-physics `docs/threading.md`); leave it off unless a game's notes say otherwise. Only an `override.cfg` that `./server` wrote (its first line names `TMC_PHYSICS_THREAD`) is rewritten or removed; one you wrote yourself is left alone and the setting warns and is ignored. 
 
 `sv_physics_engine` (godot) works the same way: `jolt` writes `physics/3d/physics_engine="JoltPhysics3D"` into the same `override.cfg` (`TMC_PHYSICS_ENGINE=jolt` also works). Jolt is opt-in: the shared motor, physics, combat, FC and Zombie Zone suites pass under it, but TMC's own servers stay on the default until a measured run on the target game says otherwise. Both lines can be on together.
 
 `net_interest_radius` is a ceiling on the game's own radius (the smaller wins; 0 means no limit from you). `net_far_every` and `net_far_distance` replace the game's values when written. `sv_threads_npc` (off) is read by Zombie Zone, which runs its horde's path searches on worker threads; it stays off on the web, without threads and on one CPU. Zombie Zone's `zz_net_far_every` and `zz_net_far_distance` are the same two settings under the game's own names and keep working; where a game sets its own, the game's wins.
 
-Where the files live: the server's own settings are `cfg/server/server.yml`; an addon's are `cfg/server/addon/<addon>/<file>.yml` (singular `addon`, the folder is the addon name with `-` as `_`) and one game's `cfg/server/game/<game>/`. The workbench's Save for the thread cvars writes `cfg/server/addon/dot_server/threads/server.yml` and applies it at the next start. `cfg/server/addons/` (plural) and `cfg/addons/` are the old layout: read, with a warning, and not documented anywhere else. A name the server does not know is listed at boot as `unrecognised setting`, with the nearest known names (`did you mean net_interest_radius?`).
+Where the files live: the server's own settings are `cfg/server/server.yml`; an addon's are `cfg/server/addon/<addon>/<file>.yml` (singular `addon`, the folder is the addon name with `-` as `_`) and one game's `cfg/server/game/<game>/`. The workbench's Save for the thread cvars writes `cfg/server/addon/gs_server/threads/server.yml` and applies it at the next start. `cfg/server/addons/` (plural) and `cfg/addons/` are the old layout: read, with a warning, and not documented anywhere else. A name the server does not know is listed at boot as `unrecognised setting`, with the nearest known names (`did you mean net_interest_radius?`).
 
 ## Which layer won, and what loaded
 
-Read `data/from_yaml.cfg`, written on every boot: it is exactly what your files became. A key the server does not know is listed at boot as unknown and never stops the server. Developers: [dot-core's addon-config.md](../../dot-core/docs/addon-config.md).
+Read `data/from_yaml.cfg`, written on every boot: it is exactly what your files became. A key the server does not know is listed at boot as unknown and never stops the server. Developers: [gs-core's addon-config.md](../../gs-core/docs/addon-config.md).

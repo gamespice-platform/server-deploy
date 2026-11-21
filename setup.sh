@@ -106,7 +106,7 @@ cd "$ROOT" || exit 1
 # /var/log/pterodactyl/install/<uuid>.log only when the container exits, so the one file
 # anybody would look in does not exist yet either.
 #
-# Found exactly that way: `modcommunity/zee-dot-weapons` does not exist -- the pack lives
+# Found exactly that way: `modcommunity/zee-gs-weapons` does not exist -- the pack lives
 # under another owner and `repo_url` did not say so -- and a fresh install hung on the
 # invisible prompt for it.
 #
@@ -183,9 +183,9 @@ VENDOR=0
 # clone shared by all of them with nothing saying so.
 #
 # A directory named here is used instead, and may be either shape: a directory OF
-# addons (`DIR/dot_core`, which is what somebody's hand-kept library or another Godot
+# addons (`DIR/gs_core`, which is what somebody's hand-kept library or another Godot
 # project's addons/ looks like) or a directory of the REPOSITORIES
-# (`DIR/dot-core/addons/dot_core`, which is what dot-bootstrap and a developer checkout
+# (`DIR/gs-core/addons/gs_core`, which is what gs-bootstrap and a developer checkout
 # look like). Found there, it is linked; not found there, it is cloned there. That is
 # the point of a shared directory: `--addons-dir ..` is exactly what this script used
 # to do, and one directory serves every server on the box.
@@ -429,7 +429,7 @@ game_tickrate() {
     done
     case "$g" in
         fatalcontact|arena) printf 66 ;;
-        airdrift|g2gfast|playlot|playground) printf 128 ;;  # g2gfast: legacy id (a server still configured under it)
+        airdrift|airdrift|playlot|playground) printf 128 ;;  # airdrift: legacy id (a server still configured under it)
         *)                 printf 60 ;;
     esac
 }
@@ -719,7 +719,7 @@ if [ "$DO_FULL" -eq 1 ]; then
         if command -v systemctl >/dev/null 2>&1; then
             if ask_yn "Install a systemd service, so it starts on boot?" y; then
                 FULL_SYSTEMD=1
-                FULL_UNIT="$(ask "Unit name" "dot-server")"
+                FULL_UNIT="$(ask "Unit name" "gs-server")"
                 FULL_RUN_USER="$(ask "Run the server as" "$(stat -c '%U' "$ROOT" 2>/dev/null || echo root)")"
                 id "$FULL_RUN_USER" >/dev/null 2>&1 || die "no such user: $FULL_RUN_USER" 2
             fi
@@ -865,7 +865,7 @@ fi
 
 # --- Cloning the siblings --------------------------------------------------
 #
-# [b]Every dot-* project is its own repository and there is no way to clone the tree at
+# [b]Every gs-* project is its own repository and there is no way to clone the tree at
 # once.[/b] That is a deliberate shape -- an addon is installable on its own -- and it
 # means a fresh machine that has cloned only THIS repository is fifty clones away from a
 # build. The message that used to end the run listed all fifty names and offered no way
@@ -876,7 +876,7 @@ fi
 # are already named by repository. A second list is this tree's most repeated bug; there
 # is not one here.
 #
-# HTTPS, not SSH. `dot-bootstrap` defaults to `git@github.com:` because it runs on a
+# HTTPS, not SSH. `gs-bootstrap` defaults to `git@github.com:` because it runs on a
 # developer's machine with a key loaded; the machine this flag is for is a fresh server
 # where that is the one thing not configured. These repositories are public, so HTTPS
 # needs no credential at all.
@@ -901,13 +901,13 @@ GIT_BASE="${TMC_GIT_BASE:-$GIT_BASE_DEFAULT}"
 ## would not look for a typo in an account name.
 ##
 ## [b]A RULE, not a table of exceptions.[/b] It used to be three names -- the two `mg-`
-## games and `zee-dot-weapons` -- and the third of those was missing, which is how a fresh
+## games and `zee-gs-weapons` -- and the third of those was missing, which is how a fresh
 ## install came to hang on a credential prompt for a repository that does not exist. Then
 ## every `game-*` moved as well, and a table would have grown to eight entries, each of
 ## them a fact nobody would think to check.
 ##
 ## The split is the one the family actually has: **the addons are the organisation's and
-## the games are their author's.** So a name that begins with `dot-` comes from
+## the games are their author's.** So a name that begins with `gs-` comes from
 ## `$GIT_BASE` and anything else comes from the games owner -- which means a game added
 ## tomorrow needs no edit here at all, and neither does a game deleted.
 ##
@@ -932,14 +932,14 @@ repo_url() {
         case "$repo" in
             # The addons, and this project. Falls through to $GIT_BASE below.
             # An addon that is the author's own, not the organisation's.
-            dot-radio|dot-trail) printf '%s/%s.git\n' "$GAMES_GIT_BASE" "$repo"; return ;;
-            dot-*) printf '%s/%s.git\n' "$GIT_BASE" "${repo#dot-}"; return ;;
+            gs-radio|gs-trail) printf '%s/%s.git\n' "$GAMES_GIT_BASE" "$repo"; return ;;
+            gs-*) printf '%s/%s.git\n' "$GIT_BASE" "${repo#gs-}"; return ;;
             # Renamed on GitHub while the directory (and the pack id) kept the old
             # name; GitHub redirects the old URL, but a redirect is not a contract.
             mg-deathrun)  printf '%s/game-deathrun.git\n' "$GAMES_GIT_BASE"; return ;;
             mg-prop-hunt) printf '%s/game-prop-hunt.git\n' "$GAMES_GIT_BASE"; return ;;
             # Everything else is a game: game-*, mg-*, and the weapons pack, which
-            # `addon_source` derives into `zee-dot-weapons` before it reaches here.
+            # `addon_source` derives into `zee-gs-weapons` before it reaches here.
             *)  printf '%s/%s.git\n' "$GAMES_GIT_BASE" "$repo"; return ;;
         esac
     fi
@@ -958,7 +958,7 @@ repo_url() {
 ## [b]Each addon is its own clone, and `git pull` here pulls only this one.[/b] That is
 ## the shape of the family -- fifty-odd repositories, installable separately -- and on a
 ## server it is a trap: an operator pulls the deploy repo, re-runs setup, and is still
-## running last week's dot-cloud, because nothing told them the fix was in a sibling.
+## running last week's gs-cloud, because nothing told them the fix was in a sibling.
 ## The symptom is a bug that is fixed upstream, fixed in the tree they pulled, and still
 ## happening, with a stack trace whose line numbers no longer match any file they can
 ## see. It cost a real afternoon.
@@ -990,7 +990,7 @@ ADDONS_LOCK="$ROOT/addons.lock"
 lock_ref() {
     [ "${TMC_ADDONS_LOCK:-on}" != "off" ] || return 1
     local pin a p2
-    # Either name of a renamed repository finds its pin (fc-weapons was arena-weapons).
+    # Either name of a renamed repository finds its pin (fc-weapons was fc-weapons).
     a="$(repo_alias "$1")" || a="$1"
     pin="$(content_list addons "$ROOT/cfg" 2>/dev/null | awk -F'\t' -v r="$1" -v a="$a" '($2 == r || $2 == a) && $3 != "" { print $3; exit }')"
     # An `addons:` entry in server.yml that names a version is the operator's word over the shipped list and the lock.
@@ -1111,7 +1111,7 @@ clone_repos() {
 
     # [b]Shallow by default.[/b] This path exists to stand a SERVER up: fifty repositories
     # of history is bandwidth and disk nobody on that box will ever read, and it is most
-    # of what the clone costs. `dot-bootstrap` is the developer tool and clones in full.
+    # of what the clone costs. `gs-bootstrap` is the developer tool and clones in full.
     # TMC_GIT_DEPTH=0 turns this off; `git fetch --unshallow` fixes one after the fact.
     local depth=()
     [ "${TMC_GIT_DEPTH:-1}" = "0" ] || depth=(--depth "${TMC_GIT_DEPTH:-1}")
@@ -1478,7 +1478,7 @@ fi
 # name:repository. The repository is the name with underscores turned into hyphens,
 # which holds for every one of them and is asserted rather than assumed below.
 
-# dot_stats is here because hungry's module declares its statistics through
+# gs_stats is here because hungry's module declares its statistics through
 # GSStatsSchema. It was missing, and could not be noticed: the vendored copy of
 # hungry predated that code by nine days, and the guard against a stale copy --
 # tools/check.sh -- named the game repositories by their OLD names too, so it reported
@@ -1501,24 +1501,24 @@ fi
 ADDONS_ALL=()
 while IFS= read -r _repo; do
     case "$_repo" in
-        zee-dot-weapons) ADDONS_ALL+=(zee_weapons) ;;
-        zed-dot-weapons) ADDONS_ALL+=(zed_weapons) ;;
+        zee-gs-weapons) ADDONS_ALL+=(zee_weapons) ;;
+        zed-gs-weapons) ADDONS_ALL+=(zed_weapons) ;;
         # fc_weapons, or the legacy arena_weapons where the locked ref still holds it: settle_renamed_dirs.
-        fc-weapons|arena-weapons) ADDONS_ALL+=(fc_weapons) ;;
+        fc-weapons) ADDONS_ALL+=(fc_weapons) ;;
         *)               ADDONS_ALL+=("${_repo//-/_}") ;;
     esac
 done < <(content_addon_repos "$ROOT/cfg") || die "cfg/content/addons.yml: could not be read" 5
 [ ${#ADDONS_ALL[@]} -gt 0 ] || die "cfg/content/addons.yml names no addons" 5
-# server.yml's `addons:` list adds to those (gamemann/dot-trail, gamemann/dot-radio@v0.1.5); a bad or untrusted id stops here, loudly.
+# server.yml's `addons:` list adds to those (gamemann/gs-trail, gamemann/gs-radio@v0.1.5); a bad or untrusted id stops here, loudly.
 SERVER_ADDON_PINS=""
 SERVER_ADDON_DIRS=()
 _sa_out="$(content_server_addons "$ROOT/cfg")" || die "cfg/server/server.yml: addons: has an entry that cannot be installed (above)" 5
 while IFS=$'\t' read -r _repo _pin; do
     [ -n "$_repo" ] || continue
     case "$_repo" in
-        zee-dot-weapons) _dir=zee_weapons ;;
-        zed-dot-weapons) _dir=zed_weapons ;;
-        fc-weapons|arena-weapons) _dir=arena_weapons ;;
+        zee-gs-weapons) _dir=zee_weapons ;;
+        zed-gs-weapons) _dir=zed_weapons ;;
+        fc-weapons) _dir=arena_weapons ;;
         *) _dir="${_repo//-/_}" ;;
     esac
     case " ${ADDONS_ALL[*]} " in *" $_dir "*) ;; *) ADDONS_ALL+=("$_dir") ;; esac
@@ -1531,7 +1531,7 @@ done <<< "$_sa_out"
 # Every one of these was found the way you would check it: every `GS*` identifier in
 # this project's own .gd and .tscn files, mapped to the addon whose `class_name`
 # declares it. Eleven, of which nine are also declared by at least one game and two --
-# dot_log and dot_server_security -- are named by nothing but the server shell, which is
+# gs_log and gs_server_security -- are named by nothing but the server shell, which is
 # exactly why a list derived from the games alone would be short by two and would fail at
 # the import rather than at runtime.
 #
@@ -1541,17 +1541,17 @@ done <<< "$_sa_out"
 # failure this whole file is otherwise arranged to avoid, and it is the reason the
 # derivation below is safe to do at all.
 #
-# dot_party, dot_matchmaking and dot_locale joined on 2026-09-23 and are the same case as
-# dot_log: named by host/tmc_party.gd and client/shell.gd and by no game, so a list
-# derived from the games would be short by all three. dot_chat is here for the same
+# gs_party, gs_matchmaking and gs_locale joined on 2026-09-23 and are the same case as
+# gs_log: named by host/tmc_party.gd and client/shell.gd and by no game, so a list
+# derived from the games would be short by all three. gs_chat is here for the same
 # reason -- every game declares it, but the host names GSChatChannel itself now.
 #
-# dot_replay and dot_friends joined on 2026-09-25, the same case again: host/tmc_replay.gd
+# gs_replay and gs_friends joined on 2026-09-25, the same case again: host/tmc_replay.gd
 # builds the replay ring for every game and client/tmc_friends.gd the friends client, and
 # no game names either.
-ADDONS_SHELL=(dot_core dot_log dot_net dot_server dot_server_query dot_server_security
-              dot_auth dot_cloud dot_map dot_input dot_ui dot_vote dot_chat
-              dot_party dot_matchmaking dot_locale dot_replay dot_save dot_friends)
+ADDONS_SHELL=(gs_core gs_log gs_net gs_server gs_server_query gs_server_security
+              gs_auth gs_cloud gs_map gs_input gs_ui gs_vote gs_chat
+              gs_party gs_matchmaking gs_locale gs_replay gs_save gs_friends)
 
 ## The addons one game declares, out of the game's OWN .gitignore.
 ##
@@ -1571,7 +1571,7 @@ game_declared_addons() {
     printf '%s\n' "$found"
 }
 
-step "dot-* addons"
+step "gs-* addons"
 mkdir -p addons
 
 # [b]Only the addons the games being built actually need.[/b] `--only-games buses` wants
@@ -1675,14 +1675,14 @@ ADDONS_CLONE_DEST="${ADDONS_DIR:-$ADDONS_REPOS}"
 ## addons in the abstract, so a vendored tree with no network fetches nothing.
 ## The repository an addon lives in.
 ##
-## The addon name with its underscores turned into hyphens, for all fifty-three `dot_*`
-## addons -- and `zee_weapons` -> `zee-dot-weapons` for the one that is not one of them: a
+## The addon name with its underscores turned into hyphens, for all fifty-three `gs_*`
+## addons -- and `zee_weapons` -> `zee-gs-weapons` for the one that is not one of them: a
 ## third-party pack that sits on top of the family and took its own prefix so it could
 ## never collide with a `GS*` global.
 ##
 ## [b]A function because this was derived in two places and they disagreed.[/b]
 ## `addon_source` knew about the exception and `resolve_addons` did not, so this machine
-## looked for `zee-dot-weapons` on disk, failed to find it, and then tried to clone
+## looked for `zee-gs-weapons` on disk, failed to find it, and then tried to clone
 ## `zee-weapons` -- a repository that exists under no owner at all. The install died with
 ## "could not clone: zee-weapons", naming a repository nobody has ever had, and no amount
 ## of checking the owner would have found it because the owner was never the problem.
@@ -1691,8 +1691,8 @@ ADDONS_CLONE_DEST="${ADDONS_DIR:-$ADDONS_REPOS}"
 ## twice. Everything that needs the repository name asks here.
 addon_repo() {
     case "$1" in
-        zee_weapons) printf 'zee-dot-weapons\n' ;;
-        zed_weapons) printf 'zed-dot-weapons\n' ;;
+        zee_weapons) printf 'zee-gs-weapons\n' ;;
+        zed_weapons) printf 'zed-gs-weapons\n' ;;
         fc_weapons)    printf 'fc-weapons\n' ;;
         arena_weapons) printf 'fc-weapons\n' ;;
         *)           printf '%s\n' "${1//_/-}" ;;
@@ -1703,8 +1703,8 @@ addon_repo() {
 ## server's existing clone under addons/.repos/, may still use the old one.
 repo_alias() {
     case "$1" in
-        fc-weapons)    printf 'arena-weapons\n' ;;
-        arena-weapons) printf 'fc-weapons\n' ;;
+        fc-weapons)    printf 'fc-weapons\n' ;;
+        fc-weapons) printf 'fc-weapons\n' ;;
         *) return 1 ;;
     esac
 }
@@ -1848,7 +1848,7 @@ resolve_addons() {
     for name in "${ADDONS[@]}"; do
         # The same derivation addon_source uses, because it IS addon_source's: this line
         # used to spell it out again and was the half that did not know about
-        # zee-dot-weapons.
+        # zee-gs-weapons.
         repo="$(addon_repo "$name")"
         link="addons/$name"
 
@@ -1899,16 +1899,16 @@ if [ ${#MISSING[@]} -gt 0 ]; then
 
         ${MISSING[*]}
 
-    Each dot-* project is a separate repository and there is no way to clone the
+    Each gs-* project is a separate repository and there is no way to clone the
     tree at once.
 
     They are normally cloned for you into ./addons/.repos/, from $GIT_BASE
     over HTTPS; this run could not, or --no-clone was given.
 
     --addons-dir DIR takes them from a directory you already have them in -- either
-    a directory of addons (DIR/dot_core) or a directory of the repositories
-    (DIR/dot-core/addons/dot_core) -- and links them from there. --addons-dir .. is
-    a developer checkout, which is what dot-bootstrap makes.
+    a directory of addons (DIR/gs_core) or a directory of the repositories
+    (DIR/gs-core/addons/gs_core) -- and links them from there. --addons-dir .. is
+    a developer checkout, which is what gs-bootstrap makes.
 
     Or vendor their addons/<name> folders into ./addons/, which is what a release
     tarball looks like." 4
@@ -2042,7 +2042,7 @@ fi
 # the import registers them as globals, and then a DELIVERED game's scripts resolve the
 # same names to the host's stale copy rather than to their own:
 #
-#     Parse Error: Value of type "res://dot_cloud/airdrift/0.1.0/game/g2g_identity.gd"
+#     Parse Error: Value of type "res://gs_cloud/airdrift/0.1.0/game/g2g_identity.gd"
 #     cannot be assigned to a variable of type "G2GIdentity".
 #     Parse Error: argument 1 should be "G2GCamera.Mode" but is "g2g_camera.gd.Mode".
 #
@@ -2104,7 +2104,7 @@ fi
 # the game, and looks healthy; what fails is the pack:
 #
 #     SCRIPT ERROR: Parse Error: Could not find type "GSTimerRun" in the current scope.
-#     ERROR: Failed to load script "res://dot_cloud/airdrift/0.1.0/game/g2g_game.gd"
+#     ERROR: Failed to load script "res://gs_cloud/airdrift/0.1.0/game/g2g_game.gd"
 #            with error "Parse error".
 #
 # and three layers up that surfaces as "No G2GGame is registered", a game with no map
@@ -2231,7 +2231,7 @@ step "publishing games"
 if { [ "${PUBLISHED_GAMES:-0}" -ne 1 ] || [ "${NO_GAMES_FLAG:-0}" -eq 1 ]; } && [ ! -f "$ROOT/keys/content.key" ]; then
     mkdir -p "$ROOT/keys"
     "$GODOT" --headless --path "$ROOT" \
-        --script res://addons/dot_cloud/publish/dot_cloud_cli.gd -- \
+        --script res://addons/gs_cloud/publish/gs_cloud_cli.gd -- \
         keygen --private keys/content.key --public keys/content.pub >/dev/null 2>&1 \
         || die "could not generate a content signing key" 4
     chmod 600 "$ROOT/keys/content.key"
@@ -2401,14 +2401,14 @@ while IFS= read -r template; do
     esac
     mkdir -p "$(dirname "$target")"
 
-    if [ "$rel" = "server/addon/dot_console/rcon.yml" ]; then
+    if [ "$rel" = "server/addon/gs_console/rcon.yml" ]; then
         RCON_PASSWORD="$(head -c 24 /dev/urandom | base64 | tr -d '/+=' | head -c 24)"
         # The password goes into a file that is never tracked and never overwritten by an update.
         sed "s|^rcon_password: \"\"|rcon_password: \"$RCON_PASSWORD\"|" "$template" > "$target"
         NEW_RCON=1
     else
         cat "$template" > "$target"
-        [ "$rel" = "server/addon/dot_vote/vote.yml" ] && NEW_VOTE=1
+        [ "$rel" = "server/addon/gs_vote/vote.yml" ] && NEW_VOTE=1
     fi
 
     printf '    %s+%s    %s\n' "$GRN" "$OFF" "$target"
@@ -2416,7 +2416,7 @@ done < <(find cfg.example -type f \( -name '*.yml' -o -name '*.md' \) | sort)
 [ -d cfg/addons ] && printf '    %s!%s    cfg/addons/ is the old layout; run ./server cfg-migrate (edits belong in cfg/server/addon/)\n' "$YLW" "$OFF"
 
 # The vote file an exclusion goes into: the flat one while an older box still has it.
-VOTE_YML=cfg/server/addon/dot_vote/vote.yml
+VOTE_YML=cfg/server/addon/gs_vote/vote.yml
 [ -f cfg/vote.yml ] && VOTE_YML=cfg/vote.yml
 
 # [b]A game this build did not publish must not be OFFERED, and that is not the same
@@ -2428,7 +2428,7 @@ VOTE_YML=cfg/server/addon/dot_vote/vote.yml
 # deliberately does not have:
 #
 #     SCRIPT ERROR: Parse Error: Could not find type "GSLoadoutManager" in the
-#     current scope.  at: res://dot_cloud/arena/0.1.0/game/arena_game.gd:144
+#     current scope.  at: res://gs_cloud/arena/0.1.0/game/arena_game.gd:144
 #
 # and that is the whole game, broken, with the boot check still exiting 0 -- a script
 # error inside a mount aborts the mount, not the run. So the exclusion is part of
@@ -2930,7 +2930,7 @@ fi
 # --- Done ------------------------------------------------------------------
 
 if [ "${NEW_RCON:-0}" -eq 1 ]; then
-    printf '\n%s  RCON password (printed once, it is in cfg/server/addon/dot_console/rcon.yml):%s\n' "$BLD" "$OFF"
+    printf '\n%s  RCON password (printed once, it is in cfg/server/addon/gs_console/rcon.yml):%s\n' "$BLD" "$OFF"
     printf '      %s\n' "$RCON_PASSWORD"
 fi
 

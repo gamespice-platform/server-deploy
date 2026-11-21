@@ -108,7 +108,7 @@ jobs:
             - name: Set up at the lock
               if: steps.need.outputs.build == 'true'
               env:
-                  DEPS_TOKEN: ${{ secrets.DOT_DEPS_TOKEN }}
+                  DEPS_TOKEN: ${{ secrets.GS_DEPS_TOKEN }}
                   GIT_TERMINAL_PROMPT: '0'
               run: |
                   set -euo pipefail

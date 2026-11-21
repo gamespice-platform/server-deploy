@@ -21,14 +21,14 @@ func _run() -> void:
 	cloud.config.parallel_downloads = 3
 	cloud.config_file = CONTENT_CONFIG
 	# Objects sit under the pack's versioned directory; the second base is that directory.
-	cloud.http_base_urls = PackedStringArray([base, "%s/modcommunity/dot-audio/%s" % [base, version]])
+	cloud.http_base_urls = PackedStringArray([base, "%s/modcommunity/gs-audio/%s" % [base, version]])
 	cloud.manifest_url_template = "{base}/{id}/{version}/manifest.json"
 	cloud.manifest_url_fallbacks = PackedStringArray(["{base}/{id}/manifest.json"])
 	add_child(cloud)
 
 	var set := GSCloudAddonSet.new(cloud)
 	set.namespaces = PackedStringArray(["modcommunity/"])
-	var decided := set.plan_for([{"dir": "dot_audio", "repo": "dot-audio", "id": "modcommunity/dot-audio", "version": version}])
+	var decided := set.plan_for([{"dir": "gs_audio", "repo": "gs-audio", "id": "modcommunity/gs-audio", "version": version}])
 	var wanted: Dictionary = decided["wanted"]
 	print("BUILD wanted=", wanted.keys(), " refused=", decided["refused"])
 	if wanted.is_empty():

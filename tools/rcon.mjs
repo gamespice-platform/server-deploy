@@ -69,7 +69,7 @@ for (let i = 0; i < argv.length; i++) {
 if (words.length === 0) usage();
 const command = words.join(' ');
 
-// A one-key read, not a YAML parser. dot-serve makes the same choice for the same
+// A one-key read, not a YAML parser. gs-serve makes the same choice for the same
 // reason: a second parser here would drift from the one the server actually uses.
 function readCfg(file, key) {
   try {
@@ -79,13 +79,13 @@ function readCfg(file, key) {
   } catch { return ''; }
 }
 
-const rconFile = [path.join(configDir, 'server', 'addons', 'dot_console', 'rcon.yml'), path.join(configDir, 'addons', 'dot_console', 'rcon.yml'), path.join(configDir, 'rcon.yml')]
+const rconFile = [path.join(configDir, 'server', 'addons', 'gs_console', 'rcon.yml'), path.join(configDir, 'addons', 'gs_console', 'rcon.yml'), path.join(configDir, 'rcon.yml')]
   .find((f) => fs.existsSync(f)) || path.join(configDir, 'rcon.yml');
 const password = process.env.TMC_RCON_PASSWORD
   || readCfg(rconFile, 'rcon_password');
 
 if (!password) {
-  console.error(`no RCON password in ${configDir}/addons/dot_console/rcon.yml and TMC_RCON_PASSWORD is unset`);
+  console.error(`no RCON password in ${configDir}/addons/gs_console/rcon.yml and TMC_RCON_PASSWORD is unset`);
   console.error('an empty password means the RCON listener does not open at all');
   process.exit(5);
 }
@@ -150,7 +150,7 @@ socket.on('data', (chunk) => {
     }
 
     output.push(body);
-    // dot-server answers one command with one packet, so the first reply after auth
+    // gs-server answers one command with one packet, so the first reply after auth
     // is the whole of it. Closing here rather than waiting for a timeout is what
     // makes this usable in a script.
     socket.end();

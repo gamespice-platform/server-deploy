@@ -5,7 +5,7 @@
 #
 # Game packs carry no addons, so a game runs on the addon code compiled into the shell
 # its server pins. A lock bump released without a new shell made every game built on it
-# "needs dot-combat API level 5 or newer; this client has level 4" at Play (2026-10-20).
+# "needs gs-combat API level 5 or newer; this client has level 4" at Play (2026-10-20).
 #
 # [b]No loops.[/b] The job first compares tools/shell-inputs.sh's fingerprint of main with
 # web/shell-build.inputs and does nothing when they agree. The pin commit changes only
@@ -79,7 +79,7 @@ jobs:
                       echo "build=false" >> "$GITHUB_OUTPUT"
                       # [b]But is it released?[/b] A pin that reached main without its tag
                       # (an earlier run that died between push and dispatch, a hand push)
-                      # is a shell no release names, so dot-ci's server-compat and every
+                      # is a shell no release names, so gs-ci's server-compat and every
                       # game release still see the previous one. No v* tag at or after the
                       # pin commit: tag main (its record matches, so release.yml's gate
                       # passes) and release it.
@@ -141,7 +141,7 @@ jobs:
             - name: Set up at the lock
               if: steps.need.outputs.build == 'true'
               env:
-                  DEPS_TOKEN: ${{ secrets.DOT_DEPS_TOKEN }}
+                  DEPS_TOKEN: ${{ secrets.GS_DEPS_TOKEN }}
                   GIT_TERMINAL_PROMPT: '0'
               run: |
                   set -euo pipefail

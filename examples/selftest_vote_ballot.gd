@@ -28,7 +28,7 @@ func add_child(node: Node) -> void:
 	t.add_child(node)
 
 
-## `end_vote`, `include_extend` and `extend_seconds` through `DOT_GAME_VOTE_*` and `--game-vote-*`,
+## `end_vote`, `include_extend` and `extend_seconds` through `GS_GAME_VOTE_*` and `--game-vote-*`,
 ## each in a child process, change what the server vote's ballot does. `_test_vote` checks one of
 ## the six as a parsed value; this asks the ballot.
 func _test_vote_layers_reach_a_ballot() -> void:
@@ -73,12 +73,12 @@ func _test_vote_layers_reach_a_ballot() -> void:
 	for case: Array in cases:
 		var key: String = case[0]
 
-		for layer in ["DOT_GAME_VOTE_*", "--game-vote-*"]:
+		for layer in ["GS_GAME_VOTE_*", "--game-vote-*"]:
 			var extra := PackedStringArray()
 			var env := {}
 
-			if layer == "DOT_GAME_VOTE_*":
-				env["DOT_GAME_VOTE_" + key.to_upper()] = case[1]
+			if layer == "GS_GAME_VOTE_*":
+				env["GS_GAME_VOTE_" + key.to_upper()] = case[1]
 			else:
 				extra.append("--game-vote-%s=%s" % [key, case[1]])
 

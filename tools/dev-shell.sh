@@ -12,7 +12,7 @@
 # --no-install is still accepted and does nothing.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-backbone=https://tmcdev.net publish=1 key=${DEV_PACK_KEY:-$HOME/.config/dot/pack-dev.pub}
+backbone=https://tmcdev.net publish=1 key=${DEV_PACK_KEY:-$HOME/.config/gs/pack-dev.pub}
 while [ $# -gt 0 ]; do
     case $1 in
         --backbone) backbone=${2:?--backbone needs a URL}; shift 2 ;;

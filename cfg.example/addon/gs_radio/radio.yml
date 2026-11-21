@@ -1,7 +1,7 @@
 # The radio: one shared station. You upload MP3 or OGG tracks; every player who presses the
 # radio key (F8 by default) hears the same track, at the same moment.
 #
-# Needs the dot-radio addon: add `- repo: dot-radio` to cfg/content/addons.yml, run setup, restart.
+# Needs the gs-radio addon: add `- repo: gs-radio` to cfg/content/addons.yml, run setup, restart.
 # Off until radio_enabled is true. You provide the tracks and are responsible for having the
 # rights to broadcast them; the addon ships no audio.
 #

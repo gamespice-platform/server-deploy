@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Proves a site-published GameSpice Audio pack works as a shell overlay: a build with a GameSpice Audio older than the stock-sound
-# work (392f118~1, no GSAudioSinkGodot.stream_at) takes modcommunity/dot-audio from the content origin, restarts onto
+# work (392f118~1, no GSAudioSinkGodot.stream_at) takes modcommunity/gs-audio from the content origin, restarts onto
 # it, and plays a stock footstep and bed. The control start without the overlay must NOT have stream_at.
 #   heavy -- tools/audio_overlay_proof.sh [--content-url URL] [--version 0.1.14]
 set -euo pipefail
@@ -17,10 +17,10 @@ W="$(mktemp -d "$HOME/wt/audio-overlay-XXXXXX")"; trap 'rm -rf "$W"' EXIT
 mkdir -p "$W/proj/addons" "$W/home"
 cp "$HERE"/tools/audio_overlay/{build,check,boot}.* "$W/proj/"
 cp "$HERE/client/content.json" "$W/proj/content.json"
-ln -s "$FAM/dot-core/addons/dot_core" "$W/proj/addons/dot_core"
-ln -s "$FAM/dot-cloud/addons/dot_cloud" "$W/proj/addons/dot_cloud"
-git -C "$FAM/dot-audio" archive "$(git -C "$FAM/dot-audio" rev-parse 392f118~1):addons/dot_audio" | tar -x -C "$W/proj" 
-printf 'dot-audio\tv0.1.0\n' > "$W/proj/addons.lock"
+ln -s "$FAM/gs-core/addons/gs_core" "$W/proj/addons/gs_core"
+ln -s "$FAM/gs-cloud/addons/gs_cloud" "$W/proj/addons/gs_cloud"
+git -C "$FAM/gs-audio" archive "$(git -C "$FAM/gs-audio" rev-parse 392f118~1):addons/gs_audio" | tar -x -C "$W/proj" 
+printf 'gs-audio\tv0.1.0\n' > "$W/proj/addons.lock"
 cat > "$W/proj/project.godot" <<'P'
 config_version=5
 
@@ -35,10 +35,10 @@ cd "$W/proj"
 timeout 240 "$G" --headless --path . --import >/dev/null 2>&1 || true
 run() { timeout 120 "$G" --headless --audio-driver Dummy --path . "$@" 2>&1; }
 fail=0
-echo "== control: the build's own dot-audio"
+echo "== control: the build's own gs-audio"
 control=$(run res://boot.tscn | grep '^CHECK ' || true); echo "$control"
 echo "$control" | grep -q '"has_stream_at":false' || { echo "FAIL control has stream_at"; fail=1; }
-echo "== build the overlay from $base (dot-audio $version)"
+echo "== build the overlay from $base (gs-audio $version)"
 b=$(run res://build.tscn -- "$base" "$version" | grep -E '^BUILD' || true); echo "$b"
 echo "$b" | grep -q 'BUILD ok=true' || { echo "FAIL overlay build"; fail=1; }
 echo "== restart onto the overlay"

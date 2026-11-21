@@ -6,7 +6,7 @@ extends Node
 
 const CHANNEL := "tmc.trail"
 const CLASSES := ["GSTrailRegistry", "GSTrailClient", "GSTrailEnvelope", "GSTrailMenu", "GSTrailBackendHttp", "GSTrailBackendStub"]
-const GAME_CLIENT := &"dot_game_client"
+const GAME_CLIENT := &"gs_game_client"
 const STUB_SAVE := "user://trail_store.json"
 
 ## func() -> String: the site's base url, "" offline.

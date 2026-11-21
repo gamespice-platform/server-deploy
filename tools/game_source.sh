@@ -56,7 +56,7 @@ GAMES_REPOS="${GAMES_REPOS:-$TMC_ROOT/games}"
 ## setup.sh's clone: what is fetched is what is ACTUALLY absent rather than the list of
 ## games in the abstract, so a box that already has them fetches nothing.
 game_source() {
-    local repo="$1" dir name tsv="$TMC_ROOT/../dot-bootstrap/projects.tsv" names
+    local repo="$1" dir name tsv="$TMC_ROOT/../gs-bootstrap/projects.tsv" names
     GAME_SRC=""; GAME_KIND=""
 
     # games.yml names a repository by its current name; a checkout may still sit under an old one

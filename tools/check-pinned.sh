@@ -11,12 +11,12 @@ bad=0
 while IFS=$'\t' read -r repo tag; do
     case "$repo" in ''|\#*) continue ;; esac
     src="$SIB/$repo"
-    # A checkout not yet moved to the repository's new name (dot-bootstrap leaves the old one).
-    [ "$repo" = fc-weapons ] && [ ! -e "$src/.git" ] && src="$SIB/arena-weapons"
+    # A checkout not yet moved to the repository's new name (gs-bootstrap leaves the old one).
+    [ "$repo" = fc-weapons ] && [ ! -e "$src/.git" ] && src="$SIB/fc-weapons"
     [ -e "$src/.git" ] || { echo "missing sibling $repo" >&2; bad=1; continue; }
     git -C "$src" rev-parse -q --verify "refs/tags/$tag^{commit}" >/dev/null \
         || { echo "no tag $tag in $repo" >&2; bad=1; continue; }
-    # The repo's own addon only (zee-dot-weapons -> zee_weapons); some carry nested copies.
+    # The repo's own addon only (zee-gs-weapons -> zee_weapons); some carry nested copies.
     d="$(echo "$repo" | tr - _ | sed 's/_dot//')"
     # fc-weapons moved addons/arena_weapons to addons/fc_weapons; the tag's own tree decides
     # which one it holds (up to v1.4.51 the legacy one, which is deprecated and said so).

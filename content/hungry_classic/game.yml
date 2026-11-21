@@ -5,7 +5,7 @@
 #
 #     changelevel hungry_classic
 #
-# TWO DIRECTORIES, ONE MODULE. Hungry is one game with two modes, and dot-server's
+# TWO DIRECTORIES, ONE MODULE. Hungry is one game with two modes, and gs-server's
 # unit of "what is running" is a game id — so each mode is its own directory here
 # and both name the same module. TmcHost compares module PATHS rather than game ids
 # when the game changes, so switching between these two rebinds the module in place
@@ -23,7 +23,7 @@ client_scene: game/client/hungry_client.tscn
 module: game/hungry_module.gd
 
 # The MODE vote inside this game is configured in the server's
-# user://cfg/hungry_vote.json (or DOT_VOTE_* / --vote-*), not here: the four hungry_*
+# user://cfg/hungry_vote.json (or GS_VOTE_* / --vote-*), not here: the four hungry_*
 # directories share one module that is bound once and rebound in place, so a
 # `metadata: map_vote:` block would be read from whichever mode happened to be running
 # when it was first loaded. The defaults are in game/hungry_maps.gd.

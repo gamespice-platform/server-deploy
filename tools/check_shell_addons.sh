@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # A shell carries the gs-* addons and nothing else. The game addons (the weapons packs,
 # natural_disasters) reach a player as GameSpice Cloud overlay packs when they join; baked in,
-# fc-weapons (then arena-weapons) v1.4.28's embedded textures took the web pck from 44 MB to 147 MB.
+# fc-weapons (then fc-weapons) v1.4.28's embedded textures took the web pck from 44 MB to 147 MB.
 #
 # Text only, no Godot: every non-dot repository addons.lock names is excluded by every
 # preset in export_presets.example.cfg, the shell takes its overlay (TmcAddonNamespaces),
@@ -22,23 +22,23 @@ bad() { printf '  FAIL %s\n' "$1"; fails=$((fails + 1)); }
 # The folder setup.sh puts a repository in: addon_repo() run backwards.
 dir_of() {
     case "$1" in
-        zee-dot-weapons) echo zee_weapons ;;
-        zed-dot-weapons) echo zed_weapons ;;
+        zee-gs-weapons) echo zee_weapons ;;
+        zed-gs-weapons) echo zed_weapons ;;
         # Both names: fc-weapons holds fc_weapons, its tags up to v1.4.51 the legacy arena_weapons.
-        fc-weapons|arena-weapons) echo fc_weapons arena_weapons ;;
+        fc-weapons) echo fc_weapons arena_weapons ;;
         *) echo "${1//-/_}" ;;
     esac
 }
 
 # Game addons: one game's own, never in a shell (the owner's rule; fc-weapons is Fatal Contact's).
-GAME_ADDONS="fc-weapons arena-weapons zee-dot-weapons zed-dot-weapons natural-disasters"
+GAME_ADDONS="fc-weapons fc-weapons zee-gs-weapons zed-gs-weapons natural-disasters"
 
 [ -f tools/shell-addons.list ] && good "tools/shell-addons.list exists" || bad "no tools/shell-addons.list"
 mapfile -t allowed < <(sed 's/#.*//; s/[[:space:]]//g; /^$/d' tools/shell-addons.list 2>/dev/null)
 [ "${#allowed[@]}" -gt 0 ] || bad "tools/shell-addons.list names no addon"
 
 for repo in "${allowed[@]}"; do
-    case "$repo" in dot-*) ;; *) bad "tools/shell-addons.list names $repo, which is not a dot-* addon" ;; esac
+    case "$repo" in gs-*) ;; *) bad "tools/shell-addons.list names $repo, which is not a gs-* addon" ;; esac
     case " $GAME_ADDONS " in *" $repo "*) bad "tools/shell-addons.list names the game addon $repo" ;; esac
 done
 
@@ -52,7 +52,7 @@ is_allowed() {
 mapfile -t repos < <(awk -F'\t' '!/^[[:space:]]*(#|$)/ { print $1 }' addons.lock | while read -r r; do is_allowed "$r" || echo "$r"; done)
 [ "${#repos[@]}" -gt 0 ] || bad "addons.lock names no game addon; this check reads nothing"
 
-for repo in $(awk -F'\t' '!/^[[:space:]]*(#|$)/ && $1 ~ /^dot-/ { print $1 }' addons.lock); do
+for repo in $(awk -F'\t' '!/^[[:space:]]*(#|$)/ && $1 ~ /^gs-/ { print $1 }' addons.lock); do
     is_allowed "$repo" || bad "addons.lock names $repo, which tools/shell-addons.list does not (the export would refuse to run)"
 done
 
@@ -72,10 +72,10 @@ trap 'rm -rf "$tmp"' EXIT
 { cat tools/shell-addons.list; echo fc-weapons; } > "$tmp/game.list"
 SHELL_ADDONS_LIST="$tmp/game.list" tools/shell_lock.sh lock addons.lock > /dev/null 2>&1 \
     && bad "tools/shell_lock.sh took a list naming fc-weapons" || good "tools/shell_lock.sh refuses a list naming fc-weapons"
-grep -vxF dot-core tools/shell-addons.list > "$tmp/short.list"
+grep -vxF gs-core tools/shell-addons.list > "$tmp/short.list"
 SHELL_ADDONS_LIST="$tmp/short.list" tools/shell_lock.sh lock addons.lock > /dev/null 2>&1 \
-    && bad "tools/shell_lock.sh took a lock naming dot-core with a list that does not" \
-    || good "tools/shell_lock.sh refuses a lock naming a dot-* addon the list does not"
+    && bad "tools/shell_lock.sh took a lock naming gs-core with a list that does not" \
+    || good "tools/shell_lock.sh refuses a lock naming a gs-* addon the list does not"
 
 grep -qF 'tools/shell_lock.sh" lock' tools/server.in && good "tools/server.in cuts the shell's lock with tools/shell_lock.sh" \
     || bad "tools/server.in no longer cuts the shell's lock with tools/shell_lock.sh"
@@ -95,7 +95,7 @@ for repo in "${repos[@]}"; do
         || bad "TmcAddonNamespaces.DEFAULTS lacks \"$owner\": the shell would refuse the addon it no longer carries"
 done
 
-for fn in ensure_shell_excludes shell_lock_begin check_shell_dot_only check_shell_web_size; do
+for fn in ensure_shell_excludes shell_lock_begin check_shell_gs_only check_shell_web_size; do
     n="$(grep -c "^ *$fn\b" tools/server.in)"
     [ "$n" -ge 2 ] && good "tools/server.in defines and calls $fn" || bad "tools/server.in no longer calls $fn"
 done

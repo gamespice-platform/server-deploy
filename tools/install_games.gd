@@ -133,7 +133,7 @@ func _init() -> void:
 		var one := TmcGameRef.parse(raw)
 		wants.append(one)
 
-		# A retired id (game-final-contact, game-arena, ...) is installed as the id it is published as
+		# A retired id (game-final-contact, game-fatal-contact, ...) is installed as the id it is published as
 		# now, and said once here, so a panel still configured with the old name keeps working.
 		if str(one["retired"]) != "":
 			GSLog.warn(CHANNEL, "the config names a retired game id; installing the current one, change it", {
@@ -1568,7 +1568,7 @@ static func _sha256_hex(bytes: PackedByteArray) -> String:
 
 ## Keeps a copy of a pack's manifest where an offline boot can find it.
 ##
-## dot-cloud resolves the manifest from the network before looking at its cache, so a fully cached pack still fails to start when the origin is down. [GSCloudClient] searches `local_search_dirs` first and verifies against the trusted keys on every load, so this caches bytes, not trust. Versions are namespaced, so a stale copy cannot shadow a release.
+## gs-cloud resolves the manifest from the network before looking at its cache, so a fully cached pack still fails to start when the origin is down. [GSCloudClient] searches `local_search_dirs` first and verifies against the trusted keys on every load, so this caches bytes, not trust. Versions are namespaced, so a stale copy cannot shadow a release.
 func _cache_manifest(
 	content_id: String,
 	version: String,

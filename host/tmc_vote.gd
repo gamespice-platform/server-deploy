@@ -169,7 +169,7 @@ static func install(
 	# operator typing `changelevel`, which must reset the clock and everybody's
 	# rock-the-vote just the same. See GSVoteDirector.begin_on_apply.
 	votes.director.begin_on_apply = false
-	# `dot_vote_director` belongs to whatever the loaded game registers, not to this.
+	# `gs_vote_director` belongs to whatever the loaded game registers, not to this.
 	votes.director.register_service = false
 
 	votes._operator_excluded = operator_excluded

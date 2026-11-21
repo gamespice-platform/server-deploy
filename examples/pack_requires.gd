@@ -1,13 +1,13 @@
 extends Node
 
-## A pack this box publishes for itself carries requires.json, derived as dot-ci derives it.
+## A pack this box publishes for itself carries requires.json, derived as gs-ci derives it.
 
 const Pack := preload("res://tools/pack.gd")
 
 const CHECKS := 22
 const GAME := "lookatme"
 const GAME_REPO := "mg-look-at-me"
-const FLOORED_REPO := "game-arena"
+const FLOORED_REPO := "game-fatal-contact"
 const SCRATCH := "user://pack_requires"
 
 var _passed := 0
@@ -60,7 +60,7 @@ func _test_published() -> void:
 	_check(
 		chosen.get_script() == GSCloudPublisher
 		and chosen.extra_files.get(GSAddonApi.REQUIREMENTS_FILE, "") == "/derived/requires.json",
-		"requires.json goes through dot-cloud's public extra_files, not the private override"
+		"requires.json goes through gs-cloud's public extra_files, not the private override"
 	)
 
 	var source := _source(GAME_REPO)
@@ -102,20 +102,20 @@ func _test_published() -> void:
 	var bytes := FileAccess.get_file_as_bytes(scratch.path_join("dist/tmc").path_join(GAME).path_join("objects").path_join(sha.substr(0, 2)).path_join(sha))
 	var parsed := GSAddonApi.parse(bytes.get_string_from_utf8())
 	var shipped: Dictionary = parsed.value if parsed.ok else {}
-	_check(parsed.ok and shipped.has("dot_core") and shipped.has("dot_server"),
+	_check(parsed.ok and shipped.has("gs_core") and shipped.has("gs_server"),
 		"its object is a requires.json naming the addons the game compiles against (%d)" % shipped.size(), str(parsed.error) if not parsed.ok else "")
 
-	# The same file dot-ci's package.sh --pack would have written: dot_requires.gd, in the source.
+	# The same file gs-ci's package.sh --pack would have written: gs_requires.gd, in the source.
 	var direct := Pack.derive_requires(source, SCRATCH.path_join("direct.json"))
 	var expected: Dictionary = {}
 	if direct.ok and str(direct.value) != "":
 		expected = GSAddonApi.parse(FileAccess.get_file_as_string(str(direct.value))).value
 	_check(not expected.is_empty() and GSValue.same(expected, shipped),
-		"and it is what dot_requires.gd derives in the source project", "%s vs %s" % [expected, shipped])
+		"and it is what gs_requires.gd derives in the source project", "%s vs %s" % [expected, shipped])
 
-	var refused := GSAddonApi.new().check({"dot_core": int(shipped.get("dot_core", 0)) + 1})
+	var refused := GSAddonApi.new().check({"gs_core": int(shipped.get("gs_core", 0)) + 1})
 	_check(not refused.ok and str(refused.error.message).contains("level"),
-		"a host whose dot-core is one level short of it is refused in a sentence", str(refused.error.message) if not refused.ok else "accepted")
+		"a host whose gs-core is one level short of it is refused in a sentence", str(refused.error.message) if not refused.ok else "accepted")
 
 	_check(FileAccess.file_exists(source.path_join(GSAddonApi.REQUIREMENTS_FILE)) == had_requires,
 		"nothing was written into the game's checkout")
@@ -157,7 +157,7 @@ func _test_floor_above_shell() -> void:
 		return
 
 	var floors: Dictionary = GSAddonApi.parse(FileAccess.get_file_as_string(floor_path), GSAddonApi.FLOOR_FILE).value
-	var addon := "dot_net"
+	var addon := "gs_net"
 	var floor_level := int(floors.get(addon, 0))
 	if not _check(floor_level > 1, "the game floors %s above 1" % addon, str(floors)):
 		_done()

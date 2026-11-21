@@ -8,7 +8,7 @@ log_name: "fixture"
 log_keep: 3
 log_json: true
 
-# The sink layer, which needs the dot-log addon.
+# The sink layer, which needs the gs-log addon.
 log_router: on
 log_ring: true
 log_ring_size: 64

@@ -46,7 +46,7 @@ admin_menu_after_run: close
 admin_menu_game_items: true
 
 # Who may use `warn`. A warning is told to the player on screen and in chat, and kept on
-# their record when the game keeps one (dot-moderation).
+# their record when the game keeps one (gs-moderation).
 admin_menu_warn_flag: kick
 admin_menu_warn_announce: false
 

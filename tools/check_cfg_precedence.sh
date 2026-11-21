@@ -51,18 +51,18 @@ check "the run left the operator's file byte for byte" test "$before" = "$(sha25
 printf 'rotation: main\n' > "$C/content/games.yml"
 out="$(run TMC_GAMES=arena)"
 check "a rotation-only games.yml does not take TMC_GAMES' place" grep -q -- "--games arena" <<<"$out"
-printf 'entries: [game-arena]\n' > "$C/content/games.yml"
+printf 'entries: [game-fatal-contact]\n' > "$C/content/games.yml"
 out="$(run TMC_GAMES=arena)"
 check "a games.yml with entries beats TMC_GAMES" bash -c '! grep -q -- "--games" <<<"$1"' _ "$out"
 
 # Updates refresh cfg/addon and cfg/game and never touch cfg/server or cfg/content.
-mkdir -p "$C/addon/dot_log" "$C/server/addon/dot_log"
-printf 'log_level: edited-by-hand\n' > "$C/addon/dot_log/log.yml"
-printf 'log_level: operator\n' > "$C/server/addon/dot_log/log.yml"
+mkdir -p "$C/addon/gs_log" "$C/server/addon/gs_log"
+printf 'log_level: edited-by-hand\n' > "$C/addon/gs_log/log.yml"
+printf 'log_level: operator\n' > "$C/server/addon/gs_log/log.yml"
 cp "$C/content/games.yml" "$T/games.before"
 tools/cfg_sync.sh "$PWD" "$C" >/dev/null
-check "an update overwrites the shipped default" cmp -s cfg.example/addon/dot_log/log.yml "$C/addon/dot_log/log.yml"
-check "an update never touches cfg/server/" grep -q "operator" "$C/server/addon/dot_log/log.yml"
+check "an update overwrites the shipped default" cmp -s cfg.example/addon/gs_log/log.yml "$C/addon/gs_log/log.yml"
+check "an update never touches cfg/server/" grep -q "operator" "$C/server/addon/gs_log/log.yml"
 check "nor cfg/content/" cmp -s "$T/games.before" "$C/content/games.yml"
 check "nor the operator's server.yml" test "$before" = "$(sha256sum "$C/server/server.yml")"
 

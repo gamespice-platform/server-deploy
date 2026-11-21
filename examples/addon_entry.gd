@@ -150,7 +150,7 @@ func _mount_and_attach(pair: GSResult) -> void:
 	_check(server_side.get_child_count() == 1 and server_side.get_child(0).is_in_group("addon_probe"),
 		"and its entry scene is in the tree")
 	var live: Node = server_side.get_child(0) if server_side.get_child_count() > 0 else null
-	_check(live != null and live.scene_file_path == "res://dot_cloud/dev/extra/1.2.0/entry.tscn",
+	_check(live != null and live.scene_file_path == "res://gs_cloud/dev/extra/1.2.0/entry.tscn",
 		"loaded through the pack's mount prefix", live.scene_file_path if live != null else "none")
 	_check(live != null and live.name == &"Addon_dev_extra", "named for the pack", str(live.name) if live != null else "none")
 

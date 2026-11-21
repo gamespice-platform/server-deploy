@@ -2,7 +2,7 @@
 # Every game's PUBLISHED pack must still boot on the host a lock builds. Run it before pushing an addons.lock bump.
 #
 #   tools/published_packs_boot.sh [--lock FILE] [--origin URL]... [--only id,id] [--pin id@version]... [--keep DIR]
-#     --lock     the lock to judge (default: this checkout's addons.lock); it must sit in a dot-server-deploy checkout
+#     --lock     the lock to judge (default: this checkout's addons.lock); it must sit in a gs-server-deploy checkout
 #     --origin   content roots to read latest.json from (default: prod https://content.gamespice.net/content and
 #                dev https://tmcdevgames.net/content); each origin's latest version of each game is booted once
 #     --only     content ids (without the owner) instead of every game-*/mg-* repo in content-lists/games.yml
@@ -14,16 +14,16 @@
 # pack_boot_test.sh could not build: its exit 2) or when nothing was booted.
 #
 # [b]Why.[/b] Servers re-install their addons at the lock on every restart (TMC_AUTO_UPDATE), but a pack is only checked
-# against the lock of the day it was published. dot-net v0.1.36 (2026-11-17) typed GSNetBehaviour.identity as Node; the
+# against the lock of the day it was published. gs-net v0.1.36 (2026-11-17) typed GSNetBehaviour.identity as Node; the
 # lock took it the same day, and Hungario 0.1.19 (published 11-16 against v0.1.35, `var net_id := behaviour.identity.net_id`)
 # stopped compiling: "A game has to supply the bridge between itself and the netcode", the server hibernates. Nothing booted
-# the packs already out there against the new lock. This does, with dot-cloud's tools/pack_fetch.py (what the CDN serves,
-# hash-checked) and tools/pack_boot_test.sh (mounted under res://dot_cloud/, every script compiled, game.yml's module made
+# the packs already out there against the new lock. This does, with gs-cloud's tools/pack_fetch.py (what the CDN serves,
+# hash-checked) and tools/pack_boot_test.sh (mounted under res://gs_cloud/, every script compiled, game.yml's module made
 # and asked for its bridge). Run it through hv: it builds a host per lock (cached) and boots one engine per pack.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FAMILY="${GS_FAMILY_DIR:-$(cd "$HERE/.." && pwd)}"
-CLOUD="$FAMILY/dot-cloud/tools"
+CLOUD="$FAMILY/gs-cloud/tools"
 OWNER="${CONTENT_OWNER:-gamemann}"
 LOCK="$HERE/addons.lock"; ORIGINS=(); ONLY=""; KEEP=""; PINS=()
 while [ $# -gt 0 ]; do
@@ -39,7 +39,7 @@ while [ $# -gt 0 ]; do
 done
 [ ${#ORIGINS[@]} -gt 0 ] || ORIGINS=(https://content.gamespice.net/content https://tmcdevgames.net/content)
 [ -f "$CLOUD/pack_boot_test.sh" ] && [ -f "$CLOUD/pack_fetch.py" ] \
-    || { echo "published_packs_boot: $CLOUD has no pack_boot_test.sh / pack_fetch.py (pull dot-cloud)" >&2; exit 2; }
+    || { echo "published_packs_boot: $CLOUD has no pack_boot_test.sh / pack_fetch.py (pull gs-cloud)" >&2; exit 2; }
 if [ -n "$ONLY" ]; then IDS="$(tr ',' '\n' <<<"$ONLY")"; else
     IDS="$(sed -n 's/^ *- repo: *\(\(game\|mg\)-[^ ]*\) *$/\1/p' "$HERE/content-lists/games.yml" | grep -v -- '-maps$')"
 fi

@@ -14,7 +14,7 @@
 # site id and the site's public key from the site it enrolled with (data/listing.json),
 # over HTTPS, and keeps them in data/ticket_trust.json. A member signed in to the site
 # arrives as themselves; anybody else plays as a guest. Override any of this in
-# cfg/server/addons/dot_auth/auth.yml.
+# cfg/server/addons/gs_auth/auth.yml.
 enabled: true
 
 # ticket | introspect | local | anonymous

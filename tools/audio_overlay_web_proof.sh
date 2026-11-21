@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Web half of audio_overlay_proof.sh: an exported web build whose GameSpice Audio predates the stock sounds, behind dot_audio_ceiling.js,
-# builds the site's modcommunity/dot-audio overlay in the browser, reloads onto it and plays a stock footstep and bed in headless Chromium.
+# Web half of audio_overlay_proof.sh: an exported web build whose GameSpice Audio predates the stock sounds, behind gs_audio_ceiling.js,
+# builds the site's modcommunity/gs-audio overlay in the browser, reloads onto it and plays a stock footstep and bed in headless Chromium.
 # Local only: serves the export and /content (cached from the real content origin) on 127.0.0.1; deploys and pins nothing.
 #   heavy -- tools/audio_overlay_web_proof.sh [--content-url URL] [--version 0.1.14] [--port 8791]
 set -euo pipefail
@@ -20,10 +20,10 @@ mkdir -p "$W/proj/addons" "$W/out" "$W/cache"
 cp "$T"/web/{main.tscn,run.tscn,run.gd} "$W/proj/"
 cp "$HERE/client/content.json" "$W/proj/content.json"
 echo "$version" > "$W/proj/version.txt"
-ln -s "$FAM/dot-core/addons/dot_core" "$W/proj/addons/dot_core"
-ln -s "$FAM/dot-cloud/addons/dot_cloud" "$W/proj/addons/dot_cloud"
-git -C "$FAM/dot-audio" archive "$(git -C "$FAM/dot-audio" rev-parse 392f118~1):addons/dot_audio" | tar -x -C "$W/proj"
-printf 'dot-audio\tv0.1.0\n' > "$W/proj/addons.lock"
+ln -s "$FAM/gs-core/addons/gs_core" "$W/proj/addons/gs_core"
+ln -s "$FAM/gs-cloud/addons/gs_cloud" "$W/proj/addons/gs_cloud"
+git -C "$FAM/gs-audio" archive "$(git -C "$FAM/gs-audio" rev-parse 392f118~1):addons/gs_audio" | tar -x -C "$W/proj"
+printf 'gs-audio\tv0.1.0\n' > "$W/proj/addons.lock"
 cat > "$W/proj/project.godot" <<'P'
 config_version=5
 
@@ -59,9 +59,9 @@ echo "== export web"
 timeout 300 "$G" --headless --path . --export-release Web 2>&1 | grep -vE "^(Godot Engine|$)" | tail -8 || true
 [ -f "$W/out/index.wasm" ] || { echo "FAIL no web export"; exit 1; }
 # The same page edits ./server export-web makes: GSWeb's page side and the ceiling, ahead of the engine script.
-# The pack is the OLD dot-audio's, so the ceiling file comes from the current checkout.
-cp "$FAM/dot-core/addons/dot_core/web/dot_web.js" "$FAM/dot-audio/addons/dot_audio/web/dot_audio_ceiling.js" "$W/out/"
-sed -i 's#<head>#<head>\n<script src="dot_web.js"></script>\n<script src="dot_audio_ceiling.js"></script>#' "$W/out/index.html"
+# The pack is the OLD gs-audio's, so the ceiling file comes from the current checkout.
+cp "$FAM/gs-core/addons/gs_core/web/gs_web.js" "$FAM/gs-audio/addons/gs_audio/web/gs_audio_ceiling.js" "$W/out/"
+sed -i 's#<head>#<head>\n<script src="gs_web.js"></script>\n<script src="gs_audio_ceiling.js"></script>#' "$W/out/index.html"
 python3 "$T/web/serve.py" "$W/out" "$W/cache" "$base" "$port" &
 sleep 1
 echo "== Chromium"

@@ -383,7 +383,7 @@
    * into nothing. A path is not an origin. Scheme, host and port are.
    *
    * What the boundary is actually holding back: a delivered game pack can contain
-   * scripts (dot-cloud signs manifests precisely because it can), and script running
+   * scripts (gs-cloud signs manifests precisely because it can), and script running
    * in the site's origin can read every non-HttpOnly cookie and every localStorage
    * key, call the site's API with the viewer's session AND read the responses, read
    * the DOM of a signed-in page, and register a service worker scoped to that origin
@@ -396,7 +396,7 @@
    * than from a subdomain of the site.
    */
   /*
-   * `allow-modals` is for one dialog: the "Leave site?" prompt dot-game arms while a game
+   * `allow-modals` is for one dialog: the "Leave site?" prompt gs-game arms while a game
    * is live, the only net under Ctrl+W, which a page cannot cancel. A frame sandboxed
    * without it has its beforeunload prompt suppressed, so the tab closed mid-round. It
    * also lets the frame call alert() and confirm(), which cost a player a click, not data.
@@ -501,7 +501,7 @@
      *
      * [b]The one failure a player can act on, and the only one the GAME can detect but
      * cannot fix.[/b] Godot refuses an RPC when the two ends declare different `@rpc`
-     * methods, so a client build that predates a change to dot-server's handshake can
+     * methods, so a client build that predates a change to gs-server's handshake can
      * never join a server that has it -- the socket opens, the join stalls, and every
      * retry stalls the same way. The shell recognises it (`GSSignon`) and posts this,
      * because a build cannot become a different build and the page can load one.

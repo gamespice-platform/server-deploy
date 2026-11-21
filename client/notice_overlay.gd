@@ -481,7 +481,7 @@ func _build_audio() -> void:
 	audio.name = "Audio"
 	audio.catalogue = sound_catalogue()
 	audio.voices = 4
-	# [b]Not in the registry, and not on the buses.[/b] A delivered game registers its own `dot_audio`
+	# [b]Not in the registry, and not on the buses.[/b] A delivered game registers its own `gs_audio`
 	# manager and sets its own bus volumes from its own settings; a shell that registered or applied a
 	# default mixer would displace the one or reset the other the moment it started.
 	audio.register_as_service = false

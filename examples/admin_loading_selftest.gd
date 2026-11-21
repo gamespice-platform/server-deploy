@@ -169,7 +169,7 @@ func _nav(menu: TmcAdminMenu, who: GSClientSession, path: String) -> void:
 func _test_menu_config() -> void:
 	_section("admin_menu.yml")
 
-	var parsed := TmcYaml.parse_file("res://cfg.example/addon/dot_menu/admin_menu.yml")
+	var parsed := TmcYaml.parse_file("res://cfg.example/addon/gs_menu/admin_menu.yml")
 	_check(parsed.ok, "the shipped admin_menu.yml parses", str(parsed.error) if not parsed.ok else "")
 	var shipped := TmcAdminMenu.new().configure(parsed.value if parsed.ok else {})
 	_check(shipped.problems.is_empty(), "and configures with nothing to report", ", ".join(shipped.problems))
@@ -401,7 +401,7 @@ func _test_menu_info_and_warn() -> void:
 	var labels := _labels(page)
 	_check(str(page["title"]) == "Bob" and labels.has("User id: #2") and labels.has("Address: 203.0.113.2"),
 		"info shows the ids, and the address to a kick holder", ", ".join(labels))
-	_check(labels.has("On record: 1 warning; 0 in force"), "and their record, read from dot-moderation", ", ".join(labels))
+	_check(labels.has("On record: 1 warning; 0 in force"), "and their record, read from gs-moderation", ", ".join(labels))
 	_check(_go_of(page, "Kick") == "i:kick #2" and _go_of(page, "Warn") == "i:warn #2",
 		"with the actions already pointed at them", str(page["rows"]))
 	_check(str(page["path"]) == "i:info #2", "an info page has a path, so Back returns to it")
@@ -472,7 +472,7 @@ func _test_menu_bounds() -> void:
 	_done()
 
 
-## A live-tool command's handler object, as dot-moderation's GSModToolCommands is one:
+## A live-tool command's handler object, as gs-moderation's GSModToolCommands is one:
 ## something with `tools` that answer `supports`, and `items_fn` for give.
 class ToolHolder:
 	extends RefCounted
@@ -821,7 +821,7 @@ func _test_panel() -> void:
 func _test_loading_server() -> void:
 	_section("loading.yml")
 
-	var parsed := TmcYaml.parse_file("res://cfg.example/addon/dot_core/loading.yml")
+	var parsed := TmcYaml.parse_file("res://cfg.example/addon/gs_core/loading.yml")
 	_check(parsed.ok, "the shipped loading.yml parses", str(parsed.error) if not parsed.ok else "")
 	var shipped := TmcLoading.new().configure(parsed.value if parsed.ok else {})
 	_check(shipped.problems.is_empty() and shipped.enabled and shipped.is_empty(),

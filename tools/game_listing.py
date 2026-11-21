@@ -9,7 +9,7 @@ pack.id is game.yml's content_id (what content.lock.json and the published pack 
 name is game.yml's name. The description is the "In this 3D game, ..." sentence(s) of the README's
 opening paragraph, markdown stripped. A MINIGAME is a game
 whose game.yml says `tmc_kind: MINIGAME`, or whose repository (or an old name in column 3 of
-dot-bootstrap's projects.tsv, so a renamed game-deathrun is still the mg-deathrun it was) is named
+gs-bootstrap's projects.tsv, so a renamed game-deathrun is still the mg-deathrun it was) is named
 mg-*; anything else is a GAME. TMC_PROJECTS_TSV overrides where projects.tsv is looked for.
 --check accepts a hand-edited file: it needs the format header, pack.id equal to content_id, the
 listing's name and a non-empty description. Imported by tools/import_defs.sh (listing route).
@@ -56,7 +56,7 @@ def describe(readme):
 def repo_names(game):
     """The repository's name plus every other name projects.tsv gives it (renames, column 3)."""
     me = os.path.basename(os.path.abspath(game))
-    tsv = os.environ.get("TMC_PROJECTS_TSV") or os.path.join(os.path.dirname(os.path.abspath(game)), "dot-bootstrap", "projects.tsv")
+    tsv = os.environ.get("TMC_PROJECTS_TSV") or os.path.join(os.path.dirname(os.path.abspath(game)), "gs-bootstrap", "projects.tsv")
     names = {me}
     if os.path.isfile(tsv):
         for line in open(tsv, encoding="utf-8"):

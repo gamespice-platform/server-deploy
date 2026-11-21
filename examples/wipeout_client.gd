@@ -1,7 +1,7 @@
 extends Node
 # [b]Nothing preloaded out of the game, because no game is in this build.[/b] Wipeout is a delivered
-# pack at `res://dot_cloud/tmc/wipeout/<version>/…`, and its courses are a second pack at
-# `res://dot_cloud/tmc/wipeout_maps/<version>/…`.
+# pack at `res://gs_cloud/tmc/wipeout/<version>/…`, and its courses are a second pack at
+# `res://gs_cloud/tmc/wipeout_maps/<version>/…`.
 
 ## A REAL client, over a REAL socket, in a DELIVERED Wipeout — with its courses delivered as a
 ## server-only pack beside it. Exits non-zero on any failure.
@@ -44,7 +44,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy: a real client in a delivered Wipeout")
+	print("gs-server-deploy: a real client in a delivered Wipeout")
 
 	GSPaths.remove_tree(DATA)
 
@@ -255,7 +255,7 @@ func _test_the_packs_mounted() -> void:
 	var module: GSModule = _server().modules.get_module(MODULE)
 	var script: Variant = module.get_script() if module != null else null
 	var path := String((script as Resource).resource_path) if script != null else ""
-	_check(path.begins_with("res://dot_cloud/tmc/wipeout/"), "its module is the mounted copy", path)
+	_check(path.begins_with("res://gs_cloud/tmc/wipeout/"), "its module is the mounted copy", path)
 
 	var named: PackedStringArray = _server().games.current_maps()
 	var authored := TmcYaml.parse_file(CONTENT.path_join("wipeout/game.yml"))

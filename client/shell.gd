@@ -65,7 +65,7 @@ var _solo_retry: String = ""
 ## addon still runs a compiled copy (blocked, as a failed boot is).
 enum InPlace { RUNNING, REFUSED, STALE }
 ## Where GameSpice Cloud's boot script records the overlay it mounted ([method GSCloudAddonSet.mounted_this_boot] reads it).
-const OVERLAY_SETTING := "dot_cloud/addon_overlay"
+const OVERLAY_SETTING := "gs_cloud/addon_overlay"
 ## Whether to fetch this game's maps pack in solo; see [method TmcSolo.skip_maps].
 var _solo_maps_check: CheckBox = null
 ## What the pack being fetched is, said in the status line over every cloud phase text.
@@ -570,7 +570,7 @@ var slice_frames_yielded: int = 0
 ## The loader that warmed the running solo game's scripts; held so its cache stays warm.
 var _warm_hold: Variant = null
 
-const SESSION_CACHE := "user://dot_cloud_session"
+const SESSION_CACHE := "user://gs_cloud_session"
 
 
 ## Whether `--content-cache off` (or `=off`, `0`, `false`, `no`) was passed after `--`.
@@ -911,7 +911,7 @@ func _on_cloud_failed(error: GSError) -> void:
 
 
 func _report_client_behind(sentence: String) -> void:
-	var early := GSAddonApi.build_level("dot_cloud") >= 3
+	var early := GSAddonApi.build_level("gs_cloud") >= 3
 
 	GSLog.warn(CHANNEL, "this client is older than the game it was asked to run", {
 		"why": sentence, "early": early,
@@ -1254,7 +1254,7 @@ func _connect_to(address: String) -> void:
 	# Before a new one is built, never after ([method _drop_link]). Belt and braces, except for a signon that failed after the socket came up ([method _fail]), where the menu returns with the link still connected.
 	_drop_link()
 
-	# Without this a browser client cannot download anything: `GSClientLink._begin_content_sync` resolves `dot_cloud_client` from [GSRegistry] and fails the join when it is null.
+	# Without this a browser client cannot download anything: `GSClientLink._begin_content_sync` resolves `gs_cloud_client` from [GSRegistry] and fails the join when it is null.
 	_ensure_cloud()
 	_enter_online_session()
 
@@ -1329,7 +1329,7 @@ func _on_server_info(_challenge: Dictionary, target: String) -> void:
 	if link == null or _addons_updating or _addons_skipped.has(target):
 		return
 
-	# Both the challenge (dot_server's sign-on) and a scoped announce land here.
+	# Both the challenge (gs_server's sign-on) and a scoped announce land here.
 	link.server_addons = TmcAddonNamespaces.without_stale_legacy(link.server_addons)
 	var addons := GSCloudAddonSet.new(_cloud)
 	addons.namespaces = TmcAddonNamespaces.load_shell()
@@ -1693,7 +1693,7 @@ func _restart(keep: PackedStringArray = PackedStringArray()) -> bool:
 			return false
 		# GameSpice Game's GSGameClient arms a "Leave site?" prompt while a game is live; this reload is ours, so it is disarmed (by property, not eval, same CSP reason).
 		# The flag is absent when no game client installed it.
-		var tab_guard: Variant = GSWeb.get_global("__dotTabGuard")
+		var tab_guard: Variant = GSWeb.get_global("__gsTabGuard")
 		if tab_guard != null:
 			tab_guard.armed = false
 		location.reload()
@@ -2068,7 +2068,7 @@ func _on_spawned() -> void:
 			"content_id": content_id,
 			"builtin_clients": BUILTIN_CLIENTS.size(),
 			"hint": "this build ships no game; the server needs updating "
-				+ "(git pull in the deploy repo AND in ../dot-*, then restart)",
+				+ "(git pull in the deploy repo AND in ../gs-*, then restart)",
 		})
 		_fail(
 			"'%s' could not be loaded: this server sent no content to download.\n"
@@ -2231,11 +2231,11 @@ func _hide_content_failed() -> void:
 
 
 ## Where a "clear downloaded content" waits for the next start. See [method request_clear].
-const CLEAR_PENDING := "user://dot_cloud_clear_pending"
+const CLEAR_PENDING := "user://gs_cloud_clear_pending"
 
 ## GameSpice Cloud's default cache. Cleared as well as whichever one this session uses, so a
 ## player who switched "keep downloaded games" off is not left with the kept ones.
-const DEFAULT_CACHE := "user://dot_cloud"
+const DEFAULT_CACHE := "user://gs_cloud"
 
 
 ## Bytes of downloaded content on disk: the cache this session uses, the default one and

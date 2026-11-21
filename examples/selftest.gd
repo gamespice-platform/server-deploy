@@ -34,7 +34,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	print("dot-server-deploy")
+	print("gs-server-deploy")
 
 	SelftestYaml.new(self)._test_yaml_scalars()
 	SelftestYaml.new(self)._test_yaml_structure()
@@ -250,7 +250,7 @@ func _test_config() -> void:
 
 	var config := loaded.value as TmcConfig
 
-	# The operator's own names, on dot-server's own settings. Two vocabularies is a cost
+	# The operator's own names, on gs-server's own settings. Two vocabularies is a cost
 	# and it is paid deliberately; what must not happen is a key that quietly reaches
 	# neither.
 	_check(config.server.hostname == "Fixture Server", "sv_name reaches hostname")
@@ -280,7 +280,7 @@ func _test_config() -> void:
 	_check(config.server.log_json, "log_json reaches the format")
 	_check(
 		config.server.stdin_console_pipes,
-		"sv_stdin_console_pipes reaches dot-server's pipe switch",
+		"sv_stdin_console_pipes reaches gs-server's pipe switch",
 		"a supervisor feeding commands down a pipe had no way to turn it on"
 	)
 	# Not `unknown.any(...)`: `unknown` is a PackedStringArray, which is its own Variant
@@ -412,12 +412,12 @@ func _test_logging() -> void:
 
 	# [b]The shared settings are copied out of `server` rather than read twice.[/b] The file's
 	# directory, name, rotation and JSON switch have to reach the router's file target from the SAME
-	# keys that reach dot-core's sink.
+	# keys that reach gs-core's sink.
 	_check(
 		config.log.file_directory == config.server.log_directory
 			and config.log.file_basename == config.server.log_basename
 			and config.log.file_json == config.server.log_json,
-		"the file settings are the same ones dot-server's own sink reads"
+		"the file settings are the same ones gs-server's own sink reads"
 	)
 	_check(config.log.level == config.server.log_level, "and so is the level")
 	_check(
@@ -513,7 +513,7 @@ func _test_replay() -> void:
 	_check(replay.directory == REPLAY_DIR.path_join("replays"), "an empty directory means <data>/replays (%s)" % replay.directory)
 
 	var bus := GSEventBus.new()
-	_check(replay.attach_bus(bus).ok, "the tap attaches to a dot-server event bus")
+	_check(replay.attach_bus(bus).ok, "the tap attaches to a gs-server event bus")
 	_check(replay.begin().ok and replay.recorder.is_recording_to_file(), "recording, to the ring and to a match file")
 
 	# Ninety seconds of a server: a chat line every second and one a filter blocked.
@@ -545,7 +545,7 @@ func _test_replay() -> void:
 
 	var file := GSReplayFile.new()
 	var opened := file.open(path)
-	_check(opened.ok and file.complete and not file.truncated, "and dot-replay's own reader calls it complete", str(opened.error))
+	_check(opened.ok and file.complete and not file.truncated, "and gs-replay's own reader calls it complete", str(opened.error))
 	_check(file.final_hash != "" and file.final_hash == str(ev.get("final_hash")), "whose final hash is the one the evidence names")
 	_check(file.header != null and file.header.game == "fixture_game" and file.header.tick_rate == 30, "and whose header names the game and the clock")
 
@@ -584,7 +584,7 @@ func _test_replay() -> void:
 	replay._on_ban_added(ban)
 	_check(
 		ban.get("evidence") is Dictionary and str((ban["evidence"] as Dictionary).get("final_hash", "")) != "",
-		"a dot-server ban record carries the clip's final hash"
+		"a gs-server ban record carries the clip's final hash"
 	)
 
 	var attached_before := int(replay.describe()["evidence_attached"])
@@ -595,14 +595,14 @@ func _test_replay() -> void:
 		"an admin's kick is answered with an audit line; other audit actions are not"
 	)
 
-	# dot-moderation's path: through the registry service's own signal, and stored again.
+	# gs-moderation's path: through the registry service's own signal, and stored again.
 	# Loaded by path, because this project does not link it for its own scripts.
-	var mod_script: Variant = load("res://addons/dot_moderation/runtime/dot_moderation_manager.gd") \
-		if ResourceLoader.exists("res://addons/dot_moderation/runtime/dot_moderation_manager.gd") else null
-	var store_script: Variant = load("res://addons/dot_moderation/store/dot_punishment_store_file.gd") \
+	var mod_script: Variant = load("res://addons/gs_moderation/runtime/gs_moderation_manager.gd") \
+		if ResourceLoader.exists("res://addons/gs_moderation/runtime/gs_moderation_manager.gd") else null
+	var store_script: Variant = load("res://addons/gs_moderation/store/gs_punishment_store_file.gd") \
 		if mod_script != null else null
 	if mod_script == null or store_script == null:
-		_check(true, "dot-moderation is not linked in this build; its evidence path is skipped")
+		_check(true, "gs-moderation is not linked in this build; its evidence path is skipped")
 		_check(true, "(skipped)")
 	else:
 		now[0] += 20000   # past the cooldown, so this is a new clip
@@ -616,7 +616,7 @@ func _test_replay() -> void:
 		await get_tree().process_frame
 		var p: Object = issued.value if issued.ok else null
 		var pev: Dictionary = p.get("evidence") if p != null else {}
-		_check(str(pev.get("final_hash", "")) != "", "a dot-moderation ban carries the clip's final hash")
+		_check(str(pev.get("final_hash", "")) != "", "a gs-moderation ban carries the clip's final hash")
 		var stored := FileAccess.get_file_as_string(store_path)
 		_check(
 			stored.contains(str(pev.get("final_hash", "-"))),
@@ -668,7 +668,7 @@ func _test_game_cfg_dirs() -> void:
 	for descriptor in content.games:
 		names[TmcGameConfig.cfg_id(descriptor)] = descriptor.game_id
 
-	_check(names.has("game-fatal-contact") and not names.has("game-arena") and not names.has("fatalcontact"),
+	_check(names.has("game-fatal-contact") and not names.has("game-fatal-contact") and not names.has("fatalcontact"),
 		"Fatal Contact's config directory is game-fatal-contact", str(names.keys()))
 	_check(names.size() == content.games.size(), "no two games share a config directory", "%d dirs for %d games" % [names.size(), content.games.size()])
 
@@ -717,21 +717,21 @@ func _retired_cfg_dirs(content: TmcContent, root: String) -> void:
 	# A retired directory moves, whole, and is still the game's settings.
 	var old := ProjectSettings.globalize_path("user://selftest_game_cfg_old")
 	GSPaths.remove_tree(old)
-	DirAccess.make_dir_recursive_absolute(old + "/game/game-arena")
+	DirAccess.make_dir_recursive_absolute(old + "/game/game-fatal-contact")
 	DirAccess.make_dir_recursive_absolute(old + "/server/game/game-final-contact/sub")
 	DirAccess.make_dir_recursive_absolute(old + "/game/game-fatal-contact")
-	_put(old + "/game/game-arena/server.yml", "max_players: 9\n")
-	_put(old + "/game/game-arena/extra.yml", "kept: 1\n")
+	_put(old + "/game/game-fatal-contact/server.yml", "max_players: 9\n")
+	_put(old + "/game/game-fatal-contact/extra.yml", "kept: 1\n")
 	_put(old + "/game/game-fatal-contact/server.yml", "max_players: 5\n")
 	_put(old + "/server/game/game-final-contact/server.yml", "max_players: 11\n")
 	_put(old + "/server/game/game-final-contact/sub/a.yml", "a: 1\n")
 	var lines := TmcGameCfgDirs.migrate_retired_dirs(old)
 	_check(lines.size() == 2, "one line per migrated directory", str(lines))
-	_check(not DirAccess.dir_exists_absolute(old + "/game/game-arena")
+	_check(not DirAccess.dir_exists_absolute(old + "/game/game-fatal-contact")
 		and FileAccess.get_file_as_string(old + "/game/game-fatal-contact/extra.yml") == "kept: 1\n",
 		"a file the current directory lacks is moved into it")
 	_check(FileAccess.get_file_as_string(old + "/game/game-fatal-contact/server.yml") == "max_players: 5\n"
-		and FileAccess.get_file_as_string(old + "/game/game-fatal-contact/server.yml.from-game-arena") == "max_players: 9\n",
+		and FileAccess.get_file_as_string(old + "/game/game-fatal-contact/server.yml.from-game-fatal-contact") == "max_players: 9\n",
 		"a differing file is kept beside it, not lost and not replacing it")
 	_check(FileAccess.get_file_as_string(old + "/server/game/game-fatal-contact/server.yml") == "max_players: 11\n"
 		and FileAccess.file_exists(old + "/server/game/game-fatal-contact/sub/a.yml"),
@@ -741,10 +741,10 @@ func _retired_cfg_dirs(content: TmcContent, root: String) -> void:
 	# Until migrated, the old name still reaches the game.
 	var cvars := TmcGameConfig.new()
 	var fc := content.find("fatalcontact")
-	var legacy := {"game-arena": {"marker": 1}}
+	var legacy := {"game-fatal-contact": {"marker": 1}}
 	_check(fc != null and TmcGameConfig.section_in(legacy, fc).get("marker", 0) == 1,
-		"a section still under game-arena applies to Fatal Contact until it is migrated")
-	_check(cvars != null and fc != null and TmcGameConfig.section_in({"game-fatal-contact": {"marker": 2}, "game-arena": {"marker": 1}}, fc).get("marker", 0) == 2,
+		"a section still under game-fatal-contact applies to Fatal Contact until it is migrated")
+	_check(cvars != null and fc != null and TmcGameConfig.section_in({"game-fatal-contact": {"marker": 2}, "game-fatal-contact": {"marker": 1}}, fc).get("marker", 0) == 2,
 		"and the section under the current name wins")
 
 	# The shell migration in tools/cfg_sync.sh names the same directories.
@@ -877,32 +877,32 @@ func _test_layered_cfg() -> void:
 	_check(flat.security.enabled and is_equal_approx(flat.security.caps_ratio, 0.5) and is_equal_approx(flat.anticheat.max_horizontal_speed, 33.0), "security.yml reaches both configs")
 	_check("\n".join(flat.console_lines).contains("sec_nonsense"), "a sec_ key the addons do not know falls through as before")
 	_check(flat.groups.has("a"), "groups.yml through GSAdminCfg")
-	_put(root + "/addons/dot_party/party.yml", "party_seat_hold_sec: 40\n")
-	_put(root + "/server/addons/dot_party/party.yml", "party_seat_hold_sec: 50\n")
+	_put(root + "/addons/gs_party/party.yml", "party_seat_hold_sec: 40\n")
+	_put(root + "/server/addons/gs_party/party.yml", "party_seat_hold_sec: 50\n")
 	loaded = TmcConfig.load_dir(root)
 	_check(loaded.ok and is_equal_approx((loaded.value as TmcConfig).party.seat_hold_sec, 50.0), "the operator's cfg/server/addons tier wins over addons and the flat file")
-	_put(root + "/server/addons/dot_server/groups.yml", "groups:\n  b:\n    permissions: [y]\n")
+	_put(root + "/server/addons/gs_server/groups.yml", "groups:\n  b:\n    permissions: [y]\n")
 	var g: TmcConfig = TmcConfig.load_dir(root).value
 	_check(g.groups.has("b") and not g.groups.has("a"), "a new-layout groups.yml wins whole over the flat file")
 	_put(root + "/rcon.yml", "rcon_password: \"flat-password\"\nrcon_port: 7001\n")
 	var rc: TmcConfig = TmcConfig.load_dir(root).value
 	_check(rc.server.rcon_password == "flat-password" and rc.server.rcon_port == 7001, "a flat rcon.yml is still read")
-	_put(root + "/addons/dot_console/rcon.yml", "rcon_password: \"addon-password\"\n")
+	_put(root + "/addons/gs_console/rcon.yml", "rcon_password: \"addon-password\"\n")
 	rc = TmcConfig.load_dir(root).value
 	_check(rc.server.rcon_password == "addon-password", "the addon folder's rcon.yml wins over the flat one")
-	_put(root + "/server/addons/dot_console/rcon.yml", "rcon_password: \"operator-password\"\nrcon_allowed: [\"10.0.0.1\"]\n")
+	_put(root + "/server/addons/gs_console/rcon.yml", "rcon_password: \"operator-password\"\nrcon_allowed: [\"10.0.0.1\"]\n")
 	rc = TmcConfig.load_dir(root).value
 	_check(rc.server.rcon_password == "operator-password", "the operator tier is the strongest rcon.yml")
 	_check(rc.server.rcon_allowed_addresses == PackedStringArray(["10.0.0.1"]), "and its other keys layer over the addon's")
-	_put(root + "/server/addons/dot_console/rcon.yml", "rcon_password: \"\"\n")
+	_put(root + "/server/addons/gs_console/rcon.yml", "rcon_password: \"\"\n")
 	rc = TmcConfig.load_dir(root).value
 	_check(rc.server.rcon_password == "", "an empty operator password switches RCON off, whatever the weaker tiers hold")
-	_put(root + "/addons/dot_vote/vote.yml", "vote_exclude: [maze]\n")
+	_put(root + "/addons/gs_vote/vote.yml", "vote_exclude: [maze]\n")
 	var vc: TmcConfig = TmcConfig.load_dir(root).value
-	_check(vc.vote_exclude.has("maze"), "vote.yml is read from addons/dot_vote/")
-	_put(root + "/addons/dot_core/loading.yml", "loading_title: Hello\n")
-	_put(root + "/server/addons/dot_core/loading.yml", "loading_title: Operator\n")
-	var ld := TmcConfig.merged_file("dot-core", "loading.yml", root)
+	_check(vc.vote_exclude.has("maze"), "vote.yml is read from addons/gs_vote/")
+	_put(root + "/addons/gs_core/loading.yml", "loading_title: Hello\n")
+	_put(root + "/server/addons/gs_core/loading.yml", "loading_title: Operator\n")
+	var ld := TmcConfig.merged_file("gs-core", "loading.yml", root)
 	_check(ld.ok and String((ld.value as Dictionary).get("loading_title", "")) == "Operator", "loading.yml layers, the operator tier last")
 	GSCfgLegacy.reset()
 	_put(root + "/addons.yml", "defaults:\n  add: [dev/extra@1.2.0]\n")
@@ -910,7 +910,7 @@ func _test_layered_cfg() -> void:
 	_check(old_packs.ok and (old_packs.value as TmcAddonsConfig).defaults_add == PackedStringArray(["dev/extra@1.2.0"]),
 		"an old cfg/addons.yml is still read for packs", str(old_packs.error))
 	_check(GSCfgLegacy.warned_count() == 1, "and warns once")
-	_put(root + "/content/addons.yml", "defaults:\n  add: [dev/new@2.0.0]\nentries: [dot-core]\n")
+	_put(root + "/content/addons.yml", "defaults:\n  add: [dev/new@2.0.0]\nentries: [gs-core]\n")
 	var new_packs := TmcAddonsConfig.load_from(root, root + "/data")
 	_check(new_packs.ok and (new_packs.value as TmcAddonsConfig).defaults_add == PackedStringArray(["dev/new@2.0.0"]),
 		"cfg/content/addons.yml wins whole when both exist, and shares its file with the download list", str(new_packs.error))
@@ -1067,7 +1067,7 @@ func _test_admins() -> void:
 	_done()
 
 
-## Something with the shape dot-server hands a source: `uid`, `username`, `display_name`.
+## Something with the shape gs-server hands a source: `uid`, `username`, `display_name`.
 func _identity(name: String) -> Object:
 	var identity := GSGuestIdentity.new()
 	identity.uid = "guest:%s" % name
@@ -1107,10 +1107,10 @@ func _game_ref_entries() -> void:
 		"a pin on a retired id is dropped (the old id published no versions) and the old id is kept to log")
 	_check(TmcGameRef.parse("gamemann/game-fatal-contact")["retired"] == "",
 		"a current id is not marked retired")
-	_check(TmcGameRef.dirs_in("gamemann/game-arena, gamemann/game-airdrift@1.2.0, game-arena")
-			== PackedStringArray(["gamemann/game-fatal-contact", "gamemann/game-airdrift", "game-arena"]),
+	_check(TmcGameRef.dirs_in("gamemann/game-fatal-contact, gamemann/game-airdrift@1.2.0, game-fatal-contact")
+			== PackedStringArray(["gamemann/game-fatal-contact", "gamemann/game-airdrift", "game-fatal-contact"]),
 		"the host's filter aliases the same ids the installer does; a bare local name is left alone")
-	_check(TmcGameRef.qualify_map("gamemann/arena-dm-maps/*", "")["collection"] == "gamemann/fc-dm-maps",
+	_check(TmcGameRef.qualify_map("gamemann/fc-dm-maps/*", "")["collection"] == "gamemann/fc-dm-maps",
 		"a retired collection wildcard reads the current collection")
 	_check(TmcGameRef.parse("alice/demo@vnext")["version"] == "vnext",
 		"a v that is not followed by a digit is part of the version")
@@ -1179,10 +1179,10 @@ func _game_ref_dependencies(installer: Variant, base: Dictionary) -> void:
 		str(installer.refused_at_mount(stale)))
 
 	var pinned := base.duplicate()
-	pinned["dependencies"] = ["gamemann/surf_mesa@1.2.0", "modcommunity/dot-ui@v0.1.2"]
+	pinned["dependencies"] = ["gamemann/surf_mesa@1.2.0", "modcommunity/gs-ui@v0.1.2"]
 	var built: GSResult = TmcContent.new()._build("demo", pinned)
 	_check(built.ok and PackedStringArray((built.value as GSGameDescriptor).dependencies)
-			== PackedStringArray(["gamemann/surf_mesa@1.2.0", "modcommunity/dot-ui@0.1.2"]),
+			== PackedStringArray(["gamemann/surf_mesa@1.2.0", "modcommunity/gs-ui@0.1.2"]),
 		"a pinned dependency reaches the descriptor, @v spelling and all",
 		str(built.value.dependencies) if built.ok else str(built))
 	var loose := base.duplicate()
@@ -1235,7 +1235,7 @@ func _game_ref_pointers(installer: Variant) -> void:
 	_check(not both_down.ok and both_down.error.detail.contains("misspelled"),
 		"both sources failing keeps the misspelled-id hint", str(both_down.error))
 
-	# The restart half of dot-cloud auto-update: after the exit-75 restart install-games asks again
+	# The restart half of gs-cloud auto-update: after the exit-75 restart install-games asks again
 	# and must see the version published meanwhile, including through a moved_to pointer.
 	var pub := {"v": "1.0.0", "moved": ""}
 	var live := func(url: String) -> GSResult:
@@ -1702,7 +1702,7 @@ func _test_content() -> void:
 	_check(
 		builtin != null and builtin.client_scene == "",
 		"and no client scene",
-		"GSClientLink refuses every absolute res:// path outside dot-cloud's mount, so "
+		"GSClientLink refuses every absolute res:// path outside gs-cloud's mount, so "
 		+ "naming one has the client refuse it and be timed out in LOADING"
 	)
 	_check(
@@ -1714,7 +1714,7 @@ func _test_content() -> void:
 		"and the module it names"
 	)
 
-	# The operator's `metadata:` block. dot-vote's game source reads `metadata.vote` and a
+	# The operator's `metadata:` block. gs-vote's game source reads `metadata.vote` and a
 	# game's own map vote reads `metadata.map_vote`, and both were dropped here: every
 	# per-game vote setting anybody wrote in a game.yml was ignored, in silence.
 	var vote_meta: Variant = builtin.metadata.get("vote", {}) if builtin != null else {}
@@ -1757,13 +1757,13 @@ func _test_vote() -> void:
 	_section("voting for the next game")
 
 	# The environment layers over vote.yml under the SERVER vote's own prefix, and
-	# dot-vote's plain one is left to the map vote inside a game. Set before the load and
+	# gs-vote's plain one is left to the map vote inside a game. Set before the load and
 	# cleared straight after, so nothing else in this suite sees either.
-	OS.set_environment("DOT_GAME_VOTE_EXTEND_SECONDS", "1234")
-	OS.set_environment("DOT_VOTE_MAX_EXTENDS", "9")
+	OS.set_environment("GS_GAME_VOTE_EXTEND_SECONDS", "1234")
+	OS.set_environment("GS_VOTE_MAX_EXTENDS", "9")
 	var loaded := TmcConfig.load_dir(CFG)
-	OS.unset_environment("DOT_GAME_VOTE_EXTEND_SECONDS")
-	OS.unset_environment("DOT_VOTE_MAX_EXTENDS")
+	OS.unset_environment("GS_GAME_VOTE_EXTEND_SECONDS")
+	OS.unset_environment("GS_VOTE_MAX_EXTENDS")
 
 	if not _check(loaded.ok, "the fixture config loads", str(loaded.error)):
 		_done()
@@ -1774,31 +1774,31 @@ func _test_vote() -> void:
 	_check(config.vote.enabled, "vote.yml turns voting on")
 
 	# The Gamespice spelling: GS_GAME_VOTE_* wins over the old DOT_ one, and GS_VOTE_* is still the map vote's.
-	OS.set_environment("DOT_GAME_VOTE_EXTEND_SECONDS", "1234")
+	OS.set_environment("GS_GAME_VOTE_EXTEND_SECONDS", "1234")
 	OS.set_environment("GS_GAME_VOTE_EXTEND_SECONDS", "777")
 	OS.set_environment("GS_VOTE_MAX_EXTENDS", "9")
 	var gs_loaded := TmcConfig.load_dir(CFG)
-	OS.unset_environment("DOT_GAME_VOTE_EXTEND_SECONDS")
+	OS.unset_environment("GS_GAME_VOTE_EXTEND_SECONDS")
 	OS.unset_environment("GS_GAME_VOTE_EXTEND_SECONDS")
 	OS.unset_environment("GS_VOTE_MAX_EXTENDS")
 	var gs_config := gs_loaded.value as TmcConfig if gs_loaded.ok else null
-	_check(gs_config != null and is_equal_approx(gs_config.vote.extend_seconds, 777.0), "GS_GAME_VOTE_* wins over the old DOT_GAME_VOTE_*")
+	_check(gs_config != null and is_equal_approx(gs_config.vote.extend_seconds, 777.0), "GS_GAME_VOTE_* wins over the old GS_GAME_VOTE_*")
 	_check(gs_config != null and gs_config.vote.max_extends != 9, "and GS_VOTE_* does not reach the server vote either")
 	_check(
 		is_equal_approx(config.vote.extend_seconds, 1234.0),
-		"DOT_GAME_VOTE_* overrides vote.yml (%.0f)" % config.vote.extend_seconds,
+		"GS_GAME_VOTE_* overrides vote.yml (%.0f)" % config.vote.extend_seconds,
 		"these layers were claimed in a comment and never applied"
 	)
 	_check(
 		config.vote.max_extends != 9,
-		"and DOT_VOTE_* does not reach it (%d)" % config.vote.max_extends,
+		"and GS_VOTE_* does not reach it (%d)" % config.vote.max_extends,
 		"that prefix is the map vote inside a game, in the same process: one flag "
 		+ "changing two votes is a flag nobody can use"
 	)
 	_check(
 		Array(config.vote_exclude) == ["playground"],
 		"and names the games that are never on a ballot (%s)" % [config.vote_exclude],
-		"which is TMC's question rather than dot-vote's"
+		"which is TMC's question rather than gs-vote's"
 	)
 
 	# Every enum written by NAME. A config file full of enum indices is one nobody can
@@ -2115,7 +2115,7 @@ func _test_game_rotation() -> void:
 func _test_vote_notices() -> void:
 	_section("the game vote on the shell's HUD")
 
-	var parsed := TmcYaml.parse_file("res://cfg.example/server/addon/dot_vote/vote.yml")
+	var parsed := TmcYaml.parse_file("res://cfg.example/server/addon/gs_vote/vote.yml")
 
 	if not _check(parsed.ok, "the shipped vote.yml template parses", str(parsed.error)):
 		_done()
@@ -2288,7 +2288,7 @@ func _test_auth() -> void:
 		str(unknown.error)
 	)
 
-	# TICKET with no server_id adopts it from the site. dot-auth refuses every signed-in
+	# TICKET with no server_id adopts it from the site. gs-auth refuses every signed-in
 	# join until then: a ticket verified with no audience is valid on every server.
 	var work := "user://tmc_auth_test"
 	GSPaths.remove_tree(work)
@@ -2313,7 +2313,7 @@ func _test_auth() -> void:
 	if no_id_server != null:
 		no_id_server.free()
 
-	var shipped := TmcYaml.parse_file("res://cfg.example/addon/dot_auth/auth.yml")
+	var shipped := TmcYaml.parse_file("res://cfg.example/addon/gs_auth/auth.yml")
 	var shipped_built := TmcAuth.build(shipped.value if shipped.ok else {}, work)
 	var shipped_cfg: GSAuthConfig = (shipped_built.value as GSAuthServer).config \
 		if shipped_built.ok and shipped_built.value != null else null
@@ -2367,7 +2367,7 @@ func _test_auth() -> void:
 	_check(good.ok, "a complete ticket configuration builds", str(good.error))
 
 	var node: Node = good.value
-	_check(node != null, "and produces an auth server for dot-server to find")
+	_check(node != null, "and produces an auth server for gs-server to find")
 
 	if node != null:
 		var cfg: GSAuthConfig = node.get("config")

@@ -34,26 +34,26 @@ func _test_content_lists() -> void:
 	GSPaths.remove_tree(root)
 	var shipped := TmcContentLists.load_list("addons", root)
 	_check(shipped.ok and (shipped.value as Array).size() > 40, "the shipped addons list loads")
-	_check(TmcContentLists.pin_for(shipped.value, "dot-core") != "", "and carries the pins of addons.lock")
+	_check(TmcContentLists.pin_for(shipped.value, "gs-core") != "", "and carries the pins of addons.lock")
 	var games := TmcContentLists.load_list("games", root)
 	_check(games.ok and (games.value as Array).size() > 10 and games.value[0]["content"] != "", "the shipped games list loads with its content directories")
-	_put(root + "/content/addons.yml", "entries:\n  - dot-core@v9\n  - pack: gamemann/surf_mesa@1.2.0\n")
+	_put(root + "/content/addons.yml", "entries:\n  - gs-core@v9\n  - pack: gamemann/surf_mesa@1.2.0\n")
 	var own := TmcContentLists.load_list("addons", root)
 	_check(own.ok and (own.value as Array).size() == 2, "the operator's file replaces the default")
-	_check(TmcContentLists.pin_for(own.value, "dot-core") == "v9" and TmcContentLists.pin_for(own.value, "gamemann/surf_mesa") == "1.2.0", "pins are respected, in both spellings")
+	_check(TmcContentLists.pin_for(own.value, "gs-core") == "v9" and TmcContentLists.pin_for(own.value, "gamemann/surf_mesa") == "1.2.0", "pins are respected, in both spellings")
 	_check(own.value[1]["kind"] == "pack", "a pack id is told from a repository")
-	_put(root + "/content/addons.yml", "merge: true\nremove: [dot-voice]\nentries:\n  - repo: dot-extra\n  - repo: dot-core\n    pin: v9\n")
+	_put(root + "/content/addons.yml", "merge: true\nremove: [gs-voice]\nentries:\n  - repo: gs-extra\n  - repo: gs-core\n    pin: v9\n")
 	var merged := TmcContentLists.load_list("addons", root)
 	var ids: Array = (merged.value as Array).map(func(e: Dictionary) -> String: return e["id"])
-	_check(merged.ok and ids.has("dot-extra") and not ids.has("dot-voice") and ids.count("dot-core") == 1, "merge: true adds, removes, and replaces by id")
-	_check(TmcContentLists.pin_for(merged.value, "dot-core") == "v9", "a merged entry's pin wins")
-	_put(root + "/server/content/addons.yml", "entries:\n  - dot-only\n")
+	_check(merged.ok and ids.has("gs-extra") and not ids.has("gs-voice") and ids.count("gs-core") == 1, "merge: true adds, removes, and replaces by id")
+	_check(TmcContentLists.pin_for(merged.value, "gs-core") == "v9", "a merged entry's pin wins")
+	_put(root + "/server/content/addons.yml", "entries:\n  - gs-only\n")
 	var srv := TmcContentLists.load_list("addons", root)
 	_check(srv.ok and (srv.value as Array).size() == 1, "the server tier overrides the operator's file")
 	_put(root + "/server/content/addons.yml", "entries:\n  - repo: a\n    pack: b/c\n")
 	var bad := TmcContentLists.load_list("addons", root)
 	_check(not bad.ok and bad.error.code == GSError.CODE_INVALID and bad.error.message.contains("entry 1"), "a bad entry fails with CODE_INVALID naming it")
-	_put(root + "/server/content/addons.yml", "entries:\n  - dot-x@bad pin!\n")
+	_put(root + "/server/content/addons.yml", "entries:\n  - gs-x@bad pin!\n")
 	_check(TmcContentLists.load_list("addons", root).error.code == GSError.CODE_INVALID, "a pin with odd characters is refused")
 	_put(root + "/server/content/addons.yml", "entries: [\n")
 	_check(not TmcContentLists.load_list("addons", root).ok, "a file that is not yml fails")
@@ -96,7 +96,7 @@ func _test_former_game_id() -> void:
 
 	# A live overrides.yml named a collection without /* and lost its start map to a 404.
 	_check(TmcGameRef.qualify_map("gamemann/fc-dm-maps", "")["id"] == "gamemann/fc-dm-maps/*"
-			and TmcGameRef.qualify_map("gamemann/arena-surf-dm-maps", "")["id"] == "gamemann/fc-surf-dm-maps/*",
+			and TmcGameRef.qualify_map("gamemann/fc-surf-dm-maps", "")["id"] == "gamemann/fc-surf-dm-maps/*",
 		"a known collection named without /* is read as the whole collection, not a pack that 404s")
 	_check(not bool(TmcGameRef.qualify_map("gamemann/fc-dm-maps@1.0.0", "")["ok"]),
 		"a pin on a bare collection is refused like a pin on its wildcard")
@@ -143,14 +143,14 @@ func _test_former_game_id() -> void:
 		"a games list naming arena keeps fatalcontact and reports nothing missing",
 		str(dm_kept.ids()) + " missing " + str(dm_kept.missing) if dm_kept != null else str(dm_only.error))
 
-	# legacy id: g2gfast was renamed airdrift; its pack id stays tmc/g2gfast until a re-publish.
-	var timer := content.find("g2gfast")
-	_check(timer != null and timer.game_id == "airdrift", "find(\"g2gfast\") is airdrift",
+	# legacy id: airdrift was renamed airdrift; its pack id stays tmc/airdrift until a re-publish.
+	var timer := content.find("airdrift")
+	_check(timer != null and timer.game_id == "airdrift", "find(\"airdrift\") is airdrift",
 		timer.game_id if timer != null else "null")
-	var timer_only := TmcContent.scan("res://content", PackedStringArray(["g2gfast"]))
+	var timer_only := TmcContent.scan("res://content", PackedStringArray(["airdrift"]))
 	var timer_kept := timer_only.value as TmcContent if timer_only.ok else null
 	_check(timer_kept != null and timer_kept.ids() == PackedStringArray(["airdrift"]) and timer_kept.missing.is_empty(),
-		"a games list naming g2gfast keeps airdrift and reports nothing missing",
+		"a games list naming airdrift keeps airdrift and reports nothing missing",
 		str(timer_kept.ids()) + " missing " + str(timer_kept.missing) if timer_kept != null else str(timer_only.error))
 
 	_done()
@@ -207,6 +207,6 @@ func _test_deployed_map_clocks() -> void:
 	)
 
 
-## `end_vote`, `include_extend` and `extend_seconds` through `DOT_GAME_VOTE_*` and `--game-vote-*`,
+## `end_vote`, `include_extend` and `extend_seconds` through `GS_GAME_VOTE_*` and `--game-vote-*`,
 ## each in a child process, change what the server vote's ballot does. `_test_vote` checks one of
 ## the six as a parsed value; this asks the ballot.

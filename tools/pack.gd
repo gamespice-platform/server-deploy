@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Publish a content directory as a signed dot-cloud pack. Driven by `./server pack <id>`, which is
+## Publish a content directory as a signed gs-cloud pack. Driven by `./server pack <id>`, which is
 ## the way to run it.
 
 const EXIT_OK := 0
@@ -18,7 +18,7 @@ const STAGING := "user://pack_staging"
 const NEVER := ["cache", "tmp"]
 
 ## GameSpice Core's deriver, run inside the SOURCE project (its own addons, its own class list).
-const REQUIRES_TOOL := "res://addons/dot_core/tools/dot_requires.gd"
+const REQUIRES_TOOL := "res://addons/gs_core/tools/gs_requires.gd"
 
 ## How long one run of the deriver, or the source's import, may take before it is killed.
 const REQUIRES_TIMEOUT_S := 600
@@ -231,7 +231,7 @@ func _publish_one(
 			"an empty pack mounts and contains nothing, which reads as a broken upload"
 		)
 
-	# [b]What the pack needs of the host's addons, as requires.json at its root.[/b] dot-ci's
+	# [b]What the pack needs of the host's addons, as requires.json at its root.[/b] gs-ci's
 	# `package.sh --pack` has always written it; this path never did, so every pack a box published for
 	# itself (setup.sh, `./server pack --source`) carried none.
 	var requires := derive_requires(source, STAGING.path_join("requires").path_join(str(meta["id"]).replace("/", "_") + ".json"))
@@ -289,7 +289,7 @@ func _publish_one(
 		return GSResult.fail(
 			GSError.CODE_STATE,
 			"no signing key at %s" % (key_path if key_path != "" else "(none given)"),
-			"dot-cloud refuses unsigned manifests, so this pack would mount nowhere"
+			"gs-cloud refuses unsigned manifests, so this pack would mount nowhere"
 		)
 
 	pub.signing_key_pem = FileAccess.get_file_as_string(key_path)
@@ -313,7 +313,7 @@ func _publish_one(
 		return GSResult.fail(
 			GSError.CODE_STATE,
 			"%s was published without its requires.json" % meta["id"],
-			"the file was derived but dot-cloud's publisher did not take it "
+			"the file was derived but gs-cloud's publisher did not take it "
 			+ "(tools/pack.gd's publisher_for hands it over as extra_files)"
 		)
 
@@ -335,8 +335,8 @@ static func _lists(result: Variant, path: String) -> bool:
 
 
 
-## Derive [param source]'s requires.json into [param out_path], the way dot-ci's `package.sh --pack`
-## does: GameSpice Core's `tools/dot_requires.gd`, run with `--path` the source project.
+## Derive [param source]'s requires.json into [param out_path], the way gs-ci's `package.sh --pack`
+## does: GameSpice Core's `tools/gs_requires.gd`, run with `--path` the source project.
 ## [param pins] is addon to level, the levels the shell this box ships has; omitted, they are read from addons.lock ([method pinned_args]). A floor above one fails the derivation, never clamped to it.
 static func derive_requires(source: String, out_path: String, pins: Dictionary = {}) -> GSResult:
 	var src := ProjectSettings.globalize_path(source)
@@ -344,8 +344,8 @@ static func derive_requires(source: String, out_path: String, pins: Dictionary =
 	if not FileAccess.file_exists(src.path_join("project.godot")):
 		return GSResult.success("")
 
-	if not FileAccess.file_exists(src.path_join("addons/dot_core/tools/dot_requires.gd")):
-		print("  note: %s has no addons/dot_core/tools/dot_requires.gd; the pack ships without requires.json" % src)
+	if not FileAccess.file_exists(src.path_join("addons/gs_core/tools/gs_requires.gd")):
+		print("  note: %s has no addons/gs_core/tools/gs_requires.gd; the pack ships without requires.json" % src)
 		return GSResult.success("")
 
 	if FileAccess.file_exists(src.path_join(GSAddonApi.REQUIREMENTS_FILE)):
@@ -367,7 +367,7 @@ static func derive_requires(source: String, out_path: String, pins: Dictionary =
 	var pin_args := pinned_args(pins if not pins.is_empty() else pinned_levels())
 	var run := _run_requires(src, ["--out", out_abs] + pin_args)
 
-	# A source never imported has no class cache: dot_requires.gd then fails to PARSE (its GSAddonApi
+	# A source never imported has no class cache: gs_requires.gd then fails to PARSE (its GSAddonApi
 	# is unknown) before it can print its own "import the project first" and exit 2 -- the case on a
 	# GPU box, where a game sibling is staged from its files alone.
 	var unimported := int(run["code"]) != 0 and str(run["output"]).contains("Identifier \"GSAddonApi\" not declared")
@@ -401,12 +401,12 @@ static func derive_requires(source: String, out_path: String, pins: Dictionary =
 	return GSResult.success(out_abs)
 
 
-## The addon levels at the commits addons.lock pins, which is what the shell this box ships has: dot-core's [method GSAddonApi.pinned_levels] reads each addon folder at the locked ref.
-## The repositories are looked for in GS_REPOS_ROOT (old name DOT_REPOS_ROOT), beside this project, then in TMC_REPOS_DIR and ~/godot; a root fills only the addons the earlier ones could not read. An addon none could read is left out, so a floor on it is judged against the linked build.
+## The addon levels at the commits addons.lock pins, which is what the shell this box ships has: gs-core's [method GSAddonApi.pinned_levels] reads each addon folder at the locked ref.
+## The repositories are looked for in GS_REPOS_ROOT (old name GS_REPOS_ROOT), beside this project, then in TMC_REPOS_DIR and ~/godot; a root fills only the addons the earlier ones could not read. An addon none could read is left out, so a floor on it is judged against the linked build.
 static func pinned_levels() -> Dictionary:
 	var here := ProjectSettings.globalize_path("res://")
 	var lock := here.path_join("addons.lock")
-	var roots: Array[String] = [_gs_env("DOT_REPOS_ROOT"), here.path_join("..").simplify_path(), OS.get_environment("TMC_REPOS_DIR"), OS.get_environment("HOME").path_join("godot")]
+	var roots: Array[String] = [OS.get_environment("GS_REPOS_ROOT"), here.path_join("..").simplify_path(), OS.get_environment("TMC_REPOS_DIR"), OS.get_environment("HOME").path_join("godot")]
 	var out := {}
 	for root in roots:
 		if root == "":
@@ -418,7 +418,7 @@ static func pinned_levels() -> Dictionary:
 	return out
 
 
-## [param pins] as the repeatable `--pin NAME=LEVEL` arguments of dot_requires.gd.
+## [param pins] as the repeatable `--pin NAME=LEVEL` arguments of gs_requires.gd.
 static func pinned_args(pins: Dictionary) -> Array:
 	var out := []
 	var names: Array = pins.keys()
@@ -747,12 +747,3 @@ func _options() -> Dictionary:
 
 	return out
 
-
-## [param name] (a DOT_ name) read as its GS_ spelling first, then as itself: what GSConfig.gs_env does,
-## written out because the dot-core addons.lock pins predates gs_env and a call to it does not compile there.
-static func _gs_env(name: String) -> String:
-	if name.begins_with("DOT_"):
-		var gs := "GS_" + name.substr(4)
-		if OS.has_environment(gs):
-			return OS.get_environment(gs)
-	return OS.get_environment(name)

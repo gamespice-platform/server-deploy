@@ -173,9 +173,9 @@
 </div>
 
 <!-- Before index.js: the browser has no limiter of the engine's (sample playback runs no bus
-     effects), so this puts one in front of the speakers. dot-audio docs/loudness.md. -->
-<script src="dot_web.js"></script>
-<script src="dot_audio_ceiling.js"></script>
+     effects), so this puts one in front of the speakers. gs-audio docs/loudness.md. -->
+<script src="gs_web.js"></script>
+<script src="gs_audio_ceiling.js"></script>
 <!-- index.js or index-mt.js is loaded by the script below: which one depends on the page's
      headers (THREADS, below). -->
 <script>
@@ -361,10 +361,10 @@
 
   /*
    * NATIVE MODULES. A dlink export (the Web preset's Extensions Support) lists the
-   * GDExtension side modules it ships -- dot-sim's dot_sim.wasm -- in index.html, and
+   * GDExtension side modules it ships -- gs-sim's gs_sim.wasm -- in index.html, and
    * `export-web` writes that list over the empty one below. They are fetched beside
    * this page; the engine's own side module (index.side.wasm) comes from `executable`.
-   * `?natives=0` starts without them: dot_sim.gdextension then fails to open, dot-sim
+   * `?natives=0` starts without them: gs_sim.gdextension then fails to open, gs-sim
    * stays unloaded, and every module runs its GDScript twin (same bytes, slower). A start
    * that fails while they are on (a rejected start, or a side module that 404s or does not
    * compile; see nativeFailure below) is retried once that way, so a side module that does

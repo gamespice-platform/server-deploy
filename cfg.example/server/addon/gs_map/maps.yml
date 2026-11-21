@@ -102,7 +102,7 @@
 #         maps: maplist
 #
 # A name that another command already has logs a WARN and is skipped, it never takes theirs.
-# The roles are dot-vote's (nominate, rtv, vote, timeleft, nextmap ...) and dot-map's (map,
+# The roles are gs-vote's (nominate, rtv, vote, timeleft, nextmap ...) and gs-map's (map,
 # maps, mapinfo, rotation, rotations).
 
 defaults:

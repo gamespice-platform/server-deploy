@@ -1,6 +1,6 @@
 # GameSpice Server Deploy
 
-TMC's server tool: boots a dot-server from `cfg/` and `content/`, serves games as signed dot-cloud packs, and exports the client shell for the browser and the desktop. **It ships no game.** It is also the release machinery: `addons.lock`, the shell builds, `setup.sh`, the Pterodactyl egg.
+TMC's server tool: boots a gs-server from `cfg/` and `content/`, serves games as signed gs-cloud packs, and exports the client shell for the browser and the desktop. **It ships no game.** It is also the release machinery: `addons.lock`, the shell builds, `setup.sh`, the Pterodactyl egg.
 
 Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is what is specific to here. The operator's view of every feature is the [README](README.md); the reasoning is in [docs/](docs/README.md).
 
@@ -19,8 +19,8 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is what is specifi
 | [docs/native-client.md](docs/native-client.md) | `export-native`, launch arguments, presets |
 | [docs/web-inventory-bridge.md](docs/web-inventory-bridge.md) | `client/tmc_inventory_link.gd`, the page's downloaded-content bridge |
 | [docs/web-client.md](docs/web-client.md) | `client/shell.gd`, sign-in, clearing downloads, TLS |
-| [docs/game-vote.md](docs/game-vote.md) | `host/tmc_vote.gd`, `cfg/addon/dot_vote/vote.yml`, the notice overlay |
-| [docs/admin-menu.md](docs/admin-menu.md) | `/admin`, `cfg/addon/dot_menu/admin_menu.yml`, the loading screen |
+| [docs/game-vote.md](docs/game-vote.md) | `host/tmc_vote.gd`, `cfg/addon/gs_vote/vote.yml`, the notice overlay |
+| [docs/admin-menu.md](docs/admin-menu.md) | `/admin`, `cfg/addon/gs_menu/admin_menu.yml`, the loading screen |
 | [docs/operator-services.md](docs/operator-services.md) | logging, the security guard, party, matchmaking, replay, friends |
 | [docs/enrollment.md](docs/enrollment.md) | `host/tmc_enroll.gd`, `data/listing.json` |
 | [docs/testing.md](docs/testing.md) | adding or trusting a suite |
@@ -67,8 +67,8 @@ Exit codes: `2` usage, `3` no runtime, `4` no project (`install-games`: addons b
 - The shell's `project.godot` keeps `audio/driver/enable_input=true`, or no delivered game can open a microphone. [web](docs/web-client.md#the-shells-projectgodot)
 - The shell's `project.godot` carries no comments (the editor drops them); its reasons are in [web](docs/web-client.md#the-shells-projectgodot).
 
-- Both web pages load dot-core's `dot_web.js` (the named functions `GSWeb` calls; the game origin's CSP has no `unsafe-eval`, so nothing may `JavaScriptBridge.eval`) before the ceiling; `install_dot_web` in `tools/server.in` patches exported pages. `Install-GSWeb` in `tools/server.ps1.in` is its twin (untested: no pwsh here); that file has no `install_ceiling` twin yet. [web](docs/web-client.md#the-csp-safe-page-script)
-- Both web pages load GameSpice Audio's `dot_audio_ceiling.js` before `index.js`, the browser player's only limiter; a change needs a new shell. [web](docs/web-client.md#the-browsers-audio-ceiling)
+- Both web pages load gs-core's `gs_web.js` (the named functions `GSWeb` calls; the game origin's CSP has no `unsafe-eval`, so nothing may `JavaScriptBridge.eval`) before the ceiling; `install_gs_web` in `tools/server.in` patches exported pages. `Install-GSWeb` in `tools/server.ps1.in` is its twin (untested: no pwsh here); that file has no `install_ceiling` twin yet. [web](docs/web-client.md#the-csp-safe-page-script)
+- Both web pages load GameSpice Audio's `gs_audio_ceiling.js` before `index.js`, the browser player's only limiter; a change needs a new shell. [web](docs/web-client.md#the-browsers-audio-ceiling)
 - A delivered game references its own files by relative path; no `class_name`, and every `res://` string through `<Game>Paths.rebase()`. [delivery](docs/delivery-constraint.md#rules-that-follow)
 - `rebase()` is one line over `rebase_onto(path, root)`, so a suite can test with a mount prefix; tested against `res://` it passes with the bug in. [delivery](docs/delivery-constraint.md#rules-that-follow)
 - A form of the mount constraint is closed when every game closes it. [delivery](docs/delivery-constraint.md#rules-that-follow)
@@ -111,7 +111,7 @@ Exit codes: `2` usage, `3` no runtime, `4` no project (`install-games`: addons b
 - Addon release: tag → site publishes the pack → `tools/addons-lock.sh write`, push → restart. Push the lock only after the packs are on the origin. [releases](docs/releases.md#the-release-orders)
 - Game release: tag the addons → lock here and push → the web-shell workflow's tag → tag the game. [releases](docs/releases.md#the-release-orders)
 - Game pack publish: `tools/pack_ready.sh <game-dir>` first (exit 0 = every `requires.floor.json` level is within origin/main's lock). `--prepare` pushes a `lockbump/<game>-<stamp>` branch and prints the tag, merge and shell steps for the supervisor. [releases](docs/releases.md#a-game-pack-against-the-lock)
-- **The shell is built by CI** (`.github/workflows/web-shell.yml`): a push changing a shell input exports, uploads, pins `web/shell-build` (+ `web/shell-build.inputs`) and tags. Never tag a lock bump by hand: `release.yml` refuses a tag whose pinned shell is not its own, dot-ci's server-compat skips it, and `./server` will not update onto it. `tools/publish-web-shell.sh` is the manual fallback. [releases](docs/releases.md#publishing-the-web-build)
+- **The shell is built by CI** (`.github/workflows/web-shell.yml`): a push changing a shell input exports, uploads, pins `web/shell-build` (+ `web/shell-build.inputs`) and tags. Never tag a lock bump by hand: `release.yml` refuses a tag whose pinned shell is not its own, gs-ci's server-compat skips it, and `./server` will not update onto it. `tools/publish-web-shell.sh` is the manual fallback. [releases](docs/releases.md#publishing-the-web-build)
 - A new shell is needed for the engine, the boot stage, `client/` code, a signon change, or addon files outside `addons/<dir>/`. [releases](docs/releases.md#what-needs-a-new-shell)
 - `tools/addons-lock.sh check` before any export; check against the tags, not the sibling checkouts. [releases](docs/releases.md#addonslock)
 - `setup.sh` moves only its own clones to the lock, never a developer's checkout. [releases](docs/releases.md#addonslock)
@@ -127,14 +127,14 @@ Exit codes: `2` usage, `3` no runtime, `4` no project (`install-games`: addons b
 - The game vote and a game's own vote never show a ballot together (`TmcVote` chains every director's `busy_fn`). [vote](docs/game-vote.md#the-games-own-vote-and-this-one-take-turns)
 - A module's unload runs AFTER its game's scene is freed: guard every world reference in `_module_unload` with `is_instance_valid`. [vote](docs/game-vote.md#the-games-own-vote-and-this-one-take-turns)
 - The loading screen covers the first join too (`_joining`, from Connect to spawn) as well as a change under a player; every exit of a join (`_fail`, `_on_disconnected`, a failed connect) must clear `_joining`, or the screen sits over the menu until its 90 s staleness. [admin](docs/admin-menu.md#the-loading-screen-covers-a-join-and-a-change)
-- No game is shown before it is ready: `TmcGameCover` hosts its `GSLoadGate` (by `dot_load_gate_host` metadata on the game root, reached by name only), else the root contract (`WARM_WAIT_SEC`), else covers until a camera in the game and 10 physics frames, at most 5 s. Its warm-up runs `PROCESS_MODE_ALWAYS`: the camera is often under a frozen body. [web](docs/web-client.md#the-game-is-not-shown-until-it-is-ready)
+- No game is shown before it is ready: `TmcGameCover` hosts its `GSLoadGate` (by `gs_load_gate_host` metadata on the game root, reached by name only), else the root contract (`WARM_WAIT_SEC`), else covers until a camera in the game and 10 physics frames, at most 5 s. Its warm-up runs `PROCESS_MODE_ALWAYS`: the camera is often under a frozen body. [web](docs/web-client.md#the-game-is-not-shown-until-it-is-ready)
 - An admin menu leaf is a console line run with the admin's context; never act directly. Notice payloads are measured in bytes with `var_to_bytes`. [admin](docs/admin-menu.md#the-menu-is-a-way-of-typing-a-command)
 - A new client-to-server feature is a new envelope kind, not chat (chat has a flood limit) and not a handshake key (a signon change). [admin](docs/admin-menu.md#the-menu-is-a-way-of-typing-a-command)
-- Solo (`--solo`, `?solo=`) mounts a pack as a join does and starts its `client_scene` with NO client link; a game reads its solo map packs from `GSRegistry` `dot_solo` by name, and `client/solo.json` must match `cfg.example/server/content/overrides.yml`. [web](docs/web-client.md#solo-play)
+- Solo (`--solo`, `?solo=`) mounts a pack as a join does and starts its `client_scene` with NO client link; a game reads its solo map packs from `GSRegistry` `gs_solo` by name, and `client/solo.json` must match `cfg.example/server/content/overrides.yml`. [web](docs/web-client.md#solo-play)
 - The shell signs in only by `try_web_handoff()`; `client/auth.json` names the site origin, never the game origin. [web](docs/web-client.md#what-the-web-player-signs-in-against)
 - Anything chained onto a `GSRegistry` service a game registers must re-chain after every game change (registry is last-wins). [services](docs/operator-services.md#party-matchmaking-and-locale)
 - An addon in the list is not an addon in use: something must construct it. [services](docs/operator-services.md)
-- The security guard ships in dry run with movement thresholds at 0. [services](docs/operator-services.md#the-guard-dot-server-security)
+- The security guard ships in dry run with movement thresholds at 0. [services](docs/operator-services.md#the-guard-gs-server-security)
 - Only a command-line boot enrolls with the site; suites never do. [enrollment](docs/enrollment.md#rules)
 - One game port for WebSocket and ENet (A2S and DQP on its UDP), RCON one up; behind TLS the game binds 127.0.0.1; on a panel set every port. [web](docs/web-client.md#ports-and-transports)
 

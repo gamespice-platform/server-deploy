@@ -2,13 +2,13 @@
 #
 #   docker compose up -d          from this directory
 #
-# BUILD CONTEXT IS THE PARENT DIRECTORY, not this one. Every dot-* addon is its own
+# BUILD CONTEXT IS THE PARENT DIRECTORY, not this one. Every gs-* addon is its own
 # repository and there is no way to clone the tree at once, so this build takes them
 # from the checkouts beside the project -- `setup.sh --addons-dir ..` below -- rather
 # than cloning fifty repositories inside the image. docker-compose.yml sets
 # `context: ..` for that reason; building by hand needs the same:
 #
-#   docker build -f dot-server-deploy/Dockerfile -t tmc-server ..
+#   docker build -f gs-server-deploy/Dockerfile -t tmc-server ..
 #
 # If you have vendored the addons into ./addons/ instead -- which is what a release
 # tarball looks like -- the sibling copy below finds nothing and setup.sh uses what is
@@ -36,7 +36,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl unzip libfontconfig1 \
  && rm -rf /var/lib/apt/lists/*
 
-COPY dot-server-deploy/tools/fetch-godot.sh /tmp/fetch-godot.sh
+COPY gs-server-deploy/tools/fetch-godot.sh /tmp/fetch-godot.sh
 
 RUN /tmp/fetch-godot.sh --dest /usr/local/bin \
  && rm -f /tmp/fetch-godot.sh \
@@ -54,10 +54,10 @@ FROM runtime AS build
 WORKDIR /src
 COPY . /src
 
-WORKDIR /src/dot-server-deploy
+WORKDIR /src/gs-server-deploy
 # --vendor COPIES the addons rather than linking them, and --addons-dir .. is where
 # they are: the build context is the parent directory. The final stage copies only
-# this project -- so a symlink out of it dangles, every dot-* class_name is unresolved
+# this project -- so a symlink out of it dangles, every gs-* class_name is unresolved
 # at once, and the server dies at startup with what reads as a broken project rather
 # than a dangling link. Found by running the container.
 #
@@ -97,21 +97,21 @@ WORKDIR /src/dot-server-deploy
 # sources at all the full addon list is wired in, which is the only answer that
 # still works when the set of games is decided at run time.
 ARG TMC_BUILD_GAMES=all
-# GS_NATIVES=none (old name DOT_NATIVES): no native library (tools/fetch-natives.sh skips; the check below allows it).
+# GS_NATIVES=none (old name GS_NATIVES): no native library (tools/fetch-natives.sh skips; the check below allows it).
 ARG GS_NATIVES=
-ARG DOT_NATIVES=
+ARG GS_NATIVES=
 
 RUN ./setup.sh --godot /usr/local/bin/godot --vendor --addons-dir .. \
         $([ "$TMC_BUILD_GAMES" = "none" ] && echo --no-games)
 
-# dot-sim's native library (motor, snapshot codec, bot sight) came in with that setup.sh
-# run: tools/fetch-natives.sh, through dot-bootstrap's fetcher found beside the project
+# gs-sim's native library (motor, snapshot codec, bot sight) came in with that setup.sh
+# run: tools/fetch-natives.sh, through gs-bootstrap's fetcher found beside the project
 # in this build context. Without it the server runs the GDScript twins -- the same
 # results, slower, paid for by a 32-player server with bots -- and nothing but a log
 # line says so, so the build fails instead. --build-arg GS_NATIVES=none builds without.
-RUN [ "${GS_NATIVES:-$DOT_NATIVES}" = none ] \
- || { [ -f addons/dot_sim/dot_sim.gdextension ] && ls addons/dot_sim/bin/linux-*/* >/dev/null 2>&1; } \
- || { echo "dot-sim native library missing from the image (see setup.sh's native libraries step;" \
+RUN [ "${GS_NATIVES:-$GS_NATIVES}" = none ] \
+ || { [ -f addons/gs_sim/gs_sim.gdextension ] && ls addons/gs_sim/bin/linux-*/* >/dev/null 2>&1; } \
+ || { echo "gs-sim native library missing from the image (see setup.sh's native libraries step;" \
            "GS_NATIVES=none builds without it)" >&2; exit 1; }
 
 # The configuration generated during the build is thrown away. cfg/ is a volume at
@@ -146,7 +146,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=runtime /usr/local/bin/godot /usr/local/bin/godot
-COPY --from=build /src/dot-server-deploy /srv/tmc
+COPY --from=build /src/gs-server-deploy /srv/tmc
 
 # A writable home for whatever uid ends up running this.
 #

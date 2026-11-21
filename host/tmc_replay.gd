@@ -20,7 +20,7 @@ const MOD_KIND_BAN := 0
 const MOD_KIND_KICK := 1
 
 ## The service a game's GameSpice Moderation registers under.
-const MODERATION_SERVICE := &"dot_moderation"
+const MODERATION_SERVICE := &"gs_moderation"
 
 var recorder: GSReplayRecorder = null
 var tap: GSReplayEventTap = null
@@ -546,7 +546,7 @@ func describe_lines() -> PackedStringArray:
 			tick_now(), tick_rate, directory, _clips, _evidence_saved, _evidence_attached,
 			_evidence_failed, _pruned, keep_files, keep_bytes >> 20,
 			", every match to a file" if record_matches else "",
-			", watching dot-moderation" if _moderation != null and is_instance_valid(_moderation) else "",
+			", watching gs-moderation" if _moderation != null and is_instance_valid(_moderation) else "",
 		],
 	])
 	if recorder != null:
