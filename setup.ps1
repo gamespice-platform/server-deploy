@@ -380,7 +380,7 @@ foreach ($template in (Get-ChildItem -LiteralPath $templates -Recurse -File |
 }
 
 # The server's own content trust, derived from the client's. setup.sh explains it:
-# DotCloudClient refuses every unsigned manifest, and with no data\content.json it
+# GSCloudClient refuses every unsigned manifest, and with no data\content.json it
 # starts with no trusted keys at all, so a server told where to download its maps
 # still cannot download one. It used to live in cfg\, where nothing reads it now, so an
 # old install's copy is moved rather than regenerated: it may carry a key somebody added.

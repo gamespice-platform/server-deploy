@@ -3,7 +3,7 @@ extends RefCounted
 
 ## How big this server lets its content cache grow: `cache_bytes` in server.yml, `--cache-bytes`, TMC_CACHE_BYTES. 0, the default, is unlimited. A server mounts every map it offers, and GameSpice Cloud never evicts an object mounted content references, so a ceiling below what the offered maps add up to is not a cache policy: it is maps that fail to load ("The content cache is full and everything in it is in use"). GameSpice Cloud's own default (4 GiB) is a player's; a server that wants a ceiling says so here. The disk is the real limit, and every boot logs how much of it is free.
 
-## Where the setting is written, for refusals and for GameSpice Cloud's own quota message (`DotCloudConfig.limit_hint`, GameSpice Cloud API 31).
+## Where the setting is written, for refusals and for GameSpice Cloud's own quota message (`GSCloudConfig.limit_hint`, GameSpice Cloud API 31).
 const WHERE := "cache_bytes in cfg/server/server.yml, --cache-bytes or TMC_CACHE_BYTES"
 
 const _UNITS := {"": 1, "B": 1, "K": 1024, "KB": 1024, "KIB": 1024, "M": 1048576, "MB": 1048576, "MIB": 1048576,
@@ -12,11 +12,11 @@ const _UNITS := {"": 1, "B": 1, "K": 1024, "KB": 1024, "KIB": 1024, "M": 1048576
 
 ## A byte count from the file, the flag or the variable: a whole number of bytes, or one with a binary unit (`20G`, `512 MiB`).
 ## Empty is the default, 0. Anything else -- negative, fractional, an unknown unit -- refuses boot rather than becoming some other ceiling.
-static func parse(raw: Variant) -> DotResult:
+static func parse(raw: Variant) -> GSResult:
 	var text := str(raw).strip_edges().to_upper().replace(" ", "")
 
 	if text == "":
-		return DotResult.success(0)
+		return GSResult.success(0)
 
 	var digits := 0
 
@@ -26,13 +26,13 @@ static func parse(raw: Variant) -> DotResult:
 	var unit := text.substr(digits)
 
 	if digits == 0 or not _UNITS.has(unit):
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"cache_bytes is '%s', not a whole number of bytes (0 for unlimited, or with K, M, G or T)" % str(raw).strip_edges(),
 			WHERE
 		)
 
-	return DotResult.success(text.substr(0, digits).to_int() * int(_UNITS[unit]))
+	return GSResult.success(text.substr(0, digits).to_int() * int(_UNITS[unit]))
 
 
 ## [param raw] as `--print-config` shows it: "unlimited", a size, or why it would refuse boot.
@@ -42,7 +42,7 @@ static func describe(raw: Variant) -> String:
 	if not limit.ok:
 		return str(limit.error)
 
-	return "unlimited" if int(limit.value) == 0 else DotPaths.format_bytes(int(limit.value))
+	return "unlimited" if int(limit.value) == 0 else GSPaths.format_bytes(int(limit.value))
 
 
 ## Puts [param bytes] on a server's cloud config before it starts and says, once, what the ceiling is and how much disk it has to fill.
@@ -59,8 +59,8 @@ static func apply(cloud_config: Object, bytes: int, channel: String, config_file
 	var dir := DirAccess.open(cache_dir)
 	var free := int(dir.get_space_left()) if dir != null else -1
 	var fields := {
-		"limit": DotPaths.format_bytes(bytes) if bytes > 0 else "unlimited",
-		"disk_free": DotPaths.format_bytes(free) if free >= 0 else "unknown",
+		"limit": GSPaths.format_bytes(bytes) if bytes > 0 else "unlimited",
+		"disk_free": GSPaths.format_bytes(free) if free >= 0 else "unknown",
 		"dir": cache_dir,
 		"set_by": WHERE,
 	}
@@ -72,7 +72,7 @@ static func apply(cloud_config: Object, bytes: int, channel: String, config_file
 	if OS.get_environment("DOT_CLOUD_CACHE_BYTES") != "":
 		fields["overridden_by"] = "DOT_CLOUD_CACHE_BYTES"
 
-	DotLog.info(channel, "content cache limit", fields)
+	GSLog.info(channel, "content cache limit", fields)
 
 
 ## The cloud config file's own `cache_bytes`, which GameSpice Cloud applies over this one, as "<file> cache_bytes=<n>"; empty when it has none.

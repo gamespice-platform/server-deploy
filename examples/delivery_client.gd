@@ -29,7 +29,7 @@ var _completed := 0
 
 var _host: Node = null
 var _client_side: Node = null
-var _link: DotClientLink = null
+var _link: GSClientLink = null
 
 # Through Arrays: a GDScript lambda captures locals by value.
 var _spawned := [false]
@@ -37,8 +37,8 @@ var _refused := [""]
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -46,7 +46,7 @@ func _ready() -> void:
 func _run() -> void:
 	print("dot-server-deploy: a real client in a delivered Dangerous Delivery")
 
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://dist/tmc/delivery")):
 		print("skipped: dist/tmc/delivery is not published here")
@@ -63,7 +63,7 @@ func _run() -> void:
 			_test_still_serving()
 
 	await _teardown()
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	print("")
 	_check(
@@ -107,8 +107,8 @@ func _check(condition: bool, what: String, detail: String = "") -> bool:
 	return condition
 
 
-func _server() -> DotServer:
-	return _host.server as DotServer
+func _server() -> GSServer:
+	return _host.server as GSServer
 
 
 func _until(condition: Callable, seconds: float = 20.0) -> bool:
@@ -125,7 +125,7 @@ func _until(condition: Callable, seconds: float = 20.0) -> bool:
 
 ## The server's world, through the module's `game` — GameSpice Game's own name for it.
 func _world() -> Node:
-	var module: DotModule = _server().modules.get_module(MODULE)
+	var module: GSModule = _server().modules.get_module(MODULE)
 	return module.get("game") as Node if module != null else null
 
 
@@ -164,7 +164,7 @@ func _boot() -> bool:
 	ServerWorld.add(self, _host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 
 	if not _check(started.ok, "the host boots", str(started.error)):
 		return false
@@ -173,7 +173,7 @@ func _boot() -> bool:
 		func() -> bool:
 			var current := _server().games.current()
 			return current != null and current.game_id == GAME \
-				and _server().games.phase == DotGameManager.Phase.IDLE,
+				and _server().games.phase == GSGameManager.Phase.IDLE,
 		45.0
 	)
 
@@ -218,7 +218,7 @@ func _teardown() -> void:
 func _test_connect() -> bool:
 	_section("a client connects to a delivered game")
 
-	_link = DotClientLink.new()
+	_link = GSClientLink.new()
 	_link.name = "Server"
 	_link.player_name = "Driver"
 	_client_side.add_child(_link)
@@ -226,7 +226,7 @@ func _test_connect() -> bool:
 	_link.spawned.connect(func() -> void: _spawned[0] = true)
 	_link.disconnected.connect(func(reason: String) -> void: _refused[0] = reason)
 
-	var connecting: DotResult = await _link.connect_to_server("127.0.0.1:%d" % _host.config.server.port)
+	var connecting: GSResult = await _link.connect_to_server("127.0.0.1:%d" % _host.config.server.port)
 
 	if not _check(connecting.ok, "it starts connecting", str(connecting.error)):
 		_done()
@@ -248,7 +248,7 @@ func _test_the_pack_mounted() -> void:
 	var entry := _server().games.current()
 	_check(entry != null and String(entry.content_id) == CONTENT_ID, "the current game is the delivered one")
 
-	var module: DotModule = _server().modules.get_module(MODULE)
+	var module: GSModule = _server().modules.get_module(MODULE)
 	var script: Variant = module.get_script() if module != null else null
 	var path := String((script as Resource).resource_path) if script != null else ""
 	_check(path.begins_with("res://dot_cloud/tmc/delivery/"), "its module is the mounted copy", path)
@@ -309,7 +309,7 @@ func _test_driving_across_the_socket() -> void:
 		return driver != null and (driver as Object).call("on_road"), 15.0)
 	_check(on_road, "the server set the client off", String(key))
 
-	var go := DotVehicleCommand.new()
+	var go := GSVehicleCommand.new()
 	go.throttle = 1.0
 	client.set("command_override", go)
 	var server_truck: Node3D = ((world.get("drivers") as Dictionary)[key] as Object).get("truck") if on_road else null
@@ -371,7 +371,7 @@ func _test_still_serving() -> void:
 	_section("the game's own console still answers")
 
 	var captured: Array[String] = []
-	var context := DotCmdContext.console("", PackedStringArray())
+	var context := GSCmdContext.console("", PackedStringArray())
 	context.reply_sink = func(text: String) -> void: captured.append(text)
 	_server().console.execute("dd_status", context)
 	_check("\n".join(captured).contains("dd_snowline"), "dd_status lists the delivered routes")

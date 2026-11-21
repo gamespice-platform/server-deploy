@@ -1,5 +1,7 @@
 # Dot to GS (Gamespice) rename plan
 
+> **Superseded (2026-11-21).** The owner chose a direct rename without aliases. dot-bootstrap `tools/rename_dot_to_gs.py` renames class names (phase 1) and then `addons/dot_*` paths, files and crates (phase 2). The storage and wire names listed below (`user://dot_cloud`, the `dot_log` table, `&"dot_cloud_client"`) are still left alone.
+
 The owner's order (2026-11-16): every "Dot"/"dot" becomes **GS** or **Gamespice**. This plan covers the identifiers. Text that players and admins see is phase 1 and is handled separately.
 
 **What must not happen:**

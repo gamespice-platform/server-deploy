@@ -17,9 +17,9 @@ const _PIN_CHARS := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456
 ## Value: an Array of {kind: "repo"|"pack", id, pin, content, maps, rotation, time_limits}, in list order (`maps` is a
 ## PackedStringArray, `rotation` "" when the entry does not say). Fails with CODE_PARSE for
 ## a file that is not yml and CODE_INVALID naming the file and entry for a bad one.
-static func load_list(kind: String, config_dir: String, default_dir: String = DEFAULT_DIR) -> DotResult:
+static func load_list(kind: String, config_dir: String, default_dir: String = DEFAULT_DIR) -> GSResult:
 	if not KINDS.has(kind):
-		return DotResult.fail(DotError.CODE_INVALID, "Unknown content list '%s'." % kind)
+		return GSResult.fail(GSError.CODE_INVALID, "Unknown content list '%s'." % kind)
 	var file := kind + ".yml"
 	var base := config_dir.rstrip("/")
 	var paths: Array[String] = [default_dir.path_join(file), base + "/content/" + file, base + "/server/content/" + file]
@@ -33,7 +33,7 @@ static func load_list(kind: String, config_dir: String, default_dir: String = DE
 		if parsed.value == null:
 			continue
 		if not (parsed.value is Dictionary):
-			return DotResult.fail(DotError.CODE_INVALID, "%s must hold a mapping at the top level." % path)
+			return GSResult.fail(GSError.CODE_INVALID, "%s must hold a mapping at the top level." % path)
 		# A file with neither key is the rotation or pack settings that share its name, not a list.
 		if not ((parsed.value as Dictionary).has("entries") or (parsed.value as Dictionary).has("remove")):
 			continue
@@ -57,7 +57,7 @@ static func load_list(kind: String, config_dir: String, default_dir: String = DE
 				out[at] = e
 			else:
 				out.append(e)
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
 ## The pin of [param id] in [param entries], or "" when it is unpinned or absent.
@@ -69,13 +69,13 @@ static func pin_for(entries: Array, id: String) -> String:
 ## The order games rotate in: the games.yml entries that are in [param installed] (by content
 ## directory, else id), in list order, then any installed game the list does not name, sorted. One
 ## game is a list of one, so the caller does no game rotation.
-static func game_order(entries: Array, installed: PackedStringArray, wanted: PackedStringArray = PackedStringArray()) -> DotResult:
+static func game_order(entries: Array, installed: PackedStringArray, wanted: PackedStringArray = PackedStringArray()) -> GSResult:
 	var known := PackedStringArray()
 	for e: Dictionary in entries:
 		known.append(_game_id(e))
 	for id in wanted:
 		if not known.has(id) and not installed.has(id):
-			return DotResult.fail(DotError.CODE_INVALID, "Unknown game '%s': not in games.yml (%s) and not installed (%s)." % [id, ", ".join(known), ", ".join(installed)])
+			return GSResult.fail(GSError.CODE_INVALID, "Unknown game '%s': not in games.yml (%s) and not installed (%s)." % [id, ", ".join(known), ", ".join(installed)])
 	var out := PackedStringArray()
 	var order: PackedStringArray = wanted if not wanted.is_empty() else known
 	for id in order:
@@ -87,13 +87,13 @@ static func game_order(entries: Array, installed: PackedStringArray, wanted: Pac
 			rest.append(id)
 	rest.sort()
 	out.append_array(rest)
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
 ## The map rotation of one game: Value {maps: PackedStringArray, rotation: String, time_limits: Dictionary of map id to seconds, only maps that set one}. The entry's `maps:` list
 ## is the order; absent means [param installed_maps] sorted. A map the entry names that is not installed, or a
 ## [param game_id] the list does not hold, fails with CODE_INVALID naming it and what is available.
-static func map_rotation(entries: Array, game_id: String, installed_maps: PackedStringArray) -> DotResult:
+static func map_rotation(entries: Array, game_id: String, installed_maps: PackedStringArray) -> GSResult:
 	var maps := PackedStringArray(installed_maps)
 	maps.sort()
 	var mode := "sequential"
@@ -106,7 +106,7 @@ static func map_rotation(entries: Array, game_id: String, installed_maps: Packed
 		var listed: PackedStringArray = e.get("maps", PackedStringArray())
 		for m in listed:
 			if not installed_maps.has(m):
-				return DotResult.fail(DotError.CODE_INVALID, "games.yml: game '%s' lists map '%s', which is not installed (installed: %s)." % [game_id, m, ", ".join(maps)])
+				return GSResult.fail(GSError.CODE_INVALID, "games.yml: game '%s' lists map '%s', which is not installed (installed: %s)." % [game_id, m, ", ".join(maps)])
 		if not listed.is_empty():
 			maps = listed
 		limits = e.get("time_limits", {})
@@ -114,8 +114,8 @@ static func map_rotation(entries: Array, game_id: String, installed_maps: Packed
 			mode = String(e["rotation"])
 		break
 	if not found:
-		return DotResult.fail(DotError.CODE_INVALID, "Unknown game '%s': games.yml does not list it." % game_id)
-	return DotResult.success({"maps": maps, "rotation": mode, "time_limits": limits})
+		return GSResult.fail(GSError.CODE_INVALID, "Unknown game '%s': games.yml does not list it." % game_id)
+	return GSResult.success({"maps": maps, "rotation": mode, "time_limits": limits})
 
 
 static func _game_id(e: Dictionary) -> String:
@@ -137,22 +137,22 @@ static func _ids(value: Variant) -> PackedStringArray:
 	return out
 
 
-static func _entries_of(doc: Dictionary, kind: String, path: String) -> DotResult:
+static func _entries_of(doc: Dictionary, kind: String, path: String) -> GSResult:
 	var raw: Variant = doc.get("entries", [])
 	if raw == null:
 		raw = []
 	if not (raw is Array):
-		return DotResult.fail(DotError.CODE_INVALID, "%s: entries must be a list." % path)
+		return GSResult.fail(GSError.CODE_INVALID, "%s: entries must be a list." % path)
 	var out: Array = []
 	for i in (raw as Array).size():
 		var built := _entry(raw[i], kind)
 		if not built.ok:
 			return built.wrap("%s entry %d" % [path, i + 1])
 		out.append(built.value)
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
-static func _entry(raw: Variant, kind: String) -> DotResult:
+static func _entry(raw: Variant, kind: String) -> GSResult:
 	var repo := ""
 	var pack := ""
 	var pin := ""
@@ -171,7 +171,7 @@ static func _entry(raw: Variant, kind: String) -> DotResult:
 		var d: Dictionary = raw
 		for key in d:
 			if not ["repo", "pack", "pin", "content", "maps", "rotation"].has(String(key)):
-				return DotResult.fail(DotError.CODE_INVALID, "unknown key '%s'" % key)
+				return GSResult.fail(GSError.CODE_INVALID, "unknown key '%s'" % key)
 		repo = String(d.get("repo", ""))
 		pack = String(d.get("pack", ""))
 		pin = String(d.get("pin", ""))
@@ -179,28 +179,28 @@ static func _entry(raw: Variant, kind: String) -> DotResult:
 		rotation = String(d.get("rotation", ""))
 		if "maps" in d:
 			if not (d["maps"] is Array):
-				return DotResult.fail(DotError.CODE_INVALID, "maps: is a list of map ids")
+				return GSResult.fail(GSError.CODE_INVALID, "maps: is a list of map ids")
 			for m in d["maps"]:
 				var map_id := ""
 				if m is Dictionary:
 					# {id: surf_x, time_limit: 600}: a map with its own time limit in seconds.
 					for k in m:
 						if not ["id", "time_limit"].has(String(k)):
-							return DotResult.fail(DotError.CODE_INVALID, "unknown key '%s' in a maps: item" % k)
+							return GSResult.fail(GSError.CODE_INVALID, "unknown key '%s' in a maps: item" % k)
 					map_id = String(m.get("id", ""))
 					if "time_limit" in m:
 						if not ((m["time_limit"] is int or m["time_limit"] is float) and float(m["time_limit"]) > 0.0):
-							return DotResult.fail(DotError.CODE_INVALID, "time_limit: for map '%s' is a number of seconds above 0" % map_id)
+							return GSResult.fail(GSError.CODE_INVALID, "time_limit: for map '%s' is a number of seconds above 0" % map_id)
 						time_limits[map_id] = float(m["time_limit"])
 				else:
 					map_id = String(m)
 				if map_id == "" or not _all_in(map_id, _ID_CHARS):
-					return DotResult.fail(DotError.CODE_INVALID, "'%s' is not a map id" % map_id)
+					return GSResult.fail(GSError.CODE_INVALID, "'%s' is not a map id" % map_id)
 				maps.append(map_id)
 		for part in ["repo", "pack"]:
 			if String(d.get(part, "")).contains("@"):
 				if pin != "":
-					return DotResult.fail(DotError.CODE_INVALID, "give the version once, as pin: or after @")
+					return GSResult.fail(GSError.CODE_INVALID, "give the version once, as pin: or after @")
 				var split := String(d[part]).split("@", true, 1)
 				pin = split[1]
 				if part == "repo":
@@ -208,27 +208,27 @@ static func _entry(raw: Variant, kind: String) -> DotResult:
 				else:
 					pack = split[0]
 		if "pin" in d and not (d["pin"] is String or d["pin"] is int or d["pin"] is float):
-			return DotResult.fail(DotError.CODE_INVALID, "pin must be text")
+			return GSResult.fail(GSError.CODE_INVALID, "pin must be text")
 	else:
-		return DotResult.fail(DotError.CODE_INVALID, "an entry is a name or a mapping")
+		return GSResult.fail(GSError.CODE_INVALID, "an entry is a name or a mapping")
 	if (repo == "") == (pack == ""):
-		return DotResult.fail(DotError.CODE_INVALID, "give exactly one of repo and pack")
+		return GSResult.fail(GSError.CODE_INVALID, "give exactly one of repo and pack")
 	var id := repo if repo != "" else pack
 	if not _all_in(id.replace("/", ""), _ID_CHARS) or id.begins_with("/") or id.ends_with("/") or id.contains("//") or id.contains(".."):
-		return DotResult.fail(DotError.CODE_INVALID, "'%s' is not a repository name or an owner/pack id" % id)
+		return GSResult.fail(GSError.CODE_INVALID, "'%s' is not a repository name or an owner/pack id" % id)
 	if pack != "" and pack.count("/") != 1:
-		return DotResult.fail(DotError.CODE_INVALID, "a pack id is owner/name, got '%s'" % pack)
+		return GSResult.fail(GSError.CODE_INVALID, "a pack id is owner/name, got '%s'" % pack)
 	if repo != "" and repo.contains("/"):
-		return DotResult.fail(DotError.CODE_INVALID, "a repository is a bare name, got '%s'" % repo)
+		return GSResult.fail(GSError.CODE_INVALID, "a repository is a bare name, got '%s'" % repo)
 	if pin != "" and not _all_in(pin, _PIN_CHARS):
-		return DotResult.fail(DotError.CODE_INVALID, "'%s' is not a version, tag or commit" % pin)
+		return GSResult.fail(GSError.CODE_INVALID, "'%s' is not a version, tag or commit" % pin)
 	if content != "" and (kind != "games" or repo == "" or not _all_in(content, _ID_CHARS)):
-		return DotResult.fail(DotError.CODE_INVALID, "content: is a directory name, for a games.yml repository")
+		return GSResult.fail(GSError.CODE_INVALID, "content: is a directory name, for a games.yml repository")
 	if (not maps.is_empty() or rotation != "") and kind != "games":
-		return DotResult.fail(DotError.CODE_INVALID, "maps: and rotation: belong in games.yml")
+		return GSResult.fail(GSError.CODE_INVALID, "maps: and rotation: belong in games.yml")
 	if rotation != "" and not ROTATIONS.has(rotation):
-		return DotResult.fail(DotError.CODE_INVALID, "rotation: is %s, got '%s'" % [" | ".join(ROTATIONS), rotation])
-	return DotResult.success({"kind": "repo" if repo != "" else "pack", "id": id, "pin": pin, "content": content, "maps": maps, "rotation": rotation, "time_limits": time_limits})
+		return GSResult.fail(GSError.CODE_INVALID, "rotation: is %s, got '%s'" % [" | ".join(ROTATIONS), rotation])
+	return GSResult.success({"kind": "repo" if repo != "" else "pack", "id": id, "pin": pin, "content": content, "maps": maps, "rotation": rotation, "time_limits": time_limits})
 
 
 static func _all_in(text: String, allowed: String) -> bool:

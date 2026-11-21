@@ -26,9 +26,9 @@ var _port := 0
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
-		else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
+		else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -36,7 +36,7 @@ func _ready() -> void:
 func _run() -> void:
 	print("dot-server-deploy: the game vote on the shell's HUD")
 
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	if await _boot():
 		if await _test_connect():
@@ -49,7 +49,7 @@ func _run() -> void:
 			await _test_clearing_downloads()
 
 	await _teardown()
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	print("")
 	_check(
@@ -106,13 +106,13 @@ func _until(condition: Callable, seconds: float = 20.0) -> bool:
 	return bool(condition.call())
 
 
-func _server() -> DotServer:
+func _server() -> GSServer:
 	if _host == null or not is_instance_valid(_host):
 		return null
-	return _host.server as DotServer
+	return _host.server as GSServer
 
 
-func _director() -> DotVoteDirector:
+func _director() -> GSVoteDirector:
 	var votes: TmcVote = _host.votes if _host != null else null
 	return votes.director if votes != null else null
 
@@ -126,7 +126,7 @@ func _line() -> String:
 
 
 func _played(id: StringName) -> int:
-	var sink := _overlay().audio.sink as DotAudioSinkNull
+	var sink := _overlay().audio.sink as GSAudioSinkNull
 	return sink.count_of(id) if sink != null else -1
 
 
@@ -141,7 +141,7 @@ func _boot() -> bool:
 	ServerWorld.add(self, _host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 
 	if not _check(started.ok, "the host boots", str(started.error)):
 		_done()
@@ -174,7 +174,7 @@ func _boot() -> bool:
 	# [b]Every sound ends the moment it starts.[/b] The null sink finishes nothing on its own, so each
 	# cue def's one-at-a-time cap would refuse the second "tick" of a countdown here -- a refusal a
 	# real 35 ms click never meets -- and four voices would be full after four cues.
-	var sink := _overlay().audio.sink as DotAudioSinkNull
+	var sink := _overlay().audio.sink as GSAudioSinkNull
 	if sink != null:
 		_overlay().audio.played.connect(
 			func(_id: StringName, handle: int, _why: StringName) -> void:
@@ -191,7 +191,7 @@ func _boot() -> bool:
 func _test_a_failed_download_in_game() -> void:
 	_section("a download that fails in a game")
 	_check(not _shell._menu.visible, "the menu is hidden while the game runs")
-	_shell._cloud.phase_changed.emit(DotCloudClient.Phase.FAILED, "surf_mesa: a file failed its check.")
+	_shell._cloud.phase_changed.emit(GSCloudClient.Phase.FAILED, "surf_mesa: a file failed its check.")
 	await get_tree().process_frame
 	_check(_shell.content_failed_visible()
 			and str(_shell.get("_content_failed_text").text).contains("failed its check"),
@@ -215,14 +215,14 @@ func _test_clearing_downloads() -> void:
 	_section("clearing downloaded content")
 
 	var held: int = _shell.downloaded_bytes()
-	_check(held > 0, "the shell has downloaded content to clear (%s)" % DotPaths.format_bytes(held))
+	_check(held > 0, "the shell has downloaded content to clear (%s)" % GSPaths.format_bytes(held))
 
 	var restarted: Array[bool] = [false]
 	_shell.restart_fn = func() -> void: restarted[0] = true
 	_shell.call("_ask_clear")
 	var dialog: ConfirmationDialog = _shell.get("_clear_confirm")
 	_check(dialog != null and dialog.visible
-			and dialog.dialog_text.contains(DotPaths.format_bytes(held)),
+			and dialog.dialog_text.contains(GSPaths.format_bytes(held)),
 		"the button asks first, and says how much it frees",
 		dialog.dialog_text if dialog != null else "no dialog")
 	if dialog == null:
@@ -242,8 +242,8 @@ func _test_clearing_downloads() -> void:
 	# An empty store still writes its index (26 bytes), which is not a download.
 	_check(cleared and next.downloaded_bytes() < 4096,
 		"the next start deletes every download before it mounts anything",
-		"%s left" % DotPaths.format_bytes(next.downloaded_bytes()))
-	var store: DotCloudStore = next.get("_cloud").store if next.get("_cloud") != null else null
+		"%s left" % GSPaths.format_bytes(next.downloaded_bytes()))
+	var store: GSCloudStore = next.get("_cloud").store if next.get("_cloud") != null else null
 	_check(store != null and store.object_count() == 0 and store.total_bytes() == 0,
 		"and the store's own index agrees")
 	remove_child(next)
@@ -355,7 +355,7 @@ func _test_the_ballot() -> void:
 		var p := _overlay().ballot(TmcVote.BALLOT_TOPIC)
 		return p != null and p.is_open(), 5.0)
 	var panel := _overlay().ballot(TmcVote.BALLOT_TOPIC)
-	var session: DotClientSession = _server().playing_sessions()[0]
+	var session: GSClientSession = _server().playing_sessions()[0]
 	var me := "u%d" % session.userid
 
 	if _check(drawn, "and the ballot is drawn as a menu on their screen"):
@@ -369,7 +369,7 @@ func _test_the_ballot() -> void:
 		# a server on buses with a running clock.
 		var extend_at := -1
 		for i in panel.option_count():
-			if panel._options[i]["id"] == String(DotVoteBallot.EXTEND):
+			if panel._options[i]["id"] == String(GSVoteBallot.EXTEND):
 				extend_at = i
 
 		if _check(extend_at >= 0, "extend is on it"):
@@ -409,7 +409,7 @@ func _test_the_ballot() -> void:
 	_done()
 
 
-## [b]The case the poll exists for.[/b] [method DotVoteDirector.cancel_countdown] emits
+## [b]The case the poll exists for.[/b] [method GSVoteDirector.cancel_countdown] emits
 ## nothing, so a HUD driven only by the director's signals keeps counting to a ballot that
 ## is never going to open.
 func _test_a_cancelled_countdown() -> void:
@@ -441,7 +441,7 @@ func _test_a_cancelled_countdown() -> void:
 func _test_a_line_runs_out() -> void:
 	_section("a countdown nobody clears runs out on its own")
 
-	_server().broadcast_notice(DotNotice.make(&"", "Restarting in", 0.2, &"restart"))
+	_server().broadcast_notice(GSNotice.make(&"", "Restarting in", 0.2, &"restart"))
 
 	_check(
 		await _until(func() -> bool: return _overlay().has_line(&"restart"), 5.0),
@@ -457,7 +457,7 @@ func _test_a_line_runs_out() -> void:
 func _test_leaving_takes_it_down() -> void:
 	_section("leaving the server takes everything down")
 
-	_server().broadcast_notice(DotNotice.make(&"", "Stays until cleared", -1.0, &"sticky"))
+	_server().broadcast_notice(GSNotice.make(&"", "Stays until cleared", -1.0, &"sticky"))
 
 	if not _check(
 		await _until(func() -> bool: return _overlay().has_line(&"sticky"), 5.0),

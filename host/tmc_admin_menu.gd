@@ -36,15 +36,15 @@ const MAX_LABEL := 64
 ## Longest custom text an admin may type into a command.
 const MAX_TEXT := 120
 
-## Bytes a page's notice data may encode to before rows are cut, measured the way [DotNotice]
+## Bytes a page's notice data may encode to before rows are cut, measured the way [GSNotice]
 ## measures it — [method @GlobalScope.var_to_bytes] of the whole `data` — and a margin under its
-## [constant DotNotice.MAX_DATA_BYTES], past which it drops the tree WHOLE.
+## [constant GSNotice.MAX_DATA_BYTES], past which it drops the tree WHOLE.
 const MAX_PAGE_BYTES := 7900
 
 ## Step kinds this file fills itself. Any other kind is the name of a list.
 const BUILTIN_KINDS := ["player", "anyone", "game", "map", "item", "text"]
 
-## `DotPunishment.Kind.WARN`, as a number: this host has GameSpice Moderation in its build, but
+## `GSPunishment.Kind.WARN`, as a number: this host has GameSpice Moderation in its build, but
 ## the manager is found in the registry and spoken to by duck type, for the reason
 ## [TmcReplay] gives.
 const PUNISHMENT_WARN := 4
@@ -251,13 +251,13 @@ var categories: Dictionary = {}
 var problems := PackedStringArray()
 
 
-var server: DotServer = null
-var console: DotConsole = null
+var server: GSServer = null
+var console: GSConsole = null
 
-## `func() -> Array[DotClientSession]`: who may appear on a player list.
+## `func() -> Array[GSClientSession]`: who may appear on a player list.
 var sessions_fn: Callable = Callable()
 
-## `func(session: DotClientSession, page: Dictionary) -> bool`. An empty page closes it.
+## `func(session: GSClientSession, page: Dictionary) -> bool`. An empty page closes it.
 var send_fn: Callable = Callable()
 
 ## `func() -> Array` of `[id, label]`: the games a `game` step offers.
@@ -280,20 +280,20 @@ var _layers: Dictionary = {}
 ## The commands this registered, so they go when it does.
 var _registered := PackedStringArray()
 
-var _limiter := DotRateLimiter.new(NAV_PER_SEC, NAV_BURST)
+var _limiter := GSRateLimiter.new(NAV_PER_SEC, NAV_BURST)
 
 
 ## Builds the menu from `admin_menu.yml`'s tree and registers its commands. Null when the
 ## file turns it off.
 static func install(
-	host: Node, p_server: DotServer, tree: Dictionary, map_session_fn: Callable = Callable()
+	host: Node, p_server: GSServer, tree: Dictionary, map_session_fn: Callable = Callable()
 ) -> TmcAdminMenu:
 	var menu := TmcAdminMenu.new()
 	menu.name = "AdminMenu"
 	menu.configure(tree)
 
 	if not menu.enabled:
-		DotLog.info(CHANNEL, "the admin menu is turned off", {})
+		GSLog.info(CHANNEL, "the admin menu is turned off", {})
 		return null
 
 	if p_server == null or p_server.console == null:
@@ -302,10 +302,10 @@ static func install(
 	menu.server = p_server
 	menu.console = p_server.console
 	menu.sessions_fn = p_server.playing_sessions
-	menu.send_fn = func(session: DotClientSession, page: Dictionary) -> bool:
+	menu.send_fn = func(session: GSClientSession, page: Dictionary) -> bool:
 		if page.is_empty():
-			return p_server.send_notice(session, DotNotice.clear(TOPIC))
-		return p_server.send_notice(session, DotNotice.make(&"", "", -1.0, TOPIC, {"menu": page}))
+			return p_server.send_notice(session, GSNotice.clear(TOPIC))
+		return p_server.send_notice(session, GSNotice.make(&"", "", -1.0, TOPIC, {"menu": page}))
 	menu.games_fn = func() -> Array:
 		var out := []
 		if p_server.games == null:
@@ -322,12 +322,12 @@ static func install(
 	menu.maps_fn = func() -> Array:
 		return TmcAdminMenu.maps_of(map_session_fn.call() if map_session_fn.is_valid() else null)
 	menu.moderation_fn = func() -> Object:
-		return DotRegistry.get_service(MODERATION_SERVICE)
+		return GSRegistry.get_service(MODERATION_SERVICE)
 
 	host.add_child(menu)
 	menu.register_commands()
 	p_server.envelope.register(KIND, menu._on_kind)
-	DotRegistry.register(SERVICE, menu)
+	GSRegistry.register(SERVICE, menu)
 
 	# The game's own `metadata: admin_menu:`, swapped on every change. Read now too, for
 	# the game the server booted into, which loaded before this existed.
@@ -336,9 +336,9 @@ static func install(
 		menu.adopt_game(p_server.games.current())
 
 	for problem in menu.problems:
-		DotLog.warn(CHANNEL, "admin_menu.yml: %s" % problem, {})
+		GSLog.warn(CHANNEL, "admin_menu.yml: %s" % problem, {})
 
-	DotLog.info(CHANNEL, "admin menu ready", {
+	GSLog.info(CHANNEL, "admin menu ready", {
 		"open_with": ", ".join(menu.commands),
 		"items": menu.items.size(),
 		"categories": menu.categories.size(),
@@ -367,7 +367,7 @@ static func maps_of(session: Object) -> Array:
 
 
 func _exit_tree() -> void:
-	DotRegistry.unregister_instance(SERVICE, self)
+	GSRegistry.unregister_instance(SERVICE, self)
 	if server != null and is_instance_valid(server):
 		server.envelope.unregister(KIND)
 	if console == null:
@@ -678,7 +678,7 @@ func _normalise_list(id: String, raw: Dictionary) -> Dictionary:
 static func _option_label(format: String, value: String) -> String:
 	match format:
 		"duration":
-			var seconds := DotBanManager.parse_duration(value)
+			var seconds := GSBanManager.parse_duration(value)
 			if seconds == 0:
 				return "Permanent"
 			if seconds > 0:
@@ -780,7 +780,7 @@ func register_commands() -> void:
 		_claim(warn, "warn")
 
 
-func _claim(cmd: DotConCommand, name: String) -> void:
+func _claim(cmd: GSConCommand, name: String) -> void:
 	# `register_command` keeps the first registration of a name and hands it back, so a
 	# collision is not an error -- it is somebody else's command, and ours is not there.
 	if cmd != null and cmd.handler.get_object() == self:
@@ -789,7 +789,7 @@ func _claim(cmd: DotConCommand, name: String) -> void:
 		problems.append("a command called '%s' already exists; the menu did not take it" % name)
 
 
-func _cmd_open(ctx: DotCmdContext) -> void:
+func _cmd_open(ctx: GSCmdContext) -> void:
 	if ctx.session == null:
 		ctx.reply("The admin menu is drawn on a player's screen. From here, type the commands themselves.")
 		return
@@ -801,7 +801,7 @@ func _cmd_open(ctx: DotCmdContext) -> void:
 	_send(ctx, root_page(ctx))
 
 
-func _cmd_nav(ctx: DotCmdContext) -> void:
+func _cmd_nav(ctx: GSCmdContext) -> void:
 	if ctx.session == null:
 		return
 
@@ -823,11 +823,11 @@ func _on_kind(peer_id: int, payload: Dictionary) -> void:
 	if session == null or not session.is_playing():
 		return
 	if not _limiter.allow(session.userid):
-		DotLog.debug(CHANNEL, "menu choices too fast; dropped", {"user": session.label()})
+		GSLog.debug(CHANNEL, "menu choices too fast; dropped", {"user": session.label()})
 		return
 	session.touch()
-	var path := DotEnvelope.text(payload, "path").substr(0, MAX_PATH)
-	var ctx := session.make_context(NAV_COMMAND, DotConsole.tokenize(path), DotCmdContext.Source.CHAT,
+	var path := GSEnvelope.text(payload, "path").substr(0, MAX_PATH)
+	var ctx := session.make_context(NAV_COMMAND, GSConsole.tokenize(path), GSCmdContext.Source.CHAT,
 		func(line: String) -> void:
 			if server.chat != null:
 				server.chat.send_system_to(session, line))
@@ -835,13 +835,13 @@ func _on_kind(peer_id: int, payload: Dictionary) -> void:
 
 
 ## The `warn` this file fills in. See [method register_commands].
-func _cmd_warn(ctx: DotCmdContext) -> void:
+func _cmd_warn(ctx: GSCmdContext) -> void:
 	var resolved := _resolve_target(ctx, ctx.arg(0))
 	if not resolved.ok:
 		ctx.reply_error(resolved)
 		return
 
-	var session: DotClientSession = resolved.value
+	var session: GSClientSession = resolved.value
 	var reason := _text(ctx.rest(1))
 	if reason == "":
 		reason = "Warned by an admin"
@@ -850,7 +850,7 @@ func _cmd_warn(ctx: DotCmdContext) -> void:
 	# scroll back to. Never naming the admin, GameSpice Moderation's rule for every player message.
 	var line := "Warning from an admin: %s" % reason
 	if server != null:
-		server.send_notice(session, DotNotice.make(&"", line, -1.0, &"admin_warning"))
+		server.send_notice(session, GSNotice.make(&"", line, -1.0, &"admin_warning"))
 		if server.chat != null:
 			server.chat.send_system_to(session, line)
 
@@ -861,8 +861,8 @@ func _cmd_warn(ctx: DotCmdContext) -> void:
 		var issued: Variant = await moderation.call(
 			"issue", PUNISHMENT_WARN, subject, reason, ctx.caller_label(), 0, ctx.immunity
 		)
-		if issued is DotResult and not (issued as DotResult).ok:
-			ctx.reply("Told them, but it was not recorded: %s" % (issued as DotResult).error.message)
+		if issued is GSResult and not (issued as GSResult).ok:
+			ctx.reply("Told them, but it was not recorded: %s" % (issued as GSResult).error.message)
 		elif moderation.has_method("history_for"):
 			on_record = 0
 			for p in moderation.call("history_for", subject):
@@ -883,7 +883,7 @@ func _cmd_warn(ctx: DotCmdContext) -> void:
 
 
 ## Whether [param ctx] may open the menu at all: the open flag, and one usable item.
-func may_open(ctx: DotCmdContext) -> bool:
+func may_open(ctx: GSCmdContext) -> bool:
 	if open_flag != "" and not ctx.has_permission(open_flag):
 		return false
 	for id in categories.keys():
@@ -893,7 +893,7 @@ func may_open(ctx: DotCmdContext) -> bool:
 
 
 ## The ids of [param category]'s items [param ctx] may use, in order.
-func visible_items(ctx: DotCmdContext, category: String) -> PackedStringArray:
+func visible_items(ctx: GSCmdContext, category: String) -> PackedStringArray:
 	var out := PackedStringArray()
 	var cat: Dictionary = categories.get(category, {})
 	if cat.is_empty():
@@ -907,7 +907,7 @@ func visible_items(ctx: DotCmdContext, category: String) -> PackedStringArray:
 
 
 ## Whether [param id] is on a category [param ctx] can see.
-func on_menu(ctx: DotCmdContext, id: String) -> bool:
+func on_menu(ctx: GSCmdContext, id: String) -> bool:
 	for cat in categories.keys():
 		var flag := String(categories[cat]["flag"])
 		if (categories[cat]["items"] as PackedStringArray).has(id) and (flag == "" or ctx.has_permission(flag)):
@@ -916,7 +916,7 @@ func on_menu(ctx: DotCmdContext, id: String) -> bool:
 
 
 ## Whether [param ctx] may use [param item]. See the class notes: computed from the console.
-func may_use(ctx: DotCmdContext, item: Dictionary) -> bool:
+func may_use(ctx: GSCmdContext, item: Dictionary) -> bool:
 	if item.is_empty() or not bool(item.get("enabled", false)):
 		return false
 
@@ -936,7 +936,7 @@ func may_use(ctx: DotCmdContext, item: Dictionary) -> bool:
 	if cmd == null:
 		return false
 
-	if ctx.source == DotCmdContext.Source.CHAT and not cmd.allows_chat(console.chat_commands_are_open()):
+	if ctx.source == GSCmdContext.Source.CHAT and not cmd.allows_chat(console.chat_commands_are_open()):
 		return false
 
 	if not supports(item):
@@ -961,8 +961,8 @@ func supports(item: Dictionary) -> bool:
 	return true
 
 
-## GameSpice Moderation's `DotModTools` behind a command, or null: the handler's object's `tools`.
-static func _tools_of(cmd: DotConCommand) -> Object:
+## GameSpice Moderation's `GSModTools` behind a command, or null: the handler's object's `tools`.
+static func _tools_of(cmd: GSConCommand) -> Object:
 	if cmd == null or not cmd.handler.is_valid():
 		return null
 	var holder := cmd.handler.get_object()
@@ -1005,10 +1005,10 @@ func _options_of(list: Dictionary) -> Array:
 
 
 ## The console command [param item]'s line runs, or null when this server has none.
-func command_of(item: Dictionary) -> DotConCommand:
+func command_of(item: Dictionary) -> GSConCommand:
 	if console == null:
 		return null
-	var words := DotConsole.tokenize(String(item.get("command", "")))
+	var words := GSConsole.tokenize(String(item.get("command", "")))
 	if words.is_empty():
 		return null
 	return console.find_command(words[0].to_lower())
@@ -1016,7 +1016,7 @@ func command_of(item: Dictionary) -> DotConCommand:
 
 
 ## The first page: the categories this admin can use anything in. One is opened directly.
-func root_page(ctx: DotCmdContext) -> Dictionary:
+func root_page(ctx: GSCmdContext) -> Dictionary:
 	var rows: Array = []
 	var only := ""
 	for id in categories.keys():
@@ -1032,7 +1032,7 @@ func root_page(ctx: DotCmdContext) -> Dictionary:
 	return _page(title, "", "root", rows)
 
 
-func category_page(ctx: DotCmdContext, id: String) -> Dictionary:
+func category_page(ctx: GSCmdContext, id: String) -> Dictionary:
 	var rows: Array = []
 	for item_id in visible_items(ctx, id):
 		rows.append({"label": String(items[item_id]["label"]), "go": "i:%s" % item_id})
@@ -1044,7 +1044,7 @@ func category_page(ctx: DotCmdContext, id: String) -> Dictionary:
 
 
 ## Answers one choice. [param tokens] is the path the client sent.
-func handle(ctx: DotCmdContext, tokens: PackedStringArray) -> void:
+func handle(ctx: GSCmdContext, tokens: PackedStringArray) -> void:
 	if tokens.is_empty():
 		_send(ctx, root_page(ctx))
 		return
@@ -1081,7 +1081,7 @@ func handle(ctx: DotCmdContext, tokens: PackedStringArray) -> void:
 
 ## Fills [param item]'s steps from [param values], then asks for the next one, shows the
 ## info page, asks for confirmation, or runs it.
-func _advance(ctx: DotCmdContext, item: Dictionary, values: PackedStringArray, confirmed: bool = false) -> void:
+func _advance(ctx: GSCmdContext, item: Dictionary, values: PackedStringArray, confirmed: bool = false) -> void:
 	var steps: Array = item["steps"]
 	var filled := {}
 	var said := PackedStringArray()
@@ -1118,12 +1118,12 @@ func _advance(ctx: DotCmdContext, item: Dictionary, values: PackedStringArray, c
 		]))
 		return
 
-	DotLog.info(CHANNEL, "admin menu", {"by": ctx.caller_label(), "line": line})
+	GSLog.info(CHANNEL, "admin menu", {"by": ctx.caller_label(), "line": line})
 
 	# The admin's own context, so this is exactly a typed command -- see the class notes.
 	var result: Variant = console.execute(line, ctx)
-	if result is DotResult and not (result as DotResult).ok:
-		DotLog.debug(CHANNEL, "the menu's command was refused", {"line": line, "why": str((result as DotResult).error)})
+	if result is GSResult and not (result as GSResult).ok:
+		GSLog.debug(CHANNEL, "the menu's command was refused", {"line": line, "why": str((result as GSResult).error)})
 
 	match after_run:
 		"back":
@@ -1136,7 +1136,7 @@ func _advance(ctx: DotCmdContext, item: Dictionary, values: PackedStringArray, c
 
 ## The page that asks for step [param index] of [param item].
 func step_page(
-	ctx: DotCmdContext, item: Dictionary, index: int,
+	ctx: GSCmdContext, item: Dictionary, index: int,
 	path: PackedStringArray, said: PackedStringArray
 ) -> Dictionary:
 	var step: Dictionary = item["steps"][index]
@@ -1156,7 +1156,7 @@ func step_page(
 				for group in GROUPS:
 					rows.append({"label": group[1], "go": "%s %s" % [prefix, group[0]]})
 			var people := _sessions()
-			people.sort_custom(func(a: DotClientSession, b: DotClientSession) -> bool:
+			people.sort_custom(func(a: GSClientSession, b: GSClientSession) -> bool:
 				return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 			var someone := false
 			for session in people:
@@ -1212,7 +1212,7 @@ func step_page(
 
 
 ## Everything an admin asks about a player, and what they may do to them from here.
-func info_page(ctx: DotCmdContext, session: DotClientSession, path: String = "") -> Dictionary:
+func info_page(ctx: GSCmdContext, session: GSClientSession, path: String = "") -> Dictionary:
 	if session == null:
 		return _page("Player info", "", "", [{"label": "They are not here any more."}])
 
@@ -1281,7 +1281,7 @@ func info_page(ctx: DotCmdContext, session: DotClientSession, path: String = "")
 
 
 ## A step's value, checked against what this server has now. `[substituted, label]`.
-func _resolve(ctx: DotCmdContext, item: Dictionary, step: Dictionary, token: String) -> DotResult:
+func _resolve(ctx: GSCmdContext, item: Dictionary, step: Dictionary, token: String) -> GSResult:
 	var kind := String(step["kind"])
 
 	match kind:
@@ -1290,38 +1290,38 @@ func _resolve(ctx: DotCmdContext, item: Dictionary, step: Dictionary, token: Str
 				if token == group[0]:
 					var first: Dictionary = (item["steps"] as Array)[0]
 					if not bool(item["groups"]) or first != step:
-						return DotResult.fail(DotError.CODE_INVALID, "Not for everybody at once.")
-					return DotResult.success([group[0], String(group[1]).to_lower()])
+						return GSResult.fail(GSError.CODE_INVALID, "Not for everybody at once.")
+					return GSResult.success([group[0], String(group[1]).to_lower()])
 			var session := _session_for(token)
 			if session == null:
-				return DotResult.fail(DotError.CODE_INVALID, "%s is not here any more." % token)
+				return GSResult.fail(GSError.CODE_INVALID, "%s is not here any more." % token)
 			var me := session == ctx.session
 			if me and not bool(item["self"]):
-				return DotResult.fail(DotError.CODE_INVALID, "Not on yourself.")
+				return GSResult.fail(GSError.CODE_INVALID, "Not on yourself.")
 			if not me and kind == "player" and not ctx.outranks(session.immunity):
-				return DotResult.fail(DotError.CODE_FORBIDDEN,
+				return GSResult.fail(GSError.CODE_FORBIDDEN,
 					"%s has equal or higher immunity than you." % session.display_name)
-			return DotResult.success(["#%d" % session.userid, session.display_name])
+			return GSResult.success(["#%d" % session.userid, session.display_name])
 		"item":
 			for pair in _give_items():
 				if "=%s" % pair[0] == token:
-					return DotResult.success([str(pair[0]), str(pair[1])])
-			return DotResult.fail(DotError.CODE_INVALID, "This game cannot give that.")
+					return GSResult.success([str(pair[0]), str(pair[1])])
+			return GSResult.fail(GSError.CODE_INVALID, "This game cannot give that.")
 		"game":
 			for pair in _games():
 				if str(pair[0]) == token:
-					return DotResult.success([token, str(pair[1])])
-			return DotResult.fail(DotError.CODE_INVALID, "No game called '%s' here." % token)
+					return GSResult.success([token, str(pair[1])])
+			return GSResult.fail(GSError.CODE_INVALID, "No game called '%s' here." % token)
 		"map":
 			for pair in _maps():
 				if str(pair[0]) == token:
-					return DotResult.success([token, str(pair[1])])
-			return DotResult.fail(DotError.CODE_INVALID, "No map called '%s' here." % token)
+					return GSResult.success([token, str(pair[1])])
+			return GSResult.fail(GSError.CODE_INVALID, "No map called '%s' here." % token)
 		"text":
 			var text := _text(token.trim_prefix("t:")) if token.begins_with("t:") else ""
 			if text == "":
-				return DotResult.fail(DotError.CODE_INVALID, "Nothing was typed.")
-			return DotResult.success([text, text])
+				return GSResult.fail(GSError.CODE_INVALID, "Nothing was typed.")
+			return GSResult.success([text, text])
 
 	var list: Dictionary = lists[kind]
 
@@ -1329,20 +1329,20 @@ func _resolve(ctx: DotCmdContext, item: Dictionary, step: Dictionary, token: Str
 		var custom := _text(token.trim_prefix("t:"))
 		var last: Dictionary = (item["steps"] as Array).back()
 		if not bool(list["custom"]) or custom == "" or last != step:
-			return DotResult.fail(DotError.CODE_INVALID, "Choose one from the list.")
-		return DotResult.success([custom, custom])
+			return GSResult.fail(GSError.CODE_INVALID, "Choose one from the list.")
+		return GSResult.success([custom, custom])
 
 	var options: Array = _options_of(list)
 	if String(list["source"]) != "":
 		for option in options:
 			if "=%s" % option["value"] == token:
-				return DotResult.success([String(option["value"]), String(option["label"])])
-		return DotResult.fail(DotError.CODE_INVALID, "That choice is not on the list any more.")
+				return GSResult.success([String(option["value"]), String(option["label"])])
+		return GSResult.fail(GSError.CODE_INVALID, "That choice is not on the list any more.")
 	if not token.is_valid_int() or token.to_int() < 1 or token.to_int() > options.size():
-		return DotResult.fail(DotError.CODE_INVALID, "That choice is not on the list any more.")
+		return GSResult.fail(GSError.CODE_INVALID, "That choice is not on the list any more.")
 
 	var option: Dictionary = options[token.to_int() - 1]
-	return DotResult.success([String(option["value"]), String(option["label"])])
+	return GSResult.success([String(option["value"]), String(option["label"])])
 
 
 ## [param template] with each `{name}` replaced by its value as ONE console argument. Quoted when it
@@ -1370,7 +1370,7 @@ static func _fold_text(values: PackedStringArray) -> PackedStringArray:
 	return out
 
 
-func _session_for(token: String) -> DotClientSession:
+func _session_for(token: String) -> GSClientSession:
 	if not token.begins_with("#") or not token.substr(1).is_valid_int():
 		return null
 	var userid := token.substr(1).to_int()
@@ -1382,7 +1382,7 @@ func _session_for(token: String) -> DotClientSession:
 
 ## `warn`'s target. Through the server when there is one, which is what every other
 ## moderation command uses; by userid or exact name otherwise, which is a suite.
-func _resolve_target(ctx: DotCmdContext, text: String) -> DotResult:
+func _resolve_target(ctx: GSCmdContext, text: String) -> GSResult:
 	if server != null:
 		return server.resolve_target(ctx, text)
 	var found := _session_for(text if text.begins_with("#") else "#%s" % text)
@@ -1391,17 +1391,17 @@ func _resolve_target(ctx: DotCmdContext, text: String) -> DotResult:
 			if session.display_name.to_lower() == text.to_lower():
 				found = session
 	if found == null:
-		return DotResult.fail(DotError.CODE_INVALID, "No player matching '%s'." % text)
+		return GSResult.fail(GSError.CODE_INVALID, "No player matching '%s'." % text)
 	if not ctx.outranks(found.immunity):
-		return DotResult.fail(DotError.CODE_FORBIDDEN, "%s has equal or higher immunity than you." % found.display_name)
-	return DotResult.success(found)
+		return GSResult.fail(GSError.CODE_FORBIDDEN, "%s has equal or higher immunity than you." % found.display_name)
+	return GSResult.success(found)
 
 
-func _sessions() -> Array[DotClientSession]:
-	var out: Array[DotClientSession] = []
+func _sessions() -> Array[GSClientSession]:
+	var out: Array[GSClientSession] = []
 	if sessions_fn.is_valid():
 		for s in sessions_fn.call():
-			if s is DotClientSession:
+			if s is GSClientSession:
 				out.append(s)
 	return out
 
@@ -1435,7 +1435,7 @@ func _page(p_title: String, subtitle: String, path: String, rows: Array) -> Dict
 		page["rows"] = rows.slice(0, MAX_ROWS)
 		(page["rows"] as Array).append({"label": "…and %d more" % (rows.size() - MAX_ROWS)})
 
-	# Cut until it fits rather than have DotNotice drop the whole tree. See MAX_PAGE_BYTES.
+	# Cut until it fits rather than have GSNotice drop the whole tree. See MAX_PAGE_BYTES.
 	# The "…and N more" row is counted in, so adding it cannot push the page back over.
 	var cut := 0
 	while encoded_size(page) > MAX_PAGE_BYTES and (page["rows"] as Array).size() > 1:
@@ -1448,12 +1448,12 @@ func _page(p_title: String, subtitle: String, path: String, rows: Array) -> Dict
 	return page
 
 
-## What [param page] costs inside a notice, as [DotNotice] counts it.
+## What [param page] costs inside a notice, as [GSNotice] counts it.
 static func encoded_size(page: Dictionary) -> int:
 	return var_to_bytes({"menu": page}).size()
 
 
-func _send(ctx: DotCmdContext, page: Dictionary) -> void:
+func _send(ctx: GSCmdContext, page: Dictionary) -> void:
 	if ctx.session == null or not send_fn.is_valid():
 		return
 	send_fn.call(ctx.session, page)
@@ -1462,13 +1462,13 @@ func _send(ctx: DotCmdContext, page: Dictionary) -> void:
 
 ## A label as drawn: one line, bounded.
 static func _label(text: String) -> String:
-	return DotChatManager.sanitise(text, MAX_LABEL)
+	return GSChatManager.sanitise(text, MAX_LABEL)
 
 
 ## Text an admin typed, made safe to be one console argument: no quotes, no semicolons,
 ## nothing a tokenizer or a statement splitter reads as structure.
 static func _text(text: String) -> String:
-	return _value(DotChatManager.sanitise(text, MAX_TEXT))
+	return _value(GSChatManager.sanitise(text, MAX_TEXT))
 
 
 static func _value(text: String) -> String:

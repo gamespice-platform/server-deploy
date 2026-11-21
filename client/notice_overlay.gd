@@ -4,7 +4,7 @@ extends CanvasLayer
 ## The shell's own HUD: the lines and sounds the SERVER sends, over whatever game is on screen.
 
 ## [b]A notice can also carry a ballot[/b] — the game vote's, and a game's map vote — in its
-## [code]data[/code], and that is drawn as a [DotBallotPanel] per topic down the right-hand side,
+## [code]data[/code], and that is drawn as a [GSBallotPanel] per topic down the right-hand side,
 ## under the lines.
 
 ## [b]Everything here is in one column down the right-hand side, and nothing is at the top
@@ -39,14 +39,14 @@ const LAYER := 20
 const COLUMN_TOP := 110.0
 const COLUMN_MARGIN := 16.0
 
-var audio: DotAudioManager = null
+var audio: GSAudioManager = null
 
 ## [code]func(line: String)[/code] that sends a chat line as this player. The shell points it
 ## at the link; a ballot choice is sent as [code]/<command> <n>[/code], the silent prefix,
 ## because a vote is not something to say to the room.
 var vote_fn: Callable = Callable()
 
-## topic -> DotBallotPanel.
+## topic -> GSBallotPanel.
 var _ballots: Dictionary = {}
 var _ballot_box: VBoxContainer = null
 
@@ -65,7 +65,7 @@ var _root: Control = null
 var _column: VBoxContainer = null
 var _box: VBoxContainer = null
 
-## topic -> {"notice": DotNotice, "at": float, "panel": Control, "label": Label}.
+## topic -> {"notice": GSNotice, "at": float, "panel": Control, "label": Label}.
 var _lines: Dictionary = {}
 var _anonymous := 0
 
@@ -79,8 +79,8 @@ func _ready() -> void:
 
 
 
-## Takes a notice from the server. Connect [signal DotClientLink.notice_received] here.
-func show_notice(notice: DotNotice) -> void:
+## Takes a notice from the server. Connect [signal GSClientLink.notice_received] here.
+func show_notice(notice: GSNotice) -> void:
 	if notice == null:
 		return
 
@@ -124,13 +124,13 @@ func clear_all() -> void:
 		_remove(key)
 
 	for key in _ballots.keys():
-		(_ballots[key] as DotBallotPanel).dismiss()
+		(_ballots[key] as GSBallotPanel).dismiss()
 
 
 
 ## Draws, updates or takes down the ballot for [param topic]. See the class notes.
 func show_ballot(topic: StringName, data: Dictionary) -> void:
-	var panel: DotBallotPanel = _ballots.get(topic, null)
+	var panel: GSBallotPanel = _ballots.get(topic, null)
 	var open := bool(data.get("open", false))
 
 	if panel == null:
@@ -151,13 +151,13 @@ func show_ballot(topic: StringName, data: Dictionary) -> void:
 
 
 ## Takes down every ballot that is only showing its result, other than [param keep].
-func _dismiss_results_except(keep: DotBallotPanel) -> void:
-	for other: DotBallotPanel in _ballots.values():
+func _dismiss_results_except(keep: GSBallotPanel) -> void:
+	for other: GSBallotPanel in _ballots.values():
 		if other != keep and not other.is_open() and other.visible:
 			other.dismiss()
 
 
-func ballot(topic: StringName) -> DotBallotPanel:
+func ballot(topic: StringName) -> GSBallotPanel:
 	return _ballots.get(topic, null)
 
 
@@ -169,16 +169,16 @@ func ballots() -> Array:
 
 ## Gives the number keys back to the last open ballot, after something else had them.
 func restore_numbers() -> void:
-	var last: DotBallotPanel = null
-	for panel: DotBallotPanel in _ballots.values():
+	var last: GSBallotPanel = null
+	for panel: GSBallotPanel in _ballots.values():
 		if panel.is_open():
 			last = panel
 	if last != null:
 		_give_numbers_to(last)
 
 
-func _make_ballot(topic: StringName) -> DotBallotPanel:
-	var panel := DotBallotPanel.new()
+func _make_ballot(topic: StringName) -> GSBallotPanel:
+	var panel := GSBallotPanel.new()
 	panel.name = "Ballot_%s" % String(topic)
 	panel.ui_theme = ballot_theme()
 	panel.panel_width = column_width(_frame_width())
@@ -189,7 +189,7 @@ func _make_ballot(topic: StringName) -> DotBallotPanel:
 	)
 	panel.dismissed.connect(func() -> void:
 		# The keys go back to whichever ballot is still open.
-		for other: DotBallotPanel in _ballots.values():
+		for other: GSBallotPanel in _ballots.values():
 			if other.is_open():
 				_give_numbers_to(other)
 	)
@@ -201,14 +201,14 @@ func _make_ballot(topic: StringName) -> DotBallotPanel:
 ## The ballots' theme: the shell's, with an opaque background. The theme's 0.92 is right for
 ## a panel over a 3D world, but a ballot is drawn over whatever HUD a game has, and over a
 ## menu of bright text (a lot screen's prices) that text read through it, under the result.
-static func ballot_theme() -> DotUiTheme:
+static func ballot_theme() -> GSUiTheme:
 	var t := TmcShellStyle.palette()
 	t.background.a = 1.0
 	return t
 
 
-func _give_numbers_to(owner: DotBallotPanel) -> void:
-	for panel: DotBallotPanel in _ballots.values():
+func _give_numbers_to(owner: GSBallotPanel) -> void:
+	for panel: GSBallotPanel in _ballots.values():
 		panel.take_numbers = panel == owner
 
 
@@ -293,7 +293,7 @@ func _process(_delta: float) -> void:
 
 	for key in _lines.keys():
 		var line: Dictionary = _lines[key]
-		var notice: DotNotice = line["notice"]
+		var notice: GSNotice = line["notice"]
 		var age := now - float(line["at"])
 
 		var gone := (
@@ -308,7 +308,7 @@ func _process(_delta: float) -> void:
 
 
 func _render(line: Dictionary) -> void:
-	var notice: DotNotice = line["notice"]
+	var notice: GSNotice = line["notice"]
 	var label: Label = line["label"]
 
 	if notice.has_countdown():
@@ -319,7 +319,7 @@ func _render(line: Dictionary) -> void:
 
 
 func _remaining(line: Dictionary) -> float:
-	var notice: DotNotice = line["notice"]
+	var notice: GSNotice = line["notice"]
 	if not notice.has_countdown():
 		return -1.0
 	return maxf(notice.seconds - (_now() - float(line["at"])), 0.0)
@@ -344,7 +344,7 @@ func is_line_shown(topic: StringName) -> bool:
 
 func _cover_lines() -> void:
 	var covered := {}
-	for panel: DotBallotPanel in _ballots.values():
+	for panel: GSBallotPanel in _ballots.values():
 		if panel.is_open():
 			var named := str(panel.state.get("line", ""))
 			if named != "":
@@ -374,7 +374,7 @@ func _fit_column() -> void:
 	# A panel lays itself out in `show_state`, so an open one takes the new width with the
 	# next state the server sends (every vote cast sends one). Re-showing the old state here
 	# would restart its clock from the seconds it arrived with.
-	for panel: DotBallotPanel in _ballots.values():
+	for panel: GSBallotPanel in _ballots.values():
 		panel.panel_width = width
 
 
@@ -451,11 +451,11 @@ func _make_line() -> Dictionary:
 ## Every cue this shell can play. Flat, on Master, one at a time each. [b]Master, not a UI bus[/b],
 ## because this project declares no bus layout and a bus name that does not exist is not one a
 ## player's volume slider reaches either.
-static func sound_catalogue() -> DotAudioCatalogue:
-	var c := DotAudioCatalogue.new()
+static func sound_catalogue() -> GSAudioCatalogue:
+	var c := GSAudioCatalogue.new()
 
 	for id in [CUE_VOTE_START, CUE_VOTE_END, CUE_VOTE_WARNING, CUE_VOTE_COUNT]:
-		var def := DotAudioDef.new()
+		var def := GSAudioDef.new()
 		def.id = id
 		def.path = "%s/%s.ogg" % [SOUND_DIR, String(id)]
 		def.bus = &"Master"
@@ -469,15 +469,15 @@ static func sound_catalogue() -> DotAudioCatalogue:
 ## Which synthesised voice stands in for each cue until a real file is in [constant SOUND_DIR].
 static func sound_recipes() -> Dictionary:
 	return {
-		CUE_VOTE_START: DotAudioSynth.Voice.SPAWN,
-		CUE_VOTE_END: DotAudioSynth.Voice.PICKUP,
-		CUE_VOTE_WARNING: DotAudioSynth.Voice.BLIP,
-		CUE_VOTE_COUNT: DotAudioSynth.Voice.CLICK,
+		CUE_VOTE_START: GSAudioSynth.Voice.SPAWN,
+		CUE_VOTE_END: GSAudioSynth.Voice.PICKUP,
+		CUE_VOTE_WARNING: GSAudioSynth.Voice.BLIP,
+		CUE_VOTE_COUNT: GSAudioSynth.Voice.CLICK,
 	}
 
 
 func _build_audio() -> void:
-	audio = DotAudioManager.new()
+	audio = GSAudioManager.new()
 	audio.name = "Audio"
 	audio.catalogue = sound_catalogue()
 	audio.voices = 4
@@ -492,13 +492,13 @@ func _build_audio() -> void:
 
 	if not res.ok:
 		# Not fatal. The lines still draw; a HUD with no sound is still a HUD.
-		DotLog.warn(CHANNEL, "the notice sounds are off", {"why": str(res.error)})
+		GSLog.warn(CHANNEL, "the notice sounds are off", {"why": str(res.error)})
 		return
 
-	var godot_sink := audio.sink as DotAudioSinkGodot
+	var godot_sink := audio.sink as GSAudioSinkGodot
 
 	if godot_sink != null:
-		godot_sink.bank = DotAudioSynth.bank(audio.catalogue, sound_recipes())
+		godot_sink.bank = GSAudioSynth.bank(audio.catalogue, sound_recipes())
 
 
 func describe() -> Dictionary:
@@ -507,7 +507,7 @@ func describe() -> Dictionary:
 		lines[String(key)] = line_text(key)
 	var ballots := {}
 	for key in _ballots.keys():
-		ballots[String(key)] = (_ballots[key] as DotBallotPanel).describe()
+		ballots[String(key)] = (_ballots[key] as GSBallotPanel).describe()
 	return {
 		"lines": lines,
 		"ballots": ballots,

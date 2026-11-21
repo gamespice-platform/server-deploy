@@ -5,7 +5,7 @@
 #
 # [b]Why this exists.[/b] On a fresh clone `./setup.sh --only-games <one game>` left
 # `addons/dot_game` unlinked, and `./server check` logged
-# `Could not find base class "DotGameModule"` and then printed `selftest ok`. A script
+# `Could not find base class "GSGameModule"` and then printed `selftest ok`. A script
 # that fails to parse takes no exit path: Godot logs it, hands back a script nothing can
 # instantiate, and the boot carries on to the end. Nothing else here ever builds a boot
 # that is broken this way, so nothing noticed.
@@ -38,11 +38,11 @@ trap cleanup EXIT
 mkdir -p "$FIX"
 
 cat > "$FIX/scene.gd" <<'GD'
-extends DotNoSuchBootCheckBase
+extends GSNoSuchBootCheckBase
 GD
 
 cat > "$FIX/module.gd" <<'GD'
-extends DotNoSuchBootCheckModule
+extends GSNoSuchBootCheckModule
 GD
 
 cat > "$FIX/server.tscn" <<'TSCN'

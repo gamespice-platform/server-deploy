@@ -45,11 +45,11 @@ Every one of these is encoded somewhere in GameSpice Core already; they are coll
 
 | Constraint | What it means here |
 | --- | --- |
-| **No UDP.** `ENetMultiplayerPeer` is not in the web template at all | The server listens on **WebSocket**, and then *all* its clients do — `DotTransportAuto.require_web_clients` defaults to true for this reason |
+| **No UDP.** `ENetMultiplayerPeer` is not in the web template at all | The server listens on **WebSocket**, and then *all* its clients do — `GSTransportAuto.require_web_clients` defaults to true for this reason |
 | **A tab cannot listen** | The web build is a client. The server is somewhere else, always, and the shell offers no Host button rather than one that fails |
-| **No threads** unless the page is cross-origin isolated | `DotScheduler` slices on the main thread inside a frame budget. The preset stays single-threaded; `export-web` adds a threaded engine beside it that `embed.html` uses only where the headers allow it ([Threads](#threads)) |
-| **`user://` is an IndexedDB mirror** needing explicit flushes | Every write path calls `DotWeb.sync_filesystem()` |
-| **Storage quota the user can refuse** | A downloaded game pack is cached, and `DotCloudStore` awaits `navigator.storage.estimate()` rather than assuming |
+| **No threads** unless the page is cross-origin isolated | `GSScheduler` slices on the main thread inside a frame budget. The preset stays single-threaded; `export-web` adds a threaded engine beside it that `embed.html` uses only where the headers allow it ([Threads](#threads)) |
+| **`user://` is an IndexedDB mirror** needing explicit flushes | Every write path calls `GSWeb.sync_filesystem()` |
+| **Storage quota the user can refuse** | A downloaded game pack is cached, and `GSCloudStore` awaits `navigator.storage.estimate()` rather than assuming |
 | **CORS, with `fetch()` refusing to say why it failed** | Serve the export and its assets from one origin, or set the headers below exactly |
 | **An HTTPS page may not open a `ws://` socket** | `embed.html` checks for it and says so, because the browser's own error does not mention mixed content |
 | **A mounted resource pack can never be unmounted** | dot-cloud namespaces content by `id/version`, so nothing ever needs replacing |
@@ -87,7 +87,7 @@ With **Extensions Support on**, and only then, every response also needs `Cross-
 
 The export is two engines and one pck. `./server export-web` exports the single-threaded build as always (`index.js`, `index.wasm`) and copies the **threaded** template's engine beside it as `index-mt.js`, `index-mt.wasm` and `index-mt.audio*.worklet.js` (`install_threaded_engine` in `tools/server.in`; about 39 MB more, 6.9 MB brotli). `embed.html` then picks one when the page loads:
 
-- **`index-mt`** when `self.crossOriginIsolated` is true and `SharedArrayBuffer` exists. The engine has `OS.has_feature("threads")`, so `DotPlatform.has_threads()` is true and a game's worker threads run (FC's `bot_threads`, for one).
+- **`index-mt`** when `self.crossOriginIsolated` is true and `SharedArrayBuffer` exists. The engine has `OS.has_feature("threads")`, so `GSPlatform.has_threads()` is true and a game's worker threads run (FC's `bot_threads`, for one).
 - **`index`** otherwise, and with `?threads=0`. Same game, single-threaded, exactly as before. A host without the headers loses nothing.
 
 `window.__TMC_ENGINE__` says which (`"threads"` or `"single"`). `TMC_WEB_THREADS=0 ./server export-web` leaves the twin out; so does a preset with Extensions Support (a dlink build needs its side modules built for threads too) or a custom template.
@@ -112,7 +112,7 @@ Then every subresource from another origin must answer with CORS (`Access-Contro
 
 Missing any one of them is not an error: the frame is simply not isolated and gets the single-threaded engine.
 
-**The shell reads and loads content on the main thread on both engines.** On `index-mt` a worker thread's `user://` reads are proxied to the browser's main thread about one per frame, and a `ResourceLoader.load_threaded_request` never finished: FC sat at "Unpacking 0 of 1" for minutes while GameSpice Cloud hashed ~700 downloaded objects on `DotScheduler` threads (0.7 s each), then at 0 % compiling its scripts (web-mt-shell-unpack-hang-1, 2026-11-14). So `client/shell.gd` gives the content client a `CloudScheduler` with `use_threads` off on the web, and warms a pack with GameSpice Cloud's sliced, unthreaded loader there. A game's own threads (FC's `bot_threads`) are untouched. Check: `node tools/browser_solo_overlay_check.mjs --serve web/build --url http://x/godot/<build>/embed.html?solo=gamemann/game-fatal-contact --threads 1 --expect started` (serves COOP/COEP and fails unless the page ran `index-mt` and the game started).
+**The shell reads and loads content on the main thread on both engines.** On `index-mt` a worker thread's `user://` reads are proxied to the browser's main thread about one per frame, and a `ResourceLoader.load_threaded_request` never finished: FC sat at "Unpacking 0 of 1" for minutes while GameSpice Cloud hashed ~700 downloaded objects on `GSScheduler` threads (0.7 s each), then at 0 % compiling its scripts (web-mt-shell-unpack-hang-1, 2026-11-14). So `client/shell.gd` gives the content client a `CloudScheduler` with `use_threads` off on the web, and warms a pack with GameSpice Cloud's sliced, unthreaded loader there. A game's own threads (FC's `bot_threads`) are untouched. Check: `node tools/browser_solo_overlay_check.mjs --serve web/build --url http://x/godot/<build>/embed.html?solo=gamemann/game-fatal-contact --threads 1 --expect started` (serves COOP/COEP and fails unless the page ran `index-mt` and the game started).
 
 ## Native modules (GameSpice Sim in the browser)
 

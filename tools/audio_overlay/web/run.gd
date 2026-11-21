@@ -9,13 +9,13 @@ const BED := "res://addons/dot_audio/stock/ambience/amb_indoor.ogg"
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.WARN)
+	GSLog.set_level(GSLog.Level.WARN)
 	_run.call_deferred()
 
 
 func _sink() -> Script:
 	for entry in ProjectSettings.get_global_class_list():
-		if str(entry.get("class", "")) == "DotAudioSinkGodot":
+		if str(entry.get("class", "")) == "GSAudioSinkGodot":
 			return load(str(entry.get("path", ""))) as Script
 	return null
 
@@ -26,11 +26,11 @@ func _run() -> void:
 		await _play(sink)
 		return
 	print("AO first load: no stream_at, building the overlay")
-	var origin := str(DotWeb.get_global("location").origin)
+	var origin := str(GSWeb.get_global("location").origin)
 	var version := FileAccess.get_file_as_string("res://version.txt").strip_edges()
-	var cloud := DotCloudClient.new()
+	var cloud := GSCloudClient.new()
 	cloud.name = "Cloud"
-	cloud.config = DotCloudConfig.new()
+	cloud.config = GSCloudConfig.new()
 	cloud.config.cache_dir = "user://audio_overlay_cache"
 	cloud.config.parallel_downloads = 3
 	cloud.config_file = "res://content.json"
@@ -39,7 +39,7 @@ func _run() -> void:
 	cloud.manifest_url_template = "{base}/{id}/{version}/manifest.json"
 	cloud.manifest_url_fallbacks = PackedStringArray(["{base}/{id}/manifest.json"])
 	add_child(cloud)
-	var set := DotCloudAddonSet.new(cloud)
+	var set := GSCloudAddonSet.new(cloud)
 	set.namespaces = PackedStringArray(["modcommunity/"])
 	var decided := set.plan_for([{"dir": "dot_audio", "repo": "dot-audio", "id": "modcommunity/dot-audio", "version": version}])
 	var wanted: Dictionary = decided["wanted"]
@@ -50,10 +50,10 @@ func _run() -> void:
 	print("AO BUILD ok=", built.ok, " ", "" if built.ok else str(built.error))
 	if not built.ok:
 		return
-	var kept := await DotCloudAddonSet.persisted(DotCloudAddonSet.plan_files(built.value), 60.0)
+	var kept := await GSCloudAddonSet.persisted(GSCloudAddonSet.plan_files(built.value), 60.0)
 	print("AO PERSISTED ok=", kept.ok)
 	if kept.ok:
-		DotWeb.get_global("location").reload()
+		GSWeb.get_global("location").reload()
 
 
 func _play(sink: Script) -> void:
@@ -76,5 +76,5 @@ func _play(sink: Script) -> void:
 			if p.playing and p.get_playback_position() > 0.0:
 				advanced[p] = true
 	info["advanced"] = players.size() == 2 and advanced.size() == 2
-	DotCloudAddonSet.confirm_boot()
+	GSCloudAddonSet.confirm_boot()
 	print("CHECK ", JSON.stringify(info))

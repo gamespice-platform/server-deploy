@@ -5,10 +5,10 @@ extends Node
 ## Off-web or without GameSpice Cloud's bridge class this does nothing. Schema: docs/web-inventory-bridge.md.
 
 const CHANNEL := "tmc.inventory"
-const BRIDGE_CLASS := "DotCloudInventoryBridge"
+const BRIDGE_CLASS := "GSCloudInventoryBridge"
 const CALLBACK := "tmc_inventory_message"
 
-## func() -> Object: the shell's DotCloudClient, made on demand.
+## func() -> Object: the shell's GSCloudClient, made on demand.
 var cloud_fn: Callable = Callable()
 ## func() -> void: queue the shell's clear-on-restart.
 var clear_fn: Callable = Callable()
@@ -28,19 +28,19 @@ static func _script_named(class_name_: String) -> Script:
 
 ## Starts listening; false when off-web, no origin is configured or the bridge class is absent.
 func start() -> bool:
-	if _listening or origins.is_empty() or not DotPlatform.is_web():
+	if _listening or origins.is_empty() or not GSPlatform.is_web():
 		return false
 	if _script_named(BRIDGE_CLASS) == null:
 		return false
-	var win: Variant = DotWeb.get_global("window")
+	var win: Variant = GSWeb.get_global("window")
 	if win == null:
 		return false
-	var cb: Variant = DotWeb.create_callback(CALLBACK, _on_event)
+	var cb: Variant = GSWeb.create_callback(CALLBACK, _on_event)
 	if cb == null:
 		return false
 	win.addEventListener("message", cb)
 	_listening = true
-	DotLog.info(CHANNEL, "inventory bridge listening", {"origins": origins.size()})
+	GSLog.info(CHANNEL, "inventory bridge listening", {"origins": origins.size()})
 	return true
 
 
@@ -51,10 +51,10 @@ func _ensure_bridge() -> RefCounted:
 	if cloud == null or cloud.get("store") == null:
 		return null
 	bridge = _script_named(BRIDGE_CLASS).new(cloud.store, origins)
-	bridge.clear_all_fn = func() -> DotResult:
+	bridge.clear_all_fn = func() -> GSResult:
 		if clear_fn.is_valid():
 			clear_fn.call()
-		return DotResult.success(true)
+		return GSResult.success(true)
 	return bridge
 
 
@@ -66,7 +66,7 @@ func _on_event(args: Array) -> void:
 	var origin := str(event.origin)
 	if not origins.has(origin):
 		return
-	var json: Variant = DotWeb.get_global("JSON")
+	var json: Variant = GSWeb.get_global("JSON")
 	var raw: Variant = event.data
 	var text: String = raw if raw is String else str(json.stringify(raw))
 	var message: Variant = JSON.parse_string(text)
@@ -82,6 +82,6 @@ func _answer(b: RefCounted, message: Dictionary, origin: String, source: Variant
 	var reply: Dictionary = await b.handle(message, origin)
 	if reply.is_empty():
 		return
-	var target: Variant = source if source != null else DotWeb.get_global("parent")
+	var target: Variant = source if source != null else GSWeb.get_global("parent")
 	if target != null:
 		target.postMessage(JSON.stringify(reply), origin)

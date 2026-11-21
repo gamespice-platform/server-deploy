@@ -36,7 +36,7 @@ tools/content_trust.sh /srv/tmc
 
 # --- Saying goodbye on `docker stop` -------------------------------------------------
 #
-# `docker stop` sends SIGTERM, and headless Godot answers it by dying: DotServer.shutdown
+# `docker stop` sends SIGTERM, and headless Godot answers it by dying: GSServer.shutdown
 # never runs, so session reporting (auth.yml session_report_url) never posts its closing
 # report and the issuer holds every player for the lease. The container has no stdin for
 # the `quit` console command to arrive on, so this script makes one: a FIFO this shell
@@ -51,7 +51,7 @@ FIFO=$(mktemp -u /tmp/tmc-stdin.XXXXXX)
 mkfifo "$FIFO" || exec ./server "$@"
 exec 3<>"$FIFO"
 
-# The environment layer of DotServerConfig, not a `+sv_stdin_console_pipes` console line:
+# The environment layer of GSServerConfig, not a `+sv_stdin_console_pipes` console line:
 # the line runs after the stdin reader has already decided, and it is too late. Exported
 # only for the child, and only on this path (see the mkfifo fallback above).
 # GS_ first; DOT_ too for a server pinned to a GameSpice Core older than the GS_ names.

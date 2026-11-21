@@ -21,7 +21,7 @@
 #     registered" against a module that is fine.
 #   * `--no-import` left `.godot/global_script_class_cache.cfg` stale. A delivered
 #     game's scripts are parsed against that cache AT RUNTIME, so an addon pulled after
-#     it was built is a class the pack cannot see: `Could not find type "DotTimerRun"`
+#     it was built is a class the pack cannot see: `Could not find type "GSTimerRun"`
 #     inside a mounted script, a module that will not load, a server with no `map`
 #     command, and a grey screen. The host's own scripts are already cached, so the
 #     server boots and looks healthy.

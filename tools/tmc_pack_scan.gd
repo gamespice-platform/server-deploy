@@ -9,7 +9,7 @@ extends RefCounted
 static func class_names_in(root: String) -> PackedStringArray:
 	var out := PackedStringArray()
 
-	for rel in DotPaths.list_files_recursive(root):
+	for rel in GSPaths.list_files_recursive(root):
 		if not rel.ends_with(".gd"):
 			continue
 		# The host's own addons legitimately declare globals; they are not in the pack.

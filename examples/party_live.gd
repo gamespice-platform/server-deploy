@@ -24,20 +24,20 @@ var _host: Node = null
 class FakeBackbone extends RefCounted:
 	var posted: Array = []
 
-	func get_integration(path: String, _query: Dictionary = {}) -> DotResult:
+	func get_integration(path: String, _query: Dictionary = {}) -> GSResult:
 		if path == "party/123":
-			return DotResult.success({
+			return GSResult.success({
 				"party": {"id": "123", "name": "Friends", "maxUsers": 4, "stage": "PLAYING"},
 				"members": [
 					{"userId": "7", "displayName": "Ada", "role": "HOST"},
 					{"userId": "8", "displayName": "Bo"},
 				],
 			})
-		return DotResult.fail(DotError.CODE_HTTP, "no such party", path)
+		return GSResult.fail(GSError.CODE_HTTP, "no such party", path)
 
-	func post_integration(path: String, body: Dictionary) -> DotResult:
+	func post_integration(path: String, body: Dictionary) -> GSResult:
 		posted.append({"path": path, "body": body})
-		return DotResult.success({"ok": true})
+		return GSResult.success({"ok": true})
 
 
 ## What a session reads its uid from. GameSpice Auth's identity has more; this is what is asked.
@@ -47,9 +47,9 @@ class FakeIdentity extends RefCounted:
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
-		else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
+		else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -57,7 +57,7 @@ func _ready() -> void:
 func _run() -> void:
 	print("dot-server-deploy: parties")
 
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	if await _boot():
 		_test_built()
@@ -67,7 +67,7 @@ func _run() -> void:
 		await _test_survives_a_game_change()
 
 	_teardown()
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	print("")
 	_check(
@@ -114,8 +114,8 @@ func _check(condition: bool, what: String, detail: String = "") -> bool:
 	return condition
 
 
-func _server() -> DotServer:
-	return _host.server as DotServer
+func _server() -> GSServer:
+	return _host.server as GSServer
 
 
 func _parties() -> TmcParty:
@@ -125,9 +125,9 @@ func _parties() -> TmcParty:
 ## Runs a console line as [param session] would from chat, and returns what it said.
 ##
 ## An Array, because a lambda captures by value and only a container's contents survive.
-func _say(line: String, session: DotClientSession = null) -> Array:
+func _say(line: String, session: GSClientSession = null) -> Array:
 	var answered: Array = []
-	var ctx := DotCmdContext.internal("", PackedStringArray())
+	var ctx := GSCmdContext.internal("", PackedStringArray())
 	ctx.session = session
 	ctx.reply_sink = func(text: String) -> void: answered.append(text)
 	_server().console.execute(line, ctx)
@@ -145,8 +145,8 @@ func _until(condition: Callable, seconds: float = 10.0) -> bool:
 	return bool(condition.call())
 
 
-func _session(userid: int, uid: String, display: String) -> DotClientSession:
-	var s := DotClientSession.new(userid, 9000 + userid)
+func _session(userid: int, uid: String, display: String) -> GSClientSession:
+	var s := GSClientSession.new(userid, 9000 + userid)
 	var id := FakeIdentity.new()
 	id.uid = uid
 	id.display_name = display
@@ -156,9 +156,9 @@ func _session(userid: int, uid: String, display: String) -> DotClientSession:
 
 
 func _chat_router() -> Object:
-	for service in DotRegistry.names():
+	for service in GSRegistry.names():
 		if service.begins_with("dot_chat_router"):
-			return DotRegistry.get_service(StringName(service))
+			return GSRegistry.get_service(StringName(service))
 	return null
 
 
@@ -173,7 +173,7 @@ func _boot() -> bool:
 	add_child(_host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 
 	if not _check(started.ok, "the host boots on a fixture config", str(started.error)):
 		return false
@@ -201,7 +201,7 @@ func _test_built() -> void:
 	_check(p != null and p.reservations != null, "a booking keeper, with no party.yml at all")
 	_check(p.tracker == null, "and no tracker, because this fixture has no backbone")
 	_check(
-		DotRegistry.get_service(BAN_SOURCE) == p.reservations,
+		GSRegistry.get_service(BAN_SOURCE) == p.reservations,
 		"the booking is on the ban seam dot-server asks"
 	)
 	_check(
@@ -227,7 +227,7 @@ func _test_party_chat() -> void:
 	_check(router != null, "buses registered a chat router")
 	_check(
 		router != null and bool(router.call("has_channel", &"party"))
-			and (router.call("channel", &"party") as DotChatChannel).grouped,
+			and (router.call("channel", &"party") as GSChatChannel).grouped,
 		"and it has a grouped party channel"
 	)
 
@@ -287,7 +287,7 @@ func _test_booking() -> void:
 	_section("a booking kept")
 
 	var p := _parties()
-	var seam := DotRegistry.get_service(BAN_SOURCE)
+	var seam := GSRegistry.get_service(BAN_SOURCE)
 
 	# First as a deployment with no backbone: there is no roster to read, so a console
 	# booking's party is whoever is here and signed in -- nobody, here -- and a private
@@ -304,11 +304,11 @@ func _test_booking() -> void:
 
 	var refused: Variant = seam.call("check_admission", "backbone:1", "127.0.0.1")
 	_check(
-		refused is DotResult and not (refused as DotResult).ok,
+		refused is GSResult and not (refused as GSResult).ok,
 		"a stranger is refused at the door dot-server asks"
 	)
 	_check(
-		(seam.call("check_admission", "", "127.0.0.1") as DotResult).ok,
+		(seam.call("check_admission", "", "127.0.0.1") as GSResult).ok,
 		"and the address-only pass is still admitted — a booking is about people"
 	)
 
@@ -322,11 +322,11 @@ func _test_booking() -> void:
 		"with a backbone the booking is for the party the site knows (%s)" % " / ".join(PackedStringArray(booked))
 	)
 	_check(
-		(seam.call("check_admission", "backbone:8", "127.0.0.1") as DotResult).ok,
+		(seam.call("check_admission", "backbone:8", "127.0.0.1") as GSResult).ok,
 		"a member of that party is admitted"
 	)
 	_check(
-		not (seam.call("check_admission", "backbone:9", "127.0.0.1") as DotResult).ok,
+		not (seam.call("check_admission", "backbone:9", "127.0.0.1") as GSResult).ok,
 		"and somebody else is not"
 	)
 
@@ -347,7 +347,7 @@ func _test_survives_a_game_change() -> void:
 	var arrived := await _until(func() -> bool:
 		var current := _server().games.current()
 		return current != null and current.game_id == "hungry_classic" \
-			and _server().games.phase == DotGameManager.Phase.IDLE \
+			and _server().games.phase == GSGameManager.Phase.IDLE \
 			and _server().modules.has_module("hungry"), 20.0)
 
 	_check(arrived, "the server changed to hungry")
@@ -358,7 +358,7 @@ func _test_survives_a_game_change() -> void:
 	await get_tree().process_frame
 
 	_check(
-		DotRegistry.get_service(BAN_SOURCE) == p.reservations,
+		GSRegistry.get_service(BAN_SOURCE) == p.reservations,
 		"the booking is still what dot-server asks"
 	)
 	_check(

@@ -37,7 +37,7 @@ ORIG_ARGS=("$@")
 # the box can override the unit file for one run without editing it.
 #
 # TMC_RCON_PASSWORD IS DELIBERATELY NOT ONE OF THESE, and neither is any other secret.
-# See the note at the end of --help: `DotConfig` refuses secrets from the environment as
+# See the note at the end of --help: `GSConfig` refuses secrets from the environment as
 # well as from argv, because both are readable by other processes on the machine --
 # `/proc/<pid>/environ` for one and `ps` for the other -- and both end up in pasted bug
 # reports. The password lives in cfg/server/addon/dot_console/rcon.yml, which is a file with a mode on it.
@@ -399,7 +399,7 @@ usage() {
   Secrets are deliberately NOT options, and NOT environment variables either.
   argv is readable by every other process on the machine via ps, the environment
   is readable via /proc/<pid>/environ, and both end up in pasted bug reports --
-  which is why DotConfig refuses secrets from argv and the environment alike.
+  which is why GSConfig refuses secrets from argv and the environment alike.
   rcon_password lives in cfg/server/addon/dot_console/rcon.yml, which is a file with a mode on it.
 USAGE
 }
@@ -863,7 +863,7 @@ if [ "$COMMAND" = "run" ]; then
         # server.yml is not wrong.
         # [b]And RCON may simply be off, in which case nothing binds that port at all.[/b]
         # `dot_server.gd` starts the listener only when `rcon_password` is non-empty and
-        # `DotRconServer.start` returns early otherwise, so an empty password IS the
+        # `GSRconServer.start` returns early otherwise, so an empty password IS the
         # documented way to turn it off -- and this check refused to start anyway,
         # naming a listener that was never going to exist. Reported by an operator who
         # had disabled RCON, blanked the password, and was still told the port was
@@ -953,7 +953,7 @@ stamp_loader() {
 # `res://tools/publish.tscn`, Godot said "Cannot open file", and the launcher exited
 # **0** -- so every caller was told it had worked, including `export-web`, which refuses
 # to build when a map "is not in the build and is not published" and names this command
-# as the fix. The publisher itself was never missing: `DotCloudPublisher` and a complete
+# as the fix. The publisher itself was never missing: `GSCloudPublisher` and a complete
 # `dot_cloud_cli.gd` -- publish, keygen, verify, inspect -- have been in dot-cloud all
 # along. Only the wiring was absent, and it failed in the direction that reports success.
 #
@@ -1296,7 +1296,7 @@ ensure_export_templates() {
 ## built from.
 ##
 ## [b]A client compares it against the addon set a server announces[/b] and fetches the
-## newer ones as packs (dot-cloud's `DotCloudAddonSet`), which is what lets an addon release
+## newer ones as packs (dot-cloud's `GSCloudAddonSet`), which is what lets an addon release
 ## reach players without a new shell. A build without it cannot say what is newer, so it
 ## takes nothing -- silently, as far as the player is concerned. And it is not a resource,
 ## so `all_resources` leaves it out unless `include_filter` names it.
@@ -1580,13 +1580,13 @@ install_threaded_engine() {
     printf '  threaded engine beside it (index-mt.*%s), used where the page is cross-origin isolated\n' "${mtlibs:+, native modules $mtlibs}"
 }
 
-## dot-core's page script: every browser call DotWeb makes (the keyboard lock, the leave prompt,
+## dot-core's page script: every browser call GSWeb makes (the keyboard lock, the leave prompt,
 ## the parent postMessage) is a named function there, because the game origin's CSP has no
 ## 'unsafe-eval' and JavaScriptBridge.eval throws. Loaded before index.js so it sees the engine's errors.
 install_dot_web() {
     local build="$1" js="$PROJECT/addons/dot_core/web/dot_web.js" page
     if [ ! -f "$js" ]; then
-        warn "addons/dot_core/web/dot_web.js is missing (dot-core older than the CSP-safe DotWeb): this web build has no keyboard lock, leave prompt or parent messages"
+        warn "addons/dot_core/web/dot_web.js is missing (dot-core older than the CSP-safe GSWeb): this web build has no keyboard lock, leave prompt or parent messages"
         return 0
     fi
     cp "$js" "$build/dot_web.js"
@@ -1596,7 +1596,7 @@ install_dot_web() {
             sed -i 's#<head>#<head>\n<script src="dot_web.js"></script>#' "$page"
         fi
         grep -qF 'src="dot_web.js"' "$page" \
-            || die "$page does not load dot_web.js, so DotWeb has no page side" 3
+            || die "$page does not load dot_web.js, so GSWeb has no page side" 3
     done
 }
 
@@ -1695,7 +1695,7 @@ ensure_shell_excludes() {
 }
 
 ## [b]The lock an export carries names only the addons it carries.[/b] The client reads it
-## as "what I already have" (DotCloudAddonSet.plan_for), so a line for an addon the export
+## as "what I already have" (GSCloudAddonSet.plan_for), so a line for an addon the export
 ## left out would stop it from ever fetching that addon's overlay. addons.lock is swapped
 ## for a copy holding only the repositories tools/shell-addons.list names (tools/shell_lock.sh,
 ## which fails when the lock names a dot-* addon the list does not) for the export and put back
@@ -2260,7 +2260,7 @@ case "$COMMAND" in
         fi
         # [b]The addon API levels this shell carries[/b], so the site can pick the newest
         # shell that satisfies a game's requires.json (sv_web_requires) instead of the newest
-        # one. Read from each addon's <addon>_api.gd, as DotAddonApi does at runtime.
+        # one. Read from each addon's <addon>_api.gd, as GSAddonApi does at runtime.
         {
             printf '{'
             sep=
@@ -2537,7 +2537,7 @@ fi
 # The templates an operator edits are copied when missing, here as well as in setup.sh (which runs only
 # on an install or an update), and NEVER over a file that exists: cfg/server/ and cfg/content/ are the
 # operator's. The templates only comment out their examples, so a copy changes nothing until edited. An
-# older flat file is still read (DotCfgLegacy), so its template is not copied beside it: the new file
+# older flat file is still read (GSCfgLegacy), so its template is not copied beside it: the new file
 # would win whole.
 copy_template() {
     local rel="$1" legacy="$2" why="$3"

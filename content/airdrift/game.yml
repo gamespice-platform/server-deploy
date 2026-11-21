@@ -16,7 +16,7 @@
 # keeps the old Airdrift name) in _ready() -- which is what airdrift_module.gd looks it up by.
 # Nothing else is configured there: the operator's surface is the cvars below and the movement
 # cvars the module registers, layered under AIRDRIFT_* and --airdrift-* (the old-name prefixes
-# are still read) like every DotConfig in the family. A scene full of defaults would be a
+# are still read) like every GSConfig in the family. A scene full of defaults would be a
 # fourth copy of them.
 #
 # The pack published before the rename carries the old paths and its own game.yml naming
@@ -132,7 +132,7 @@ cvars:
 # whether they may extend the one they are on. Its defaults are in the game's own
 # game/airdrift_vote.gd; anything written here overrides them, and the server's own
 # user://cfg/g2gfast_vote.json (legacy id: the saved-data name is kept), DOT_VOTE_* and --vote-* override this. Keyed exactly as
-# dot-vote's DotVoteRules, enums by name.
+# dot-vote's GSVoteRules, enums by name.
 #
 # `vote:` beside it is a different thing: how the SERVER's vote for the next game
 # (cfg/vote.yml) treats this game — its time limit there, its weight, whether it is

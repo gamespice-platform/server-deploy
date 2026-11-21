@@ -13,7 +13,7 @@ var _failed := 0
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.ERROR)
+	GSLog.set_level(GSLog.Level.ERROR)
 	_run.call_deferred()
 
 
@@ -100,7 +100,7 @@ func _test_two_languages() -> void:
 	shell._locale.set_locale("en")
 	_check(shell._job_line().contains("3 of 1 pack") and not shell._job_line().contains("packs"), "English plural: one pack, not packs")
 
-	shell._locale = DotLocale.new()
+	shell._locale = GSLocale.new()
 	shell._job = snap
 	_check(shell._job_line().contains("3 of 40 packs") and shell._job_line().contains("2.5 MiB/s"), "no catalogue: the English fallback still renders")
 

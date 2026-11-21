@@ -2,7 +2,7 @@
 #
 # Read by tools/shell_lock.sh, which the shell export (tools/server.in: shell_lock_begin, shell_left_out_addons) and
 # tools/check_shell_addons.sh use. Only these go into a shell build and its addons.lock; every other addons.lock line
-# is for servers only, and its addon reaches a player as a dot-cloud overlay pack (DotCloudAddonSet).
+# is for servers only, and its addon reaches a player as a dot-cloud overlay pack (GSCloudAddonSet).
 #
 # OWNER RULE: no game addon here, ever. fc-weapons, zee-dot-weapons, zed-dot-weapons, natural-disasters and anything else one
 # game brings stay out of the shell: baked in, fc-weapons took the web pck from 44 MB to 147 MB, and a shell that carries a

@@ -28,10 +28,10 @@ const BALLOT_TITLE := "Vote for the next game"
 ## Fewest games on offer for a game vote to exist. See the class notes.
 const MIN_GAMES := 2
 
-var director: DotVoteDirector = null
-var source: DotVoteGameSource = null
-var commands: DotVoteCommands = null
-var feed: DotVoteBallotFeed = null
+var director: GSVoteDirector = null
+var source: GSVoteGameSource = null
+var commands: GSVoteCommands = null
+var feed: GSVoteBallotFeed = null
 
 ## Which games play (cfg/games.yml), or null: every installed game. See [TmcGameRotation].
 var rotation: TmcGameRotation = null
@@ -43,22 +43,22 @@ var _end_vote_base := true
 ## not to the previous rotation's value.
 var _cooldown_base := 0
 
-var server: DotServer = null
+var server: GSServer = null
 
 ## How often the tree is searched for the loaded game's own vote directors. A game builds its
 ## director when its module loads, which [method _on_game_loaded] catches; this catches one
 ## built later (a round's, a map's).
 const RESCAN_SEC := 1.0
 
-## The chained [member DotVoteDirector.busy_fn] set on a game's director, kept on it as meta.
+## The chained [member GSVoteDirector.busy_fn] set on a game's director, kept on it as meta.
 const CHAINED_META := &"tmc_game_vote_chained"
 
 ## `sv_game_rotation [name]` and `games_rotations`: which games play, switched live.
-func _install_rotation_commands(p_server: DotServer) -> void:
-	p_server.console.command("games_rotations", func(ctx: DotCmdContext) -> void:
+func _install_rotation_commands(p_server: GSServer) -> void:
+	p_server.console.command("games_rotations", func(ctx: GSCmdContext) -> void:
 		ctx.reply_lines(rotation.describe_lines()),
 		"List the game rotations in games.yml", "").with_chat()
-	p_server.console.command("sv_game_rotation", func(ctx: DotCmdContext) -> void:
+	p_server.console.command("sv_game_rotation", func(ctx: GSCmdContext) -> void:
 		if ctx.args.is_empty():
 			ctx.reply("Game rotation %s (of: %s)." % [rotation.active_name(), ", ".join(rotation.rotation_names())])
 			return
@@ -68,7 +68,7 @@ func _install_rotation_commands(p_server: DotServer) -> void:
 			return
 		apply_rotation()
 		ctx.reply("Now playing game rotation %s." % ctx.args[0]),
-		"Show or switch the active game rotation", DotAdminFlags.CHANGEMAP)
+		"Show or switch the active game rotation", GSAdminFlags.CHANGEMAP)
 
 
 ## Re-applies the rotation after a live switch: the ballot's exclusions and order, the
@@ -82,14 +82,14 @@ func apply_rotation() -> void:
 
 
 ## The loaded game's own vote directors: its map, mode or layout vote. See [method game_directors].
-var _game_directors: Array[DotVoteDirector] = []
+var _game_directors: Array[GSVoteDirector] = []
 var _rescan_in := 0.0
 
 ## The operator's `vote_exclude`, kept apart from what [method _refresh_offer] adds per game.
 var _operator_excluded: Array[StringName] = []
 
 ## The game director whose round ends this vote hears, or null.
-var _rounds_from: DotVoteDirector = null
+var _rounds_from: GSVoteDirector = null
 
 ## The running game's match, found beside [member _rounds_from]. See [method round_in_progress].
 var _match_ref: WeakRef = null
@@ -105,13 +105,13 @@ var _notice_text := ""
 ## Builds the whole thing and attaches it to [param p_server].
 static func install(
 	host: Node,
-	p_server: DotServer,
-	rules: DotVoteRules,
+	p_server: GSServer,
+	rules: GSVoteRules,
 	excluded: PackedStringArray,
 	p_rotation: TmcGameRotation = null
 ) -> TmcVote:
 	if rules == null or not rules.enabled:
-		DotLog.info(CHANNEL, "voting for the next game is turned off", {})
+		GSLog.info(CHANNEL, "voting for the next game is turned off", {})
 		return null
 
 	if p_server == null or p_server.games == null:
@@ -123,12 +123,12 @@ static func install(
 		# Loud and not fatal. A server that refused to boot because its vote rules
 		# disagree with each other would be a server an operator cannot get back, and
 		# the rest of it works perfectly without a vote.
-		DotLog.error(CHANNEL, "the vote configuration is not usable; voting is off", {
+		GSLog.error(CHANNEL, "the vote configuration is not usable; voting is off", {
 			"why": valid.error.message, "detail": valid.error.detail,
 		})
 		return null
 
-	var source := DotVoteGameSource.of(p_server.games)
+	var source := GSVoteGameSource.of(p_server.games)
 
 	for id in excluded:
 		source.excluded.append(StringName(_current_id(p_server.games.games, str(id))))
@@ -151,7 +151,7 @@ static func install(
 	var offered := votable_count(source, p_server.games)
 
 	if offered < MIN_GAMES:
-		DotLog.info(CHANNEL, "one game on offer; there is no game vote, and its own map vote decides", {
+		GSLog.info(CHANNEL, "one game on offer; there is no game vote, and its own map vote decides", {
 			"games": offered, "excluded": excluded.size(),
 		})
 		return null
@@ -161,13 +161,13 @@ static func install(
 	votes.server = p_server
 	votes.source = source
 
-	votes.director = DotVoteDirector.new()
+	votes.director = GSVoteDirector.new()
 	votes.director.name = "Director"
 	votes.director.rules = rules
 	votes.director.source = votes.source
 	# The host's own game_loaded is what says a change landed — for a vote AND for an
 	# operator typing `changelevel`, which must reset the clock and everybody's
-	# rock-the-vote just the same. See DotVoteDirector.begin_on_apply.
+	# rock-the-vote just the same. See GSVoteDirector.begin_on_apply.
 	votes.director.begin_on_apply = false
 	# `dot_vote_director` belongs to whatever the loaded game registers, not to this.
 	votes.director.register_service = false
@@ -182,7 +182,7 @@ static func install(
 	host.add_child(votes)
 	votes.add_child(votes.director)
 
-	votes.commands = DotVoteCommands.new()
+	votes.commands = GSVoteCommands.new()
 	votes.commands.director = votes.director
 	votes.commands.prefix = COMMAND_PREFIX
 	votes.commands.names = COMMAND_NAMES.duplicate()
@@ -205,11 +205,11 @@ static func install(
 	# time limit, which is most of the feature; an operator who cannot see why
 	# `!game_rtv` does nothing has no way to find out otherwise.
 	if not bound.ok:
-		DotLog.error(CHANNEL, "the vote commands did not register", {
+		GSLog.error(CHANNEL, "the vote commands did not register", {
 			"why": bound.error.message,
 		})
 
-	votes.feed = DotVoteBallotFeed.of(votes.director, votes._send_ballot)
+	votes.feed = GSVoteBallotFeed.of(votes.director, votes._send_ballot)
 	votes.feed.title = BALLOT_TITLE
 	votes.feed.command = votes.commands.command_name("vote")
 	votes.feed.people_fn = votes._person
@@ -229,7 +229,7 @@ static func install(
 	if current != null:
 		votes.director.begin(StringName(current.game_id))
 
-	DotLog.info(CHANNEL, "voting for the next game is on", {
+	GSLog.info(CHANNEL, "voting for the next game is on", {
 		"games": votes.source.choices().size(),
 		"excluded": excluded.size(),
 		"limit": votes.director.clock.formatted_remaining(),
@@ -239,7 +239,7 @@ static func install(
 
 
 ## Distinct GAMES a ballot could offer: enabled, not excluded, and counted by content id.
-static func votable_count(p_source: DotVoteGameSource, manager: DotGameManager) -> int:
+static func votable_count(p_source: GSVoteGameSource, manager: GSGameManager) -> int:
 	var keys := {}
 	var names := {}
 	var count := 0
@@ -283,7 +283,7 @@ func _wire() -> void:
 	# The map flag, which is what the vote's admin commands are gated on too.
 	director.is_admin_fn = func(voter: StringName) -> bool:
 		var session := _session_for(voter)
-		return session != null and session.has_permission(DotAdminFlags.CHANGEMAP)
+		return session != null and session.has_permission(GSAdminFlags.CHANGEMAP)
 
 	# A votekick on screen, or the loaded game's own ballot: a ballot opened on top of either would be
 	# two menus fighting for the same number keys. The due vote waits, through GameSpice Vote's own retry.
@@ -336,13 +336,13 @@ func _on_vote_opened(options: Array, seconds: float) -> void:
 ## A sound, and nothing on the line. The director names an id out of `vote.yml`'s `cue_*`
 ## and never an empty one; the shell plays it if its catalogue has it.
 func _on_cue(id: StringName) -> void:
-	server.broadcast_notice(DotNotice.make(id))
+	server.broadcast_notice(GSNotice.make(id))
 
 
 func _show_line(text: String, seconds: float) -> void:
 	_notice_text = text
 	_notice_live = true
-	server.broadcast_notice(DotNotice.make(&"", text, seconds, NOTICE_TOPIC))
+	server.broadcast_notice(GSNotice.make(&"", text, seconds, NOTICE_TOPIC))
 
 
 ## The drawn ballot, to every playing session, each told which voter is theirs so their own
@@ -352,13 +352,13 @@ func _send_ballot(state: Dictionary) -> void:
 		_send_ballot_to(session, state)
 
 
-func _send_ballot_to(session: DotClientSession, state: Dictionary) -> void:
+func _send_ballot_to(session: GSClientSession, state: Dictionary) -> void:
 	var data := state.duplicate()
 	data["you"] = String(_voter_id(session))
 	# The line this ballot stands for: the overlay does not draw it while the ballot is open,
 	# because the ballot says the same thing. A shell older than that ignores the field.
 	data["line"] = String(NOTICE_TOPIC)
-	server.send_notice(session, DotNotice.make(
+	server.send_notice(session, GSNotice.make(
 		&"", "", float(state.get("seconds", -1.0)), BALLOT_TOPIC, data
 	))
 
@@ -383,7 +383,7 @@ func _person(voter: StringName) -> Dictionary:
 ## Somebody finished joining while the line is up. The server sends notices to playing
 ## sessions only, so without this a player who arrives mid-ballot sees nothing for its
 ## whole thirty seconds.
-func _on_client_spawned(session: DotClientSession) -> void:
+func _on_client_spawned(session: GSClientSession) -> void:
 	var ballot := feed.snapshot() if feed != null else {}
 
 	if not ballot.is_empty():
@@ -398,7 +398,7 @@ func _on_client_spawned(session: DotClientSession) -> void:
 	)
 
 	server.send_notice(
-		session, DotNotice.make(&"", _notice_text, ceilf(seconds), NOTICE_TOPIC)
+		session, GSNotice.make(&"", _notice_text, ceilf(seconds), NOTICE_TOPIC)
 	)
 
 
@@ -413,17 +413,17 @@ func _sync_notice() -> void:
 
 	_notice_live = false
 	_notice_text = ""
-	server.broadcast_notice(DotNotice.clear(NOTICE_TOPIC))
+	server.broadcast_notice(GSNotice.clear(NOTICE_TOPIC))
 
 
-## The id a session votes under. `u<userid>` matches [DotVoteCommands]'s default, which is what
+## The id a session votes under. `u<userid>` matches [GSVoteCommands]'s default, which is what
 ## actually reads it — two spellings of one key is the shape of the bug where a module looks a
 ## session up by `peer_id` and gets null every time, silently.
-func _voter_id(session: DotClientSession) -> StringName:
+func _voter_id(session: GSClientSession) -> StringName:
 	return StringName("u%d" % session.userid)
 
 
-func _session_for(voter: StringName) -> DotClientSession:
+func _session_for(voter: StringName) -> GSClientSession:
 	var text := String(voter)
 
 	if not text.begins_with("u"):
@@ -465,11 +465,11 @@ func change_under_way() -> bool:
 	if change_under_way_fn.is_valid():
 		return bool(change_under_way_fn.call())
 
-	if director != null and director.state == DotVoteDirector.State.APPLYING:
+	if director != null and director.state == GSVoteDirector.State.APPLYING:
 		return true
 
 	return server != null and server.games != null \
-		and server.games.phase != DotGameManager.Phase.IDLE
+		and server.games.phase != GSGameManager.Phase.IDLE
 
 
 ## Ticks the director, except while a change it (or anybody) started is landing. [b]The clock stands
@@ -492,7 +492,7 @@ func _on_game_loaded(_content_key: String) -> void:
 	_refresh_offer()
 	director.begin(StringName(current.game_id))
 
-	DotLog.info(CHANNEL, "the vote clock restarted for the new game", {
+	GSLog.info(CHANNEL, "the vote clock restarted for the new game", {
 		"game": current.game_id, "limit": director.clock.formatted_remaining(),
 	})
 
@@ -500,7 +500,7 @@ func _on_game_loaded(_content_key: String) -> void:
 
 ## One choice per GAME on the ballot, and none of the running game's other modes. [b]A game with
 ## several modes is several game ids over one content id[/b] (hungario: six), and
-## [DotVoteGameSource] lists every id.
+## [GSVoteGameSource] lists every id.
 func _refresh_offer() -> void:
 	var excluded: Array[StringName] = _operator_excluded.duplicate()
 	if rotation != null:
@@ -513,7 +513,7 @@ func _refresh_offer() -> void:
 	var running := current.content_id if current != null else ""
 	var seen := {}
 
-	for descriptor: DotGameDescriptor in server.games.games:
+	for descriptor: GSGameDescriptor in server.games.games:
 		var id := StringName(descriptor.game_id)
 		var key := descriptor.content_id
 
@@ -531,8 +531,8 @@ func _refresh_offer() -> void:
 
 
 ## The loaded game's own vote directors (its map, mode or layout vote), found in the tree.
-func game_directors() -> Array[DotVoteDirector]:
-	var live: Array[DotVoteDirector] = []
+func game_directors() -> Array[GSVoteDirector]:
+	var live: Array[GSVoteDirector] = []
 
 	for d in _game_directors:
 		if is_instance_valid(d) and d.is_inside_tree():
@@ -563,10 +563,10 @@ func _rescan() -> void:
 	if not is_inside_tree() or director == null:
 		return
 
-	var found: Array[DotVoteDirector] = []
+	var found: Array[GSVoteDirector] = []
 
-	for node in get_tree().root.find_children("*", "DotVoteDirector", true, false):
-		var d := node as DotVoteDirector
+	for node in get_tree().root.find_children("*", "GSVoteDirector", true, false):
+		var d := node as GSVoteDirector
 
 		if d == null or d == director or d.get_parent() is TmcVote:
 			continue
@@ -590,7 +590,7 @@ func _rescan() -> void:
 
 	_game_directors = found
 
-	var rounds: DotVoteDirector = null
+	var rounds: GSVoteDirector = null
 
 	for d in found:
 		if d.round_based:
@@ -619,12 +619,12 @@ func _on_game_round_ended(_played: int, _limit: int) -> void:
 ## director under [code]time_up: finish_round[/code] once the clock has run out.
 func round_in_progress() -> bool:
 	var found := _rounds_match()
-	return found == null or found.state == DotMatch.State.LIVE
+	return found == null or found.state == GSMatch.State.LIVE
 
 
-func _rounds_match() -> DotMatch:
+func _rounds_match() -> GSMatch:
 	if _match_ref != null:
-		var cached := _match_ref.get_ref() as DotMatch
+		var cached := _match_ref.get_ref() as GSMatch
 		if cached != null and is_instance_valid(cached) and cached.is_inside_tree():
 			return cached
 		_match_ref = null
@@ -641,10 +641,10 @@ func _rounds_match() -> DotMatch:
 	var node: Node = _rounds_from
 
 	while node != null:
-		var matches := node.find_children("*", "DotMatch", true, false)
+		var matches := node.find_children("*", "GSMatch", true, false)
 
 		if not matches.is_empty():
-			var found := matches[0] as DotMatch
+			var found := matches[0] as GSMatch
 			_match_ref = weakref(found)
 			return found
 
@@ -659,7 +659,7 @@ func _rounds_match() -> DotMatch:
 ## Forgets a player who left. Their rock-the-vote goes and their nominations stay — GameSpice Vote's
 ## asymmetry, and the reason for it is that a rock-the-vote is a fraction of the people who are
 ## here.
-func _on_client_left(session: DotClientSession, _reason: String) -> void:
+func _on_client_left(session: GSClientSession, _reason: String) -> void:
 	director.forget_voter(_voter_id(session))
 
 
@@ -676,7 +676,7 @@ func describe_lines() -> PackedStringArray:
 		var found := _rounds_match()
 		out.append("its round  %s" % (
 			"no match to ask (counted as live)" if found == null
-			else DotMatch.State.keys()[found.state].to_lower()
+			else GSMatch.State.keys()[found.state].to_lower()
 		))
 	return out
 
@@ -694,11 +694,11 @@ func rules_summary() -> String:
 ## The id a game goes by now, for an id an operator wrote: a `vote_exclude: [playground]` written
 ## before the rename has to keep the renamed game off the ballot. Unknown ids come back as given.
 static func _current_id(games: Array, id: String) -> String:
-	for descriptor: DotGameDescriptor in games:
+	for descriptor: GSGameDescriptor in games:
 		if descriptor != null and descriptor.game_id == id:
 			return id
 
-	for descriptor: DotGameDescriptor in games:
+	for descriptor: GSGameDescriptor in games:
 		if descriptor != null and TmcContent.answers_to_former(descriptor, id):
 			return descriptor.game_id
 

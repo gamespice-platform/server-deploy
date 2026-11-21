@@ -14,5 +14,5 @@ sv_tags: [fixture, test]
 # cvars that cannot be known at read time.
 bfh_round_seconds: 120
 
-# Not the default: here so the suite can see the key reach DotServerConfig.
+# Not the default: here so the suite can see the key reach GSServerConfig.
 sv_stdin_console_pipes: true

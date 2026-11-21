@@ -1,7 +1,7 @@
 class_name TmcContent
 extends RefCounted
 
-## The `content/` directory, read into [DotGameDescriptor]s. One subdirectory per game, each with a
+## The `content/` directory, read into [GSGameDescriptor]s. One subdirectory per game, each with a
 ## `game.yml` that names it.
 
 const CHANNEL := "tmc.content"
@@ -14,7 +14,7 @@ const NOT_GAMES := ["global", "avatars"]
 const DESCRIPTOR := "game.yml"
 
 ## Descriptors, in directory order.
-var games: Array[DotGameDescriptor] = []
+var games: Array[GSGameDescriptor] = []
 
 ## The one to load at boot. Empty when nothing claimed it.
 var default_game: String = ""
@@ -39,7 +39,7 @@ var root: String = ""
 ## an operator should be able to tell which.
 static func scan(
 	directory: String, allow: PackedStringArray = PackedStringArray()
-) -> DotResult:
+) -> GSResult:
 	var index := TmcContent.new()
 	index.root = directory.rstrip("/")
 	index.allowed = allow
@@ -47,8 +47,8 @@ static func scan(
 	var dir := DirAccess.open(index.root)
 
 	if dir == null:
-		return DotResult.fail(
-			DotError.CODE_IO,
+		return GSResult.fail(
+			GSError.CODE_IO,
 			"No content directory at %s." % index.root,
 			"a server with no content is legitimate; a missing directory is a typo"
 		)
@@ -113,7 +113,7 @@ static func scan(
 		if not built.ok:
 			return built.wrap("%s is not a usable game" % path)
 
-		var descriptor := built.value as DotGameDescriptor
+		var descriptor := built.value as GSGameDescriptor
 		index.games.append(descriptor)
 
 		if bool(TmcYaml.at(parsed.value as Dictionary, "default", false)):
@@ -121,8 +121,8 @@ static func scan(
 				# Refused rather than resolved by order. Two games both claiming the boot slot is an operator
 				# mistake with no correct answer, and picking one alphabetically means a server that boots into
 				# a different game after a rename.
-				return DotResult.fail(
-					DotError.CODE_INVALID,
+				return GSResult.fail(
+					GSError.CODE_INVALID,
 					"Both '%s' and '%s' are marked default." % [index.default_game, name]
 				)
 
@@ -139,18 +139,18 @@ static func scan(
 			index.missing.append(wanted)
 
 	if not index.missing.is_empty():
-		DotLog.warn(CHANNEL, "games were asked for and are not installed", {
+		GSLog.warn(CHANNEL, "games were asked for and are not installed", {
 			"missing": index.missing,
 			"hint": "./server install-games, or check the games list",
 		})
 
-	DotLog.info(CHANNEL, "content scanned", {
+	GSLog.info(CHANNEL, "content scanned", {
 		"games": index.games.size(),
 		"default": index.default_game,
 		"skipped": index.skipped.size(),
 	})
 
-	return DotResult.success(index)
+	return GSResult.success(index)
 
 
 ## True when a games list names this directory's game by an id it had before a rename. A
@@ -166,7 +166,7 @@ static func _allowed_by_former_id(root_dir: String, name: String, allow: PackedS
 	if not parsed.ok or not (parsed.value is Dictionary):
 		return false
 
-	var probe := DotGameDescriptor.new()
+	var probe := GSGameDescriptor.new()
 	probe.game_id = name
 	probe.metadata = {"former_ids": TmcYaml.at(parsed.value as Dictionary, "metadata.former_ids", [])}
 
@@ -178,8 +178,8 @@ static func _allowed_by_former_id(root_dir: String, name: String, allow: PackedS
 
 
 ## True when [param game_id] is one of the descriptor's `metadata.former_ids`, exactly or by its
-## name half -- the rule GameSpice Server's DotGameManagerState.find_game applies.
-static func answers_to_former(descriptor: DotGameDescriptor, game_id: String) -> bool:
+## name half -- the rule GameSpice Server's GSGameManagerState.find_game applies.
+static func answers_to_former(descriptor: GSGameDescriptor, game_id: String) -> bool:
 	var former: Variant = descriptor.metadata.get("former_ids", [])
 
 	if not (former is Array):
@@ -194,8 +194,8 @@ static func answers_to_former(descriptor: DotGameDescriptor, game_id: String) ->
 	return false
 
 
-func _build(name: String, tree: Dictionary) -> DotResult:
-	var descriptor := DotGameDescriptor.new()
+func _build(name: String, tree: Dictionary) -> GSResult:
+	var descriptor := GSGameDescriptor.new()
 
 	# The directory name is the id. A `game.yml` that disagreed would give the same game
 	# two names, and the console would take one and the content path the other.
@@ -222,10 +222,10 @@ func _build(name: String, tree: Dictionary) -> DotResult:
 				# Not silently dropped. An operator who wrote one meant something by it,
 				# and the failure it causes — a client stuck in LOADING until it is timed
 				# out — gives no hint at all about where it came from.
-				return DotResult.fail(
-					DotError.CODE_INVALID,
+				return GSResult.fail(
+					GSError.CODE_INVALID,
 					"A builtin game must not name a client_scene.",
-					"DotClientLink refuses every absolute path outside dot-cloud's mount, "
+					"GSClientLink refuses every absolute path outside dot-cloud's mount, "
 					+ "so the client would refuse it and be timed out in LOADING"
 				)
 		"pack":
@@ -237,8 +237,8 @@ func _build(name: String, tree: Dictionary) -> DotResult:
 			descriptor.client_scene = client_scene
 
 			if scene == "" and client_scene == "":
-				return DotResult.fail(
-					DotError.CODE_INVALID,
+				return GSResult.fail(
+					GSError.CODE_INVALID,
 					"A pack game names no scene.",
 					"set scene: to the server scene inside the pack, relative to its root"
 				)
@@ -254,8 +254,8 @@ func _build(name: String, tree: Dictionary) -> DotResult:
 					var ref := TmcGameRef.parse(str(entry))
 
 					if not ref["from_origin"] or str(ref["version"]) == "":
-						return DotResult.fail(
-							DotError.CODE_INVALID,
+						return GSResult.fail(
+							GSError.CODE_INVALID,
 							"The %s entry '%s' has no version." % [field, str(entry)],
 							"./server install-games pins each one when it installs the game"
 						)
@@ -271,14 +271,14 @@ func _build(name: String, tree: Dictionary) -> DotResult:
 				# An absolute scene in a pack game is the builtin spelling in the wrong
 				# file: nothing would ever be fetched, and the game would silently run
 				# out of the build while claiming to be delivered.
-				return DotResult.fail(
-					DotError.CODE_INVALID,
+				return GSResult.fail(
+					GSError.CODE_INVALID,
 					"A pack game's scene must be relative to the pack root.",
 					"got '%s' -- drop the res:// prefix, or use kind: builtin" % scene
 				)
 		_:
-			return DotResult.fail(
-				DotError.CODE_INVALID,
+			return GSResult.fail(
+				GSError.CODE_INVALID,
 				"Unknown kind '%s'; expected builtin or pack." % kind
 			)
 
@@ -307,7 +307,7 @@ func _build(name: String, tree: Dictionary) -> DotResult:
 
 	# [b]The operator's own `metadata:` block, which nothing was reading.[/b] GameSpice Vote's README, its
 	# game source and cfg/vote.yml all tell an operator to write a game's time limit under `metadata:
-	# vote:` in game.yml, and DotVoteGameSource reads `descriptor.metadata.vote`.
+	# vote:` in game.yml, and GSVoteGameSource reads `descriptor.metadata.vote`.
 	var extra: Variant = TmcYaml.at(tree, "metadata", {})
 
 	if extra is Dictionary:
@@ -326,7 +326,7 @@ func _build(name: String, tree: Dictionary) -> DotResult:
 	if not valid.ok:
 		return valid
 
-	return DotResult.success(descriptor)
+	return GSResult.success(descriptor)
 
 
 ## A `cvars:` block with its list values joined, because a cvar's value is a string.
@@ -348,9 +348,9 @@ static func flatten_cvars(cvars: Dictionary) -> Dictionary:
 
 
 ## The game an id names: exactly, or by its NAME half while only one owner has it --
-## the same rule as DotGameManager.find_game, so `TMC_GAME=game-airdrift` keeps booting
+## the same rule as GSGameManager.find_game, so `TMC_GAME=game-airdrift` keeps booting
 ## `gamemann/game-airdrift` until somebody installs a second `game-airdrift`.
-func find(game_id: String) -> DotGameDescriptor:
+func find(game_id: String) -> GSGameDescriptor:
 	for descriptor in games:
 		if descriptor.game_id == game_id:
 			return descriptor
@@ -358,7 +358,7 @@ func find(game_id: String) -> DotGameDescriptor:
 	if game_id.contains("/"):
 		return null
 
-	var found: DotGameDescriptor = null
+	var found: GSGameDescriptor = null
 
 	for descriptor in games:
 		if descriptor.game_id.ends_with("/" + game_id):

@@ -14,7 +14,7 @@ The desktop app's builder drops a pair when its value is missing. `{udpPort}` is
 
 ## Signing in: `--auth-code`
 
-A player signed into the desktop app should join as themselves, which a TICKET server with `allow_guests=false` requires. The app asks the site's `POST /play/launch` for a launch and gets a 60 s single-use handoff (`tmc_gh_...`, only when the viewer is signed in and the server signs in through TMC), then appends `--auth-code <code>` after the bare `--`. The shell redeems it with `DotAuthClient.redeem_handoff` at ITS OWN backbone (`client/auth.json` or `--auth-backbone-url`), never a URL named in argv. A refused or missing code leaves a guest. The site's `{authCode}` URI token carries the same value for a template that wants it.
+A player signed into the desktop app should join as themselves, which a TICKET server with `allow_guests=false` requires. The app asks the site's `POST /play/launch` for a launch and gets a 60 s single-use handoff (`tmc_gh_...`, only when the viewer is signed in and the server signs in through TMC), then appends `--auth-code <code>` after the bare `--`. The shell redeems it with `GSAuthClient.redeem_handoff` at ITS OWN backbone (`client/auth.json` or `--auth-backbone-url`), never a URL named in argv. A refused or missing code leaves a guest. The site's `{authCode}` URI token carries the same value for a template that wants it.
 
 ## Presets
 

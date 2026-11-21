@@ -13,20 +13,20 @@ const EVIDENCE := "evidence"
 
 const EXTENSION := ".dreplay"
 
-## GameSpice Moderation's `DotPunishment.Kind.BAN` and `.KICK`. Numbers rather than the enum,
+## GameSpice Moderation's `GSPunishment.Kind.BAN` and `.KICK`. Numbers rather than the enum,
 ## because this project does not link GameSpice Moderation for its own scripts -- a game does,
-## and the manager is reached through [DotRegistry] like GameSpice Server Security reaches it.
+## and the manager is reached through [GSRegistry] like GameSpice Server Security reaches it.
 const MOD_KIND_BAN := 0
 const MOD_KIND_KICK := 1
 
 ## The service a game's GameSpice Moderation registers under.
 const MODERATION_SERVICE := &"dot_moderation"
 
-var recorder: DotReplayRecorder = null
-var tap: DotReplayEventTap = null
+var recorder: GSReplayRecorder = null
+var tap: GSReplayEventTap = null
 
 ## Null in the suite, which drives this with no server at all.
-var server: DotServer = null
+var server: GSServer = null
 
 ## Where `matches/`, `clips/` and `evidence/` go. Absolute.
 var directory: String = ""
@@ -50,7 +50,7 @@ var game_fn: Callable = Callable()
 ## [code]func() -> Array[/code]: who is connected, as plain data. The keyframe.
 var roster_fn: Callable = Callable()
 
-var _config: DotReplayConfig = null
+var _config: GSReplayConfig = null
 var _started_ms: int = 0
 var _last_evidence: Dictionary = {}
 var _last_evidence_ms: int = -1
@@ -64,9 +64,9 @@ var _moderation: Object = null
 
 ## Builds the recorder `cfg/replay.yml` asks for and attaches it to [param p_server]. Null
 ## when it is off, or when the addon refused the configuration -- said, never fatal.
-static func install(host: Node, p_server: DotServer, config: TmcConfig, data_dir: String) -> TmcReplay:
+static func install(host: Node, p_server: GSServer, config: TmcConfig, data_dir: String) -> TmcReplay:
 	if not config.replay_enabled:
-		DotLog.info(CHANNEL, "the replay ring is off in cfg/replay.yml")
+		GSLog.info(CHANNEL, "the replay ring is off in cfg/replay.yml")
 		return null
 
 	var node := TmcReplay.new()
@@ -77,7 +77,7 @@ static func install(host: Node, p_server: DotServer, config: TmcConfig, data_dir
 	if not built.ok:
 		# ERROR rather than fatal: a server with no ring is a server that runs, and one that
 		# refused to boot over a chunk size costs the players what they came for.
-		DotLog.error(CHANNEL, "the replay ring was not built", {"why": str(built.error)})
+		GSLog.error(CHANNEL, "the replay ring was not built", {"why": str(built.error)})
 		node.free()
 		return null
 
@@ -87,7 +87,7 @@ static func install(host: Node, p_server: DotServer, config: TmcConfig, data_dir
 	host.add_child(node)
 
 	if p_server.events != null:
-		DotLog.result(CHANNEL, "the event tap", node.attach_bus(p_server.events), DotLog.Level.WARN)
+		GSLog.result(CHANNEL, "the event tap", node.attach_bus(p_server.events), GSLog.Level.WARN)
 
 	node.begin()
 
@@ -102,12 +102,12 @@ static func install(host: Node, p_server: DotServer, config: TmcConfig, data_dir
 
 	# A game's moderation is built when its module loads and replaced on every change, so
 	# the registry is watched rather than asked once. Same reason as TmcParty's.
-	DotRegistry.signals().service_registered.connect(node._on_service_registered)
-	node.watch_moderation(DotRegistry.get_service(MODERATION_SERVICE))
+	GSRegistry.signals().service_registered.connect(node._on_service_registered)
+	node.watch_moderation(GSRegistry.get_service(MODERATION_SERVICE))
 
 	node._register_commands()
 
-	DotLog.info(CHANNEL, "the replay ring is recording", {
+	GSLog.info(CHANNEL, "the replay ring is recording", {
 		"ring_seconds": config.replay.ring_seconds,
 		"ring_max_mib": config.replay.ring_max_mib,
 		"matches_to_disk": node.record_matches,
@@ -119,7 +119,7 @@ static func install(host: Node, p_server: DotServer, config: TmcConfig, data_dir
 
 
 ## Everything that does not need a server. The suite calls this directly.
-func configure(config: TmcConfig, data_dir: String, p_tick_rate: int) -> DotResult:
+func configure(config: TmcConfig, data_dir: String, p_tick_rate: int) -> GSResult:
 	_config = config.replay
 	tick_rate = clampi(p_tick_rate, 1, 1000)
 	record_matches = config.replay_record
@@ -134,13 +134,13 @@ func configure(config: TmcConfig, data_dir: String, p_tick_rate: int) -> DotResu
 		directory = TmcReplay._absolute(data_dir).path_join("replays")
 
 	if _config.ring_seconds <= 0.0 and not record_matches:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"Nothing to record to.",
 			"replay_ring_seconds is 0 and replay_record is off; set replay_enabled: false instead"
 		)
 
-	recorder = DotReplayRecorder.new()
+	recorder = GSReplayRecorder.new()
 	var configured := recorder.configure(_config, tick_rate)
 	if not configured.ok:
 		return configured
@@ -153,14 +153,14 @@ func configure(config: TmcConfig, data_dir: String, p_tick_rate: int) -> DotResu
 		}
 
 	_started_ms = int(now_ms_fn.call())
-	return DotResult.success(self)
+	return GSResult.success(self)
 
 
 ## Records [param bus]'s events on the `events` channel from now on.
-func attach_bus(bus: Object) -> DotResult:
+func attach_bus(bus: Object) -> GSResult:
 	if tap != null:
 		tap.detach()
-	tap = DotReplayEventTap.new()
+	tap = GSReplayEventTap.new()
 	tap.recorder = recorder
 	tap.tick_fn = tick_now
 	return tap.attach(bus)
@@ -173,11 +173,11 @@ func tick_now() -> int:
 
 ## Starts recording the game now running: to the ring, and to a file too when
 ## `replay_record` is on.
-func begin() -> DotResult:
+func begin() -> GSResult:
 	if recorder.is_recording():
 		recorder.stop()
 
-	var header := DotReplayHeader.make(
+	var header := GSReplayHeader.make(
 		_game(), "", tick_rate, roster_fn.call() if roster_fn.is_valid() else [],
 		{"server": server.config.hostname if server != null else ""}
 	)
@@ -194,7 +194,7 @@ func begin() -> DotResult:
 	if not started.ok and path != "":
 		# The disk refused the file. The ring is the half that matters for moderation, so it
 		# is kept rather than going down with the file.
-		DotLog.warn(CHANNEL, "could not record this match to a file; the ring carries on", {
+		GSLog.warn(CHANNEL, "could not record this match to a file; the ring carries on", {
 			"path": path, "why": str(started.error),
 		})
 		started = recorder.start(header, "")
@@ -208,7 +208,7 @@ func _physics_process(_delta: float) -> void:
 
 
 func _exit_tree() -> void:
-	var bus := DotRegistry.signals()
+	var bus := GSRegistry.signals()
 
 	if bus.service_registered.is_connected(_on_service_registered):
 		bus.service_registered.disconnect(_on_service_registered)
@@ -232,10 +232,10 @@ func _on_game_loaded(_content_key: String) -> void:
 ## Writes the last [param seconds] of the ring (0: all of it) under `clips/`, or under `evidence/`
 ## when [param evidence] -- the directory decides which cap it counts against, and a moderator's
 ## manual saves must never push evidence off the disk.
-func save_clip(seconds: float = 0.0, label: String = "", evidence: bool = false) -> DotResult:
+func save_clip(seconds: float = 0.0, label: String = "", evidence: bool = false) -> GSResult:
 	if recorder == null or recorder.ring == null:
-		return DotResult.fail(
-			DotError.CODE_STATE, "This server keeps no ring to save from.",
+		return GSResult.fail(
+			GSError.CODE_STATE, "This server keeps no ring to save from.",
 			"replay_ring_seconds is 0 in cfg/replay.yml"
 		)
 
@@ -255,23 +255,23 @@ func save_clip(seconds: float = 0.0, label: String = "", evidence: bool = false)
 	_clips += 1
 	# After the write, so a clip that is itself over the byte cap is not deleted by the
 	# prune that made room for it: the next save's prune takes it.
-	return DotResult.success(ev)
+	return GSResult.success(ev)
 
 
 ## A clip for a punishment, or the one saved for the previous punishment when that was less than
 ## `replay_evidence_cooldown_sec` ago.
-func evidence_clip(why: String) -> DotResult:
+func evidence_clip(why: String) -> GSResult:
 	var now := int(now_ms_fn.call())
 
 	if not _last_evidence.is_empty() and _last_evidence_ms >= 0 \
 			and now - _last_evidence_ms < int(evidence_cooldown_sec * 1000.0):
-		return DotResult.success(_last_evidence)
+		return GSResult.success(_last_evidence)
 
 	var saved := save_clip(clip_seconds, _slug(why), true)
 
 	if not saved.ok:
 		_evidence_failed += 1
-		DotLog.warn(CHANNEL, "a punishment went on record without a clip", {
+		GSLog.warn(CHANNEL, "a punishment went on record without a clip", {
 			"why": why, "error": str(saved.error),
 		})
 		return saved
@@ -375,9 +375,9 @@ func _on_punished(punishment: Object) -> void:
 
 	if store != null and store.has_method("is_writable") and bool(store.call("is_writable")):
 		var put: Variant = await store.call("put", punishment)
-		if put is DotResult and not (put as DotResult).ok:
-			DotLog.warn(CHANNEL, "the clip's hash did not reach the punishment store", {
-				"subject": subject, "why": str((put as DotResult).error),
+		if put is GSResult and not (put as GSResult).ok:
+			GSLog.warn(CHANNEL, "the clip's hash did not reach the punishment store", {
+				"subject": subject, "why": str((put as GSResult).error),
 			})
 
 
@@ -418,11 +418,11 @@ func _prune(dir: String, max_files: int, max_bytes: int, evidence: bool) -> void
 		total -= int(oldest["size"])
 		_pruned += 1
 		if evidence:
-			DotLog.warn(CHANNEL, "an evidence clip was deleted to stay under the disk cap", {
+			GSLog.warn(CHANNEL, "an evidence clip was deleted to stay under the disk cap", {
 				"path": oldest["path"], "keep_files": keep_files, "keep_mib": keep_bytes >> 20,
 			})
 		else:
-			DotLog.debug(CHANNEL, "pruned", {"path": oldest["path"]})
+			GSLog.debug(CHANNEL, "pruned", {"path": oldest["path"]})
 
 
 ## `<dir>/<UTC stamp>_<name>.dreplay`, with a counter when two land in one second.
@@ -481,11 +481,11 @@ func _register_commands() -> void:
 	server.console.command(
 		"replay", _cmd_replay,
 		"The replay ring: replay [status], replay save [seconds] [label], replay list",
-		DotAdminFlags.GENERIC
+		GSAdminFlags.GENERIC
 	).with_usage("[status|save [seconds] [label]|list]").with_chat()
 
 
-func _cmd_replay(ctx: DotCmdContext) -> void:
+func _cmd_replay(ctx: GSCmdContext) -> void:
 	match ctx.arg(0, "status"):
 		"status":
 			ctx.reply_lines(describe_lines())

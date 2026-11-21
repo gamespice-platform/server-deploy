@@ -31,7 +31,7 @@ func _put(path: String, text: String) -> void:
 func _test_content_lists() -> void:
 	_section("content lists: shipped default, operator replace or merge, bad entry, pin")
 	var root := "user://selftest_content_lists"
-	DotPaths.remove_tree(root)
+	GSPaths.remove_tree(root)
 	var shipped := TmcContentLists.load_list("addons", root)
 	_check(shipped.ok and (shipped.value as Array).size() > 40, "the shipped addons list loads")
 	_check(TmcContentLists.pin_for(shipped.value, "dot-core") != "", "and carries the pins of addons.lock")
@@ -52,15 +52,15 @@ func _test_content_lists() -> void:
 	_check(srv.ok and (srv.value as Array).size() == 1, "the server tier overrides the operator's file")
 	_put(root + "/server/content/addons.yml", "entries:\n  - repo: a\n    pack: b/c\n")
 	var bad := TmcContentLists.load_list("addons", root)
-	_check(not bad.ok and bad.error.code == DotError.CODE_INVALID and bad.error.message.contains("entry 1"), "a bad entry fails with CODE_INVALID naming it")
+	_check(not bad.ok and bad.error.code == GSError.CODE_INVALID and bad.error.message.contains("entry 1"), "a bad entry fails with CODE_INVALID naming it")
 	_put(root + "/server/content/addons.yml", "entries:\n  - dot-x@bad pin!\n")
-	_check(TmcContentLists.load_list("addons", root).error.code == DotError.CODE_INVALID, "a pin with odd characters is refused")
+	_check(TmcContentLists.load_list("addons", root).error.code == GSError.CODE_INVALID, "a pin with odd characters is refused")
 	_put(root + "/server/content/addons.yml", "entries: [\n")
 	_check(not TmcContentLists.load_list("addons", root).ok, "a file that is not yml fails")
-	_check(TmcContentLists.load_list("nope", root).error.code == DotError.CODE_INVALID, "an unknown list is refused")
+	_check(TmcContentLists.load_list("nope", root).error.code == GSError.CODE_INVALID, "an unknown list is refused")
 	_put(root + "/server/content/addons.yml", "entries:\n  - repo: a\n    maps: [x]\n")
 	_check(not TmcContentLists.load_list("addons", root).ok, "maps: in addons.yml is refused")
-	DotPaths.remove_tree(root)
+	GSPaths.remove_tree(root)
 	_put(root + "/content/games.yml", "entries:\n  - repo: g1\n    content: one\n    maps: [b, a]\n    rotation: random\n  - repo: g2\n    content: two\n  - repo: g3\n")
 	var gl := TmcContentLists.load_list("games", root)
 	_check(gl.ok and gl.value[0]["maps"] == PackedStringArray(["b", "a"]) and gl.value[0]["rotation"] == "random", "games.yml entries carry maps: and rotation:")
@@ -85,7 +85,7 @@ func _test_content_lists() -> void:
 	_check(not TmcContentLists.load_list("games", root).ok, "an unknown rotation mode is refused")
 	var cyc := TmcGameRotation.from_order(PackedStringArray(["bee", "ay"]))
 	_check(cyc.is_cycle() and cyc.rotation_names() == PackedStringArray(["main"]), "the zero-config game order is a cycle")
-	DotPaths.remove_tree(root)
+	GSPaths.remove_tree(root)
 	_done()
 
 
@@ -181,7 +181,7 @@ func _test_deployed_map_clocks() -> void:
 		untimed.append(descriptor.game_id)
 
 		var overlay: Variant = descriptor.metadata.get("map_vote", {})
-		var rules := DotVoteRules.new()
+		var rules := GSVoteRules.new()
 		var layered := rules.layer_over_defaults(
 			"", overlay as Dictionary if overlay is Dictionary else {}
 		)
@@ -189,7 +189,7 @@ func _test_deployed_map_clocks() -> void:
 		if (
 			not layered.ok or not rules.validate().ok
 			or rules.duration_sec > 0.0
-			or rules.trigger != DotVoteRules.Trigger.RTV_ONLY
+			or rules.trigger != GSVoteRules.Trigger.RTV_ONLY
 		):
 			disagree.append("%s (trigger %s, duration %.0f)" % [
 				descriptor.game_id, rules.enum_name("trigger"), rules.duration_sec

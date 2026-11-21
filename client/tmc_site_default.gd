@@ -32,16 +32,16 @@ static func resolve(auth_text: String, env_value: String, argv: PackedStringArra
 
 ## The audiences in the site's `play/first-party` answer, as a PackedStringArray, or a
 ## failure when the answer is not that shape (the caller keeps the shipped list).
-static func first_party_from(answer: Variant) -> DotResult:
+static func first_party_from(answer: Variant) -> GSResult:
 	var list: Variant = (answer as Dictionary).get("audiences") if answer is Dictionary else null
 	if not (list is Array):
-		return DotResult.fail(DotError.CODE_PARSE, "The site sent no first-party server list.")
+		return GSResult.fail(GSError.CODE_PARSE, "The site sent no first-party server list.")
 
 	var out := PackedStringArray()
 	for entry in list:
-		if DotAuthConfig.is_audience(str(entry)):
+		if GSAuthConfig.is_audience(str(entry)):
 			out.append(str(entry))
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
 ## Publishes the shipped site to the process environment. Returns what it set, or "".
@@ -49,7 +49,7 @@ static func apply(auth_path: String) -> String:
 	if not FileAccess.file_exists(auth_path):
 		return ""
 
-	var query := DotWeb.query_param("backbone") if DotPlatform.is_web() else ""
+	var query := GSWeb.query_param("backbone") if GSPlatform.is_web() else ""
 	var url := resolve(
 		FileAccess.get_file_as_string(auth_path),
 		_gs_env(ENV_KEY),
@@ -60,12 +60,12 @@ static func apply(auth_path: String) -> String:
 	if url != "":
 		OS.set_environment(ENV_KEY, url)
 		OS.set_environment("GS_BROWSER_BACKBONE_URL", url)
-		DotLog.info("tmc.shell", "server browsers list the site from client/auth.json", {"site": url})
+		GSLog.info("tmc.shell", "server browsers list the site from client/auth.json", {"site": url})
 
 	return url
 
 
-## [param name] (a DOT_ name) read as its GS_ spelling first, then as itself: what DotConfig.gs_env does,
+## [param name] (a DOT_ name) read as its GS_ spelling first, then as itself: what GSConfig.gs_env does,
 ## written out because the dot-core addons.lock pins predates gs_env and a call to it does not compile there.
 static func _gs_env(name: String) -> String:
 	if name.begins_with("DOT_"):

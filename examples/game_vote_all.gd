@@ -115,8 +115,8 @@ func _ready() -> void:
 			_order.erase(ORDER[0])
 			_order.push_front(ORDER[0])
 
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -129,7 +129,7 @@ func _run() -> void:
 		get_tree().quit(0)
 		return
 
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	var rpc_watch := RpcPathWatch.new()
 	OS.add_logger(rpc_watch)
@@ -145,7 +145,7 @@ func _run() -> void:
 		await _test_back_at_the_start()
 
 	await _teardown()
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 	OS.remove_logger(rpc_watch)
 
 	_print_table()
@@ -211,23 +211,23 @@ func _skip(count: int, why: String) -> void:
 		_check(false, "skipped: %s" % why)
 
 
-func _server() -> DotServer:
+func _server() -> GSServer:
 	if _host == null or not is_instance_valid(_host):
 		return null
-	return _host.server as DotServer
+	return _host.server as GSServer
 
 
 func _votes() -> TmcVote:
 	return _host.votes as TmcVote if _host != null else null
 
 
-func _director() -> DotVoteDirector:
+func _director() -> GSVoteDirector:
 	var votes := _votes()
 	return votes.director if votes != null else null
 
 
-func _link() -> DotClientLink:
-	return _shell.link as DotClientLink if _shell != null else null
+func _link() -> GSClientLink:
+	return _shell.link as GSClientLink if _shell != null else null
 
 
 func _overlay() -> TmcNoticeOverlay:
@@ -249,7 +249,7 @@ func _until(condition: Callable, seconds: float = 20.0) -> bool:
 func _at_game(game_id: String) -> bool:
 	var current := _server().games.current()
 	return current != null and current.game_id == game_id \
-		and _server().games.phase == DotGameManager.Phase.IDLE
+		and _server().games.phase == GSGameManager.Phase.IDLE
 
 
 ## The client is in [param game_id]: told of it, its scene loaded, and the server's session
@@ -258,19 +258,19 @@ func _client_in(game_id: String) -> bool:
 	var link := _link()
 	return (
 		link != null and link.server_game_id == game_id
-		and link.phase == DotClientLink.Phase.PLAYING
+		and link.phase == GSClientLink.Phase.PLAYING
 		and link._scene_instance != null and is_instance_valid(link._scene_instance)
 		and _server().playing_sessions().size() == 1
 	)
 
 
-func _on_screen(d: DotVoteDirector) -> bool:
+func _on_screen(d: GSVoteDirector) -> bool:
 	return d != null and is_instance_valid(d) and (d.is_voting() or d.is_counting_down())
 
 
 ## The game's own director that has something to vote between, or the first one, or null.
-func _own() -> DotVoteDirector:
-	var found: Array[DotVoteDirector] = _votes().game_directors()
+func _own() -> GSVoteDirector:
+	var found: Array[GSVoteDirector] = _votes().game_directors()
 
 	for d in found:
 		if d.has_alternatives():
@@ -320,7 +320,7 @@ func _boot() -> bool:
 	ServerWorld.add(self, _host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 
 	if not _check(started.ok, "the host boots", str(started.error)):
 		_skip(3, "the host did not boot")
@@ -351,7 +351,7 @@ func _boot() -> bool:
 	])
 
 	# Every sound ends the moment it starts; see `shell_notice`.
-	var sink := _overlay().audio.sink as DotAudioSinkNull
+	var sink := _overlay().audio.sink as GSAudioSinkNull
 	if sink != null:
 		_overlay().audio.played.connect(
 			func(_id: StringName, handle: int, _why: StringName) -> void:
@@ -478,7 +478,7 @@ func _test_game(game_id: String, next: String) -> void:
 	row["offered_rtv"] = rocked
 	_check(rocked, "!game_rtv offers a ballot of games", _director().describe_lines()[0])
 
-	var drawn := await _until(func() -> bool: return _panel_index(DotVoteBallot.KEEP) >= 0, 5.0)
+	var drawn := await _until(func() -> bool: return _panel_index(GSVoteBallot.KEEP) >= 0, 5.0)
 	_check(drawn, "drawn on the shell's HUD, with \"don't change\" on it")
 
 	if _shot_dir != "":
@@ -493,8 +493,8 @@ func _test_game(game_id: String, next: String) -> void:
 
 	# The game asks for its own ballot while the game ballot is up.
 	var refused := true
-	if own != null and own.has_alternatives() and own.state == DotVoteDirector.State.RUNNING:
-		var asked := own.start_vote(DotVoteClock.REASON_MANUAL)
+	if own != null and own.has_alternatives() and own.state == GSVoteDirector.State.RUNNING:
+		var asked := own.start_vote(GSVoteClock.REASON_MANUAL)
 		refused = not asked.ok and not _on_screen(own)
 	_check(
 		refused,
@@ -503,7 +503,7 @@ func _test_game(game_id: String, next: String) -> void:
 	)
 
 	# The player clicks "don't change".
-	var keep_at := _panel_index(DotVoteBallot.KEEP)
+	var keep_at := _panel_index(GSVoteBallot.KEEP)
 	if keep_at >= 0:
 		_overlay().ballot(TmcVote.BALLOT_TOPIC).choose(keep_at)
 	var kept := await _until(
@@ -525,7 +525,7 @@ func _test_game(game_id: String, next: String) -> void:
 	# The line everybody reads names the player. It named the voter id: "[Server] u1
 	# nominated Fatal Contact." in every game, while the ballot beside it drew the name.
 	var sessions := _server().sessions() if _server() != null else []
-	var me: DotClientSession = sessions[0] if not sessions.is_empty() else null
+	var me: GSClientSession = sessions[0] if not sessions.is_empty() else null
 	var nominated_line := func() -> String:
 		for line in heard:
 			if line.contains(" nominated "):
@@ -538,7 +538,7 @@ func _test_game(game_id: String, next: String) -> void:
 		me != null and me.display_name != "" and said.begins_with("%s nominated " % me.display_name)
 			and not said.begins_with("u%d " % me.userid),
 		"the nomination line names the player (%s)" % said,
-		"the director's line printed the voter id; DotVoteDirector.people_fn / the feed's"
+		"the director's line printed the voter id; GSVoteDirector.people_fn / the feed's"
 	)
 
 	# The game's own ballot follows the game ballot rather than being lost.
@@ -642,7 +642,7 @@ func _elected(next: String) -> bool:
 	return (
 		_at_game(next) or _director().pending_id() == StringName(next)
 		or (pending != null and pending.game_id == next)
-		or _server().games.phase != DotGameManager.Phase.IDLE
+		or _server().games.phase != GSGameManager.Phase.IDLE
 	)
 
 
@@ -656,7 +656,7 @@ func _test_back_at_the_start() -> void:
 		"and the client followed it back"
 	)
 	_check(
-		_server().state == DotServer.State.RUNNING and _server().sessions().size() == 1,
+		_server().state == GSServer.State.RUNNING and _server().sessions().size() == 1,
 		"after %d game changes the server is still serving its one player" % _order.size()
 	)
 	_done()

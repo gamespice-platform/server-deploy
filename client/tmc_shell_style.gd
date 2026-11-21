@@ -1,7 +1,7 @@
 class_name TmcShellStyle
 extends RefCounted
 
-## The shell's look: GameSpice's tokens, in one place, for every view the shell draws (menu, loading screen, notices, admin menu, dialogs). The values are the site's own (website-gs src/app/globals.css and docs/brand.md, hue 14): the shell runs inside the site's game stage, which is dark in both of the site's themes, so the shell is dark only. A [DotUiTheme] configured here, not a fork of it: GameSpice UI builds the Theme, this file only chooses the palette and adds the few styleboxes a palette cannot express (the glass card, the primary button's glow, the focus ring).
+## The shell's look: GameSpice's tokens, in one place, for every view the shell draws (menu, loading screen, notices, admin menu, dialogs). The values are the site's own (website-gs src/app/globals.css and docs/brand.md, hue 14): the shell runs inside the site's game stage, which is dark in both of the site's themes, so the shell is dark only. A [GSUiTheme] configured here, not a fork of it: GameSpice UI builds the Theme, this file only chooses the palette and adds the few styleboxes a palette cannot express (the glass card, the primary button's glow, the focus ring).
 
 ## The site's accent (SITE_ACCENT).
 const ACCENT := Color(0.949, 0.329, 0.176)
@@ -37,10 +37,10 @@ const RADIUS := 12
 const CARD_RADIUS := 20
 
 
-## The palette as a [DotUiTheme], for a view to adjust before building (the ballots make
+## The palette as a [GSUiTheme], for a view to adjust before building (the ballots make
 ## the background opaque).
-static func palette() -> DotUiTheme:
-	var t := DotUiTheme.new()
+static func palette() -> GSUiTheme:
+	var t := GSUiTheme.new()
 	t.background = Color(GLASS_STRONG, 0.90)
 	t.surface = Color(PANEL_2, 0.92)
 	t.surface_hover = Color(PANEL_2.lightened(0.08), 0.96)
@@ -81,7 +81,7 @@ static func dress(t: Theme) -> Theme:
 	t.set_color("font_color", "TmcEyebrow", ACCENT_TEXT)
 	t.set_font_size("font_size", "TmcEyebrow", 12)
 	t.set_font("font", "TmcEyebrow", bold())
-	t.set_font("font", "DotHeading", bold())
+	t.set_font("font", "GSHeading", bold())
 	# Dialogs (the clear-content confirmation): the card, opaque, and a title bar to match.
 	# The window's border below is the card; the panel inside is flat, so the two do not
 	# draw a second outline and shadow inside the first (a frame showed the double edge).

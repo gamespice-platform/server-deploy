@@ -6,11 +6,11 @@ extends Node
 const CHANNEL := "tmc.listing"
 
 ## The reporter, or null when this server has no token.
-var backbone: DotBackboneClient = null
+var backbone: GSBackboneClient = null
 
-var _server: DotServer = null
+var _server: GSServer = null
 var _content: TmcContent = null
-var _config: DotAuthConfig = null
+var _config: GSAuthConfig = null
 var _path := ""
 
 
@@ -18,7 +18,7 @@ var _path := ""
 ## listed is still a server, and an operator who has not created an integration yet has not made a
 ## mistake.
 static func install(
-	host: Node, server: DotServer, content: TmcContent, config_path: String
+	host: Node, server: GSServer, content: TmcContent, config_path: String
 ) -> TmcReport:
 	var node := TmcReport.new()
 	node.name = "Listing"
@@ -32,17 +32,17 @@ static func install(
 
 
 func _build() -> void:
-	_config = DotAuthConfig.new()
+	_config = GSAuthConfig.new()
 	# The listing borrows GameSpice Auth's config for its backbone URL and token and never authenticates a
 	# player, so the strategy means nothing here -- but it is VALIDATED, and the default (`ticket`)
 	# demands a server_id and a public key.
-	_config.strategy = DotAuthConfig.Strategy.INTROSPECT
+	_config.strategy = GSAuthConfig.Strategy.INTROSPECT
 	# On by default: the site draws a player's play time from the roster (join, leave, score),
 	# and enrollment already grants SERVER_USERS. `report_roster: false` in listing.json opts out.
 	_config.report_roster = true
 
 	if _path == "" or not FileAccess.file_exists(_path):
-		DotLog.info(CHANNEL, "no listing configuration; this server will not be listed", {
+		GSLog.info(CHANNEL, "no listing configuration; this server will not be listed", {
 			"path": _path
 		})
 		return
@@ -50,18 +50,18 @@ func _build() -> void:
 	var loaded := _config.load_layered(_path)
 
 	if not loaded.ok:
-		DotLog.warn(CHANNEL, "could not read the listing configuration", {
+		GSLog.warn(CHANNEL, "could not read the listing configuration", {
 			"path": _path, "error": str(loaded.error)
 		})
 		return
 
 	if _config.integration_token.strip_edges() == "":
-		DotLog.info(CHANNEL, "no integration token; this server will not be listed", {
+		GSLog.info(CHANNEL, "no integration token; this server will not be listed", {
 			"path": _path
 		})
 		return
 
-	backbone = DotBackboneClient.new()
+	backbone = GSBackboneClient.new()
 	backbone.name = "Backbone"
 	backbone.config = _config
 	# Callables rather than pushed state, because a report is a snapshot of NOW and not
@@ -73,20 +73,20 @@ func _build() -> void:
 	var started := backbone.start()
 
 	if not started.ok:
-		DotLog.warn(CHANNEL, "listing reports did not start", {"error": str(started.error)})
+		GSLog.warn(CHANNEL, "listing reports did not start", {"error": str(started.error)})
 		remove_child(backbone)
 		backbone.queue_free()
 		backbone = null
 		return
 
-	DotLog.info(CHANNEL, "reporting to the site listing", {
+	GSLog.info(CHANNEL, "reporting to the site listing", {
 		"url": _config.backbone_url,
 		"every": _config.report_interval_sec,
 		"games": _content.ids().size() if _content != null else 0,
 	})
 
 
-## What this server looks like from outside. [method DotServer.to_stats_report] answers everything a
+## What this server looks like from outside. [method GSServer.to_stats_report] answers everything a
 ## single-game server has to say. The one field added here is the one only this host knows:
 ## [code]games[/code], the ids this server can be switched to without anybody reconnecting.
 func stats_report() -> Dictionary:

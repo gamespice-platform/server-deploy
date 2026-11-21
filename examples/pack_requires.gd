@@ -18,7 +18,7 @@ var _failures: PackedStringArray = []
 
 
 func _ready() -> void:
-	DotPaths.remove_tree(SCRATCH)
+	GSPaths.remove_tree(SCRATCH)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SCRATCH))
 
 	_test_published()
@@ -27,7 +27,7 @@ func _ready() -> void:
 	_test_not_a_project()
 	_test_former_id()
 
-	DotPaths.remove_tree(SCRATCH)
+	GSPaths.remove_tree(SCRATCH)
 
 	print("")
 	print("%d sections, %d completed" % [_entered, _completed])
@@ -55,11 +55,11 @@ func _source(repo: String) -> String:
 func _test_published() -> void:
 	_section("./server pack --source: a first-party game's pack carries requires.json")
 
-	# No fallback to hide behind: the publisher is a plain DotCloudPublisher carrying the file.
+	# No fallback to hide behind: the publisher is a plain GSCloudPublisher carrying the file.
 	var chosen := Pack.publisher_for("/derived/requires.json")
 	_check(
-		chosen.get_script() == DotCloudPublisher
-		and chosen.extra_files.get(DotAddonApi.REQUIREMENTS_FILE, "") == "/derived/requires.json",
+		chosen.get_script() == GSCloudPublisher
+		and chosen.extra_files.get(GSAddonApi.REQUIREMENTS_FILE, "") == "/derived/requires.json",
 		"requires.json goes through dot-cloud's public extra_files, not the private override"
 	)
 
@@ -69,13 +69,13 @@ func _test_published() -> void:
 		return
 
 	var scratch := ProjectSettings.globalize_path(SCRATCH)
-	var pair := DotCloudSignature.generate_keypair()
+	var pair := GSCloudSignature.generate_keypair()
 	var key := scratch.path_join("content.key")
 	var f := FileAccess.open(key, FileAccess.WRITE)
 	f.store_string(str(pair.value["private"]) if pair.ok else "")
 	f.close()
 
-	var had_requires := FileAccess.file_exists(source.path_join(DotAddonApi.REQUIREMENTS_FILE))
+	var had_requires := FileAccess.file_exists(source.path_join(GSAddonApi.REQUIREMENTS_FILE))
 
 	# The command ./server pack runs, in its own process as it is run.
 	var said := []
@@ -92,7 +92,7 @@ func _test_published() -> void:
 	var manifest := _read_manifest(scratch.path_join("dist/tmc").path_join(GAME).path_join("manifest.json"))
 	var entry: Dictionary = {}
 	for file: Variant in (manifest.get("files", []) as Array):
-		if file is Dictionary and str((file as Dictionary).get("path")) == DotAddonApi.REQUIREMENTS_FILE:
+		if file is Dictionary and str((file as Dictionary).get("path")) == GSAddonApi.REQUIREMENTS_FILE:
 			entry = file
 	if not _check(not entry.is_empty(), "the signed manifest lists requires.json at the pack's root"):
 		_done()
@@ -100,7 +100,7 @@ func _test_published() -> void:
 
 	var sha := str(entry.get("sha256", ""))
 	var bytes := FileAccess.get_file_as_bytes(scratch.path_join("dist/tmc").path_join(GAME).path_join("objects").path_join(sha.substr(0, 2)).path_join(sha))
-	var parsed := DotAddonApi.parse(bytes.get_string_from_utf8())
+	var parsed := GSAddonApi.parse(bytes.get_string_from_utf8())
 	var shipped: Dictionary = parsed.value if parsed.ok else {}
 	_check(parsed.ok and shipped.has("dot_core") and shipped.has("dot_server"),
 		"its object is a requires.json naming the addons the game compiles against (%d)" % shipped.size(), str(parsed.error) if not parsed.ok else "")
@@ -109,15 +109,15 @@ func _test_published() -> void:
 	var direct := Pack.derive_requires(source, SCRATCH.path_join("direct.json"))
 	var expected: Dictionary = {}
 	if direct.ok and str(direct.value) != "":
-		expected = DotAddonApi.parse(FileAccess.get_file_as_string(str(direct.value))).value
-	_check(not expected.is_empty() and DotValue.same(expected, shipped),
+		expected = GSAddonApi.parse(FileAccess.get_file_as_string(str(direct.value))).value
+	_check(not expected.is_empty() and GSValue.same(expected, shipped),
 		"and it is what dot_requires.gd derives in the source project", "%s vs %s" % [expected, shipped])
 
-	var refused := DotAddonApi.new().check({"dot_core": int(shipped.get("dot_core", 0)) + 1})
+	var refused := GSAddonApi.new().check({"dot_core": int(shipped.get("dot_core", 0)) + 1})
 	_check(not refused.ok and str(refused.error.message).contains("level"),
 		"a host whose dot-core is one level short of it is refused in a sentence", str(refused.error.message) if not refused.ok else "accepted")
 
-	_check(FileAccess.file_exists(source.path_join(DotAddonApi.REQUIREMENTS_FILE)) == had_requires,
+	_check(FileAccess.file_exists(source.path_join(GSAddonApi.REQUIREMENTS_FILE)) == had_requires,
 		"nothing was written into the game's checkout")
 	_done()
 
@@ -126,16 +126,16 @@ func _test_floors() -> void:
 	_section("a game's requires.floor.json is applied, as package.sh applies it")
 
 	var source := _source(FLOORED_REPO)
-	var floor_path := source.path_join(DotAddonApi.FLOOR_FILE)
-	if not _check(source != "" and FileAccess.file_exists(floor_path), "%s is here, with a %s" % [FLOORED_REPO, DotAddonApi.FLOOR_FILE]):
+	var floor_path := source.path_join(GSAddonApi.FLOOR_FILE)
+	if not _check(source != "" and FileAccess.file_exists(floor_path), "%s is here, with a %s" % [FLOORED_REPO, GSAddonApi.FLOOR_FILE]):
 		_done()
 		return
 
-	var floors: Dictionary = DotAddonApi.parse(FileAccess.get_file_as_string(floor_path), DotAddonApi.FLOOR_FILE).value
+	var floors: Dictionary = GSAddonApi.parse(FileAccess.get_file_as_string(floor_path), GSAddonApi.FLOOR_FILE).value
 	var derived := Pack.derive_requires(source, SCRATCH.path_join("floored.json"))
 	var got: Dictionary = {}
 	if derived.ok and str(derived.value) != "":
-		got = DotAddonApi.parse(FileAccess.get_file_as_string(str(derived.value))).value
+		got = GSAddonApi.parse(FileAccess.get_file_as_string(str(derived.value))).value
 	_check(not got.is_empty(), "requires.json is derived for it", str(derived.error) if not derived.ok else "")
 
 	var wrong := PackedStringArray()
@@ -151,12 +151,12 @@ func _test_floor_above_shell() -> void:
 	_section("a floor above the level the pinned shell ships fails loudly, and is not clamped")
 
 	var source := _source(FLOORED_REPO)
-	var floor_path := source.path_join(DotAddonApi.FLOOR_FILE)
-	if not _check(source != "" and FileAccess.file_exists(floor_path), "%s is here, with a %s" % [FLOORED_REPO, DotAddonApi.FLOOR_FILE]):
+	var floor_path := source.path_join(GSAddonApi.FLOOR_FILE)
+	if not _check(source != "" and FileAccess.file_exists(floor_path), "%s is here, with a %s" % [FLOORED_REPO, GSAddonApi.FLOOR_FILE]):
 		_done()
 		return
 
-	var floors: Dictionary = DotAddonApi.parse(FileAccess.get_file_as_string(floor_path), DotAddonApi.FLOOR_FILE).value
+	var floors: Dictionary = GSAddonApi.parse(FileAccess.get_file_as_string(floor_path), GSAddonApi.FLOOR_FILE).value
 	var addon := "dot_net"
 	var floor_level := int(floors.get(addon, 0))
 	if not _check(floor_level > 1, "the game floors %s above 1" % addon, str(floors)):
@@ -202,7 +202,7 @@ func _read_manifest(path: String) -> Dictionary:
 	var payload := str((outer as Dictionary).get("payload", ""))
 	# base64url without padding (GameSpice Cloud's envelope), not Marshalls' base64: decoded as base64 it
 	# parsed only when the manifest's length was a multiple of three, which lookatme's stopped being.
-	var inner: Variant = JSON.parse_string(DotHash.base64url_decode(payload).get_string_from_utf8()) if payload != "" else outer
+	var inner: Variant = JSON.parse_string(GSHash.base64url_decode(payload).get_string_from_utf8()) if payload != "" else outer
 	return inner if inner is Dictionary else {}
 
 

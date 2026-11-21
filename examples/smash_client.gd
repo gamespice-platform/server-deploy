@@ -29,7 +29,7 @@ var _completed := 0
 
 var _host: Node = null
 var _client_side: Node = null
-var _link: DotClientLink = null
+var _link: GSClientLink = null
 
 # Captured through Arrays: GDScript lambdas capture locals by value, so a flag set inside a
 # handler stays false outside it and the suite reports a failure for a signal that fired
@@ -40,9 +40,9 @@ var _games_seen: Array[String] = []
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
-		else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
+		else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -50,7 +50,7 @@ func _ready() -> void:
 func _run() -> void:
 	print("dot-server-deploy: a real client in a delivered Smash Copter")
 
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	if await _boot():
 		if await _test_connect():
@@ -64,7 +64,7 @@ func _run() -> void:
 			await _test_a_client_the_game_cannot_play_with()
 
 	await _teardown()
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	print("")
 	_check(
@@ -109,8 +109,8 @@ func _check(condition: bool, what: String, detail: String = "") -> bool:
 	return condition
 
 
-func _server() -> DotServer:
-	return _host.server as DotServer
+func _server() -> GSServer:
+	return _host.server as GSServer
 
 
 func _until(condition: Callable, seconds: float = 20.0) -> bool:
@@ -125,16 +125,16 @@ func _until(condition: Callable, seconds: float = 20.0) -> bool:
 	return bool(condition.call())
 
 
-## [b]Nothing in this build can name a type the pack declares.[/b] The module is a [DotModule] the
+## [b]Nothing in this build can name a type the pack declares.[/b] The module is a [GSModule] the
 ## host loaded out of the mount, and what hangs off it is the game's own scene — so everything below
 ## asks for a PROPERTY by name and checks what came back.
 func _world() -> Node:
-	var module: DotModule = _server().modules.get_module(MODULE)
+	var module: GSModule = _server().modules.get_module(MODULE)
 
 	if module == null:
 		return null
 
-	# [b]`game`, and it is [DotGameModule]'s own name for it.[/b] The module calls its local
+	# [b]`game`, and it is [GSGameModule]'s own name for it.[/b] The module calls its local
 	# `world` because that is what this game's world is; the property every module in the
 	# family exposes is `game`, typed [Object] so the base never names a game's type.
 	var world: Variant = module.get("game")
@@ -162,7 +162,7 @@ func _boot() -> bool:
 	ServerWorld.add(self, _host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 
 	if not _check(started.ok, "the host boots", str(started.error)):
 		return false
@@ -171,7 +171,7 @@ func _boot() -> bool:
 		func() -> bool:
 			var current := _server().games.current()
 			return current != null and current.game_id == GAME \
-				and _server().games.phase == DotGameManager.Phase.IDLE,
+				and _server().games.phase == GSGameManager.Phase.IDLE,
 		45.0
 	)
 
@@ -226,8 +226,8 @@ func _teardown() -> void:
 func _test_connect() -> bool:
 	_section("a client connects to a delivered game")
 
-	_link = DotClientLink.new()
-	# "Server", the same as DotServer. The name is the routing.
+	_link = GSClientLink.new()
+	# "Server", the same as GSServer. The name is the routing.
 	_link.name = "Server"
 	_link.player_name = "Faller"
 	_client_side.add_child(_link)
@@ -246,7 +246,7 @@ func _test_connect() -> bool:
 	)
 
 	var address := "127.0.0.1:%d" % _host.config.server.port
-	var connecting: DotResult = await _link.connect_to_server(address)
+	var connecting: GSResult = await _link.connect_to_server(address)
 
 	if not _check(connecting.ok, "it starts connecting", str(connecting.error)):
 		_done()
@@ -286,7 +286,7 @@ func _test_the_pack_mounted() -> void:
 		"and it is the delivered one (%s)" % entry.content_id
 	)
 
-	var module: DotModule = _server().modules.get_module(MODULE)
+	var module: GSModule = _server().modules.get_module(MODULE)
 
 	if not _check(module != null, "the game's module loaded out of the mount"):
 		_done()
@@ -376,7 +376,7 @@ func _test_the_client_sees_the_field() -> void:
 	_section("the client has a field of its own")
 
 	# [b]`GameRoot`, by name, because the link does not expose it.[/b] [member
-	# DotClientLink.game_root_ref] defaults to `DotNodeRef.of_created(&"GameRoot")`, so the node exists
+	# GSClientLink.game_root_ref] defaults to `GSNodeRef.of_created(&"GameRoot")`, so the node exists
 	# as a child of the link and the reference to it is private.
 	var root := await _until(
 		func() -> bool:
@@ -429,7 +429,7 @@ func _test_two_builds_on_one_socket() -> void:
 	)
 
 	_check(
-		not _server().send_kind(peer, &"skew.server_news", {"x": 1}, DotEnvelope.Lane.EVENT),
+		not _server().send_kind(peer, &"skew.server_news", {"x": 1}, GSEnvelope.Lane.EVENT),
 		"the server does not send the client a kind it lacks"
 	)
 	_check(
@@ -481,13 +481,13 @@ func _test_a_client_the_game_cannot_play_with() -> void:
 		_done()
 		return
 
-	var strict := DotNetMessageRegistry.new()
+	var strict := GSNetMessageRegistry.new()
 	strict.register(&"skew.vital", SkewVital)
 	strict.seal()
 
 	_refused[0] = ""
 	var refused := net.receive(strict.schema_payload(), _peer())
-	_check(not refused.ok and refused.code() == DotError.CODE_VERSION, "the netcode refuses it")
+	_check(not refused.ok and refused.code() == GSError.CODE_VERSION, "the netcode refuses it")
 
 	var told := await _until(func() -> bool: return _refused[0] != "", 5.0)
 	_check(
@@ -496,7 +496,7 @@ func _test_a_client_the_game_cannot_play_with() -> void:
 		_refused[0]
 	)
 	_check(
-		_link.last_error != null and _link.last_error.code == DotError.CODE_VERSION,
+		_link.last_error != null and _link.last_error.code == GSError.CODE_VERSION,
 		"as a version problem, which a shell answers differently from a kick",
 		str(_link.last_error)
 	)
@@ -509,23 +509,23 @@ func _peer() -> int:
 	return sessions[0].peer_id if not sessions.is_empty() else 0
 
 
-func _server_net() -> DotNetManager:
-	var module: DotModule = _server().modules.get_module(MODULE)
+func _server_net() -> GSNetManager:
+	var module: GSModule = _server().modules.get_module(MODULE)
 	if module == null:
 		return null
 	var net: Variant = module.get("net")
-	return net as DotNetManager
+	return net as GSNetManager
 
 
 ## A type the client in the last section REQUIRES and no server has.
-class SkewVital extends DotNetMessage:
+class SkewVital extends GSNetMessage:
 	func _type_name() -> StringName:
 		return &"skew.vital"
 
-	func _write(_w: DotNetWriter) -> void:
+	func _write(_w: GSNetWriter) -> void:
 		pass
 
-	func _read(_r: DotNetReader) -> void:
+	func _read(_r: GSNetReader) -> void:
 		pass
 
 
@@ -537,7 +537,7 @@ func _test_still_serving() -> void:
 
 	_check(_server().console.execute("status").ok, "the console answers")
 	_check(
-		_server().state == DotServer.State.RUNNING,
+		_server().state == GSServer.State.RUNNING,
 		"the server is still running"
 	)
 
@@ -565,9 +565,9 @@ func _test_still_serving() -> void:
 func _test_teammate_cvar_reaches_the_client() -> void:
 	_section("the server's mp_teammate_passthrough reaches the client's combat, live")
 
-	var cvar: DotConVar = _server().console.find_cvar("mp_teammate_passthrough")
+	var cvar: GSConVar = _server().console.find_cvar("mp_teammate_passthrough")
 	var held := cvar.get_string() if cvar != null else ""
-	_check(cvar != null and cvar.has_flag(DotConVar.FLAG_REPLICATED)
+	_check(cvar != null and cvar.has_flag(GSConVar.FLAG_REPLICATED)
 		and await _until(func() -> bool: return _client_pass_through() == int(held), 10.0),
 		"the delivered game's cvar is replicated and the client joined on its level",
 		"server %s, client %d" % [held, _client_pass_through()])

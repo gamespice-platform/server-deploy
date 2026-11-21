@@ -18,7 +18,7 @@ static func apply_games(cfg: TmcConfig, file: String, value: Variant) -> void:
 				cfg.games_allow.append(dir_name)
 
 	if not repeats.is_empty():
-		DotLog.warn(TmcConfig.CHANNEL, "%s: games lists %s more than once; keeping one of each" % [file, ", ".join(repeats)])
+		GSLog.warn(TmcConfig.CHANNEL, "%s: games lists %s more than once; keeping one of each" % [file, ", ".join(repeats)])
 
 
 ## `addons`: the addon entries the operator listed, each checked on read.

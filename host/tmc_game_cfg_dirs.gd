@@ -101,13 +101,13 @@ static func write_base_configs(config_dir: String, content: TmcContent) -> Packe
 		var dir := "%s/game/%s" % [base, name]
 
 		if DirAccess.make_dir_recursive_absolute(dir) != OK:
-			DotLog.warn(TmcGameConfig.CHANNEL, "cfg/game/%s could not be created; no base config written" % name)
+			GSLog.warn(TmcGameConfig.CHANNEL, "cfg/game/%s could not be created; no base config written" % name)
 			continue
 
 		var file := FileAccess.open("%s/%s" % [dir, TmcGameConfig.GAME_FILE], FileAccess.WRITE)
 
 		if file == null:
-			DotLog.warn(TmcGameConfig.CHANNEL, "cfg/game/%s/%s could not be written; no base config written" % [name, TmcGameConfig.GAME_FILE])
+			GSLog.warn(TmcGameConfig.CHANNEL, "cfg/game/%s/%s could not be written; no base config written" % [name, TmcGameConfig.GAME_FILE])
 			continue
 
 		file.store_string(base_config_text(descriptor, content.root))
@@ -119,7 +119,7 @@ static func write_base_configs(config_dir: String, content: TmcContent) -> Packe
 
 ## The text [method write_base_configs] writes for one game; a game's `game.yml` is read from
 ## `<content_root>/<id>/game.yml` for the comment above each cvar.
-static func base_config_text(descriptor: DotGameDescriptor, content_root: String) -> String:
+static func base_config_text(descriptor: GSGameDescriptor, content_root: String) -> String:
 	var notes := _cvar_notes("%s/%s/game.yml" % [content_root.rstrip("/"), descriptor.game_id])
 	var out := PackedStringArray()
 	out.append("# %s: this server's settings for this game (cfg/game/%s/server.yml)." % [descriptor.display_name, TmcGameConfig.cfg_id(descriptor)])

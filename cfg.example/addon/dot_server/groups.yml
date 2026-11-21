@@ -38,7 +38,7 @@ groups:
 
   # A full administrator of this server, in game and from the website.
   #
-  # `rcon` is what a relayed command is checked against — `DotChatRelay.command_flag` —
+  # `rcon` is what a relayed command is checked against — `GSChatRelay.command_flag` —
   # so without it a site administrator can type `/map` and be refused for ever while
   # holding every other permission. It is not a second password: RCON authentication is
   # still the RCON password, and this only decides who may drive the server once past it.

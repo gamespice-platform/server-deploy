@@ -192,7 +192,7 @@ deploy/              the root-owned half: TLS certificates, nginx in front, the 
   install-systemd.sh     the unit file, and the check that it is still running
   issue-local-cert.sh    a development certificate from a local CA
 
-host/                the boot: YAML -> DotServer
+host/                the boot: YAML -> GSServer
 client/              the client shell. Knows nothing about any game
 web/                 the browser build, and the page that takes ?server= from the URL
 ```
@@ -215,13 +215,13 @@ An unknown key is **reported, never fatal**. Refusing to boot because a config m
 
 The YAML reader is a deliberately small subset and refuses everything else with a file and a line number: tabs, duplicate keys, anchors, aliases, tags, block scalars, document markers (one-line flow sequences and mappings, `[a, b]` and `{a: 1}`, are accepted). See `host/tmc_yaml.gd` for why.
 
-`vote.yml` is the one file that is not a console surface: it is GameSpice Vote's `DotVoteRules`, applied straight onto the resource, so every setting in it is documented on the property of the same name. **Enums are written by name**, so `method: instant_runoff` rather than `method: 2`, because a config file full of enum indices is one nobody can read or diff, and renumbering an enum would silently change how a server counts votes.
+`vote.yml` is the one file that is not a console surface: it is GameSpice Vote's `GSVoteRules`, applied straight onto the resource, so every setting in it is documented on the property of the same name. **Enums are written by name**, so `method: instant_runoff` rather than `method: 2`, because a config file full of enum indices is one nobody can read or diff, and renumbering an enum would silently change how a server counts votes.
 
-`party.yml` and `matchmaking.yml` work the same way one step along: every setting of GameSpice Party's `DotPartyConfig` is accepted with a `party_` prefix, your terms for a party booking are `party_reserve_*`, and every setting of GameSpice Matchmaking's `DotMatchmakingConfig` is `mm_*`. The names are the addons' own, so a setting the addon gains needs no change here. `GS_PARTY_*` / `--party-*` and `GS_MM_*` / `--mm-*` override them, like every config in the family.
+`party.yml` and `matchmaking.yml` work the same way one step along: every setting of GameSpice Party's `GSPartyConfig` is accepted with a `party_` prefix, your terms for a party booking are `party_reserve_*`, and every setting of GameSpice Matchmaking's `GSMatchmakingConfig` is `mm_*`. The names are the addons' own, so a setting the addon gains needs no change here. `GS_PARTY_*` / `--party-*` and `GS_MM_*` / `--mm-*` override them, like every config in the family.
 
 `admin_menu.yml` and `loading.yml` are this deployment's own and are described in [The admin menu](#the-admin-menu) and [Loading screens](#loading-screens). Their unknown keys and bad URLs are reported at boot, like everything else's.
 
-`replay.yml` is the same again over dot-replay's `DotReplayConfig` (`replay_ring_seconds`, `replay_keyframe_seconds`, `replay_compression`, …), plus seven switches of this deployment's own: `replay_enabled`, `replay_record` (every match to a file), `replay_clip_on_punish`, `replay_clip_seconds`, `replay_evidence_cooldown_sec`, and `replay_keep_files` / `replay_keep_mib`, which cap each of `data/replays/matches`, `clips` and `evidence` separately so a moderator's manual saves never push evidence off the disk. `GS_REPLAY_*` / `--replay-*` override them, so `./server -- --replay-ring-seconds 300` keeps five minutes for one tournament.
+`replay.yml` is the same again over dot-replay's `GSReplayConfig` (`replay_ring_seconds`, `replay_keyframe_seconds`, `replay_compression`, …), plus seven switches of this deployment's own: `replay_enabled`, `replay_record` (every match to a file), `replay_clip_on_punish`, `replay_clip_seconds`, `replay_evidence_cooldown_sec`, and `replay_keep_files` / `replay_keep_mib`, which cap each of `data/replays/matches`, `clips` and `evidence` separately so a moderator's manual saves never push evidence off the disk. `GS_REPLAY_*` / `--replay-*` override them, so `./server -- --replay-ring-seconds 300` keeps five minutes for one tournament.
 
 ## ./server
 
@@ -250,7 +250,7 @@ Exit codes are meaningful, so a supervisor can tell a misconfiguration from a cr
 
 `tools/game_listing.py GAME_DIR...` writes a game's `deployment/game-listing.json` from its `game.yml` (pack id = `content_id`) and README; it keeps an existing file, `--check` verifies, `--force` rewrites. `tools/check_game_listing.sh` tests it.
 
-**Secrets are not options.** `--rcon-password` is refused outright: argv is readable by every other process on the machine and ends up in pasted bug reports, which is why `DotConfig` refuses secrets from argv and the environment too.
+**Secrets are not options.** `--rcon-password` is refused outright: argv is readable by every other process on the machine and ends up in pasted bug reports, which is why `GSConfig` refuses secrets from argv and the environment too.
 
 ## Installing games, instead of carrying all of them
 
@@ -393,7 +393,7 @@ A game can be **in the build** or **delivered**. Built in is the default and is 
 
    A descriptor can also name other packs, each `<owner>/<name>`: `dependencies:` are mounted on the server and sent to every client with the game, `server_dependencies:` are mounted on the server only and never sent to a client (bot data, rulesets), and `maps:` are the game's delivered maps, one pack per map, fetched when the server changes to one rather than at load. `install-games` pins all three lists to concrete versions and prefetches the first two but never the maps; the server refuses an unpinned entry.
 
-   `client_scene` is what a built-in game must **not** have and a delivered game must: `DotClientLink._resolve_scene` refuses every absolute path outside the mount, so it is the only way a client can be told what to show. `module:` is resolved against the mount too, so it is relative for the same reason.
+   `client_scene` is what a built-in game must **not** have and a delivered game must: `GSClientLink._resolve_scene` refuses every absolute path outside the mount, so it is the only way a client can be told what to show. `module:` is resolved against the mount too, so it is relative for the same reason.
 
 3. **Serve `dist/`, or do not.** `content/` and `dist/` on this box are searched before the network, so a server that published a pack already has it — a LAN deployment needs no web server at all. Clients are told where to fetch from by `content_urls` in `cfg/server/server.yml`, which the server passes down the connection.
 
@@ -433,10 +433,10 @@ Every one of these was published and booted as a pack — mounted, module loaded
 Signing answers exactly one question — *did the party holding this private key produce these bytes* — and the rest is bounded by the mount, not by the signature:
 
 - The signature is checked over the manifest **as received**, never a re-serialisation, so a manifest cannot be reformatted into something that verifies and means something else.
-- Every path in a manifest goes through `DotPaths.safe_relative` before it is used, so no entry can escape the mount prefix.
+- Every path in a manifest goes through `GSPaths.safe_relative` before it is used, so no entry can escape the mount prefix.
 - The `.pck` is assembled **by the client**, from content-addressed objects it hashed itself. A publisher never hands over a pack file.
 - `allow_replace_files` is off, so a pack cannot shadow a file the build already has. A pack runs inside `res://dot_cloud/<id>/<version>/` and nowhere else.
-- `trusted_keys` is in `DotCloudConfig.sensitive_keys`, so it is refused from the environment and from argv. Anything that could set a variable in the game's process would otherwise become a publisher.
+- `trusted_keys` is in `GSCloudConfig.sensitive_keys`, so it is refused from the environment and from argv. Anything that could set a variable in the game's process would otherwise become a publisher.
 
 So the worst a trusted-but-hostile publisher can do is **be the game you joined**. That is already bad — it is code in the player's process — but it is not the host build, and it is not the player's machine outside the sandbox the engine gives it.
 
@@ -444,7 +444,7 @@ So the worst a trusted-but-hostile publisher can do is **be the game you joined*
 
 One key. `data/content.json` and `client/content.json` each carry a single `trusted_keys` entry, the public half of `keys/content.key`, and the private half lives on the publishing machine and is gitignored *before* it is generated so it cannot arrive in a commit by being written first — `setup.sh` generates one on a fresh box, `chmod 600`, because a server with no key publishes nothing at all rather than publishing something that mounts nowhere. **A pack signed by anything else mounts nowhere**, which means a server owner can point a server at any content they like and still cannot deliver code nobody vouched for. That is the right default and it should stay the default.
 
-The browser shell's entry is named `tmc`, the key id our packs are signed under, because the Workshop trusts a subscription only when its manifest names a key in this keyring and that key alone verifies it (`DotCloudWorkshop.trusted_key_ids()`). A dev shell (`tools/dev-shell.sh`) adds `tmc-dev` beside it; a production shell never has it.
+The browser shell's entry is named `tmc`, the key id our packs are signed under, because the Workshop trusts a subscription only when its manifest names a key in this keyring and that key alone verifies it (`GSCloudWorkshop.trusted_key_ids()`). A dev shell (`tools/dev-shell.sh`) adds `tmc-dev` beside it; a production shell never has it.
 
 The cost is equally plain: a server owner who writes their *own* game cannot deliver it to the stock client. They have three ways round it, in increasing order of how much they are taking on —
 
@@ -479,7 +479,7 @@ A bare PEM still means every id, because that is what every config written befor
 
 **Verification first, entitlement second**, and that order is not cosmetic: a scope check on an unverified manifest is a check on a claim the attacker wrote.
 
-`DotCloudConfig.validate()` warns about the one arrangement that is actually a hole — several keys with at least one of them unscoped — and says nothing about a single unscoped key, which is every deployment today. It warns rather than refuses: a client that will not start is worse than one that says so, and the content still has to be signed by a key in the set either way.
+`GSCloudConfig.validate()` warns about the one arrangement that is actually a hole — several keys with at least one of them unscoped — and says nothing about a single unscoped key, which is every deployment today. It warns rather than refuses: a client that will not start is worse than one that says so, and the content still has to be signed by a key in the set either way.
 
 ### The key your own box publishes with
 
@@ -495,7 +495,7 @@ an S3 error, on a box holding every byte it needs in `dist/`. Nothing in that me
 
 **A browser client needs it too, and setup cannot do that half for you.** `client/content.json` is tracked and is baked into the export, so an operator publishing their own content adds `keys/content.pub` to it under `trusted_keys` before `./server export-web`. Until they do, their players can mount our packs and not theirs. `setup.sh` says so when it generates a key.
 
-Two unscoped keys — ours and yours — is a coherent configuration and is what a self-hosted server looks like: every publisher in the set is trusted for everything, which is what you mean by adding your own key beside ours on your own box. `DotCloudConfig` says so once at info. It *warns* only about the inconsistent set — some entries scoped and some not — where somebody restricted a publisher and left another key that can still sign the ids they just restricted.
+Two unscoped keys — ours and yours — is a coherent configuration and is what a self-hosted server looks like: every publisher in the set is trusted for everything, which is what you mean by adding your own key beside ours on your own box. `GSCloudConfig` says so once at info. It *warns* only about the inconsistent set — some entries scoped and some not — where somebody restricted a publisher and left another key that can still sign the ids they just restricted.
 
 ### How to add a publisher
 
@@ -507,11 +507,11 @@ Step 3 is the one that cannot be skipped or widened. An entry without `content_i
 
 ## The website chat box, and running a command from it
 
-`DotChatRelay` joins this server's chat to its room on the website: what players type reaches the page, what members type reaches the game, and a line beginning with `/` or `!` can run as a console command. It needs three things, in this order, and the third one is the only one that is fiddly.
+`GSChatRelay` joins this server's chat to its room on the website: what players type reaches the page, what members type reaches the game, and a line beginning with `/` or `!` can run as a console command. It needs three things, in this order, and the third one is the only one that is fiddly.
 
 **1. A credential.** `data/listing.json` with a server-scoped integration token from the site. With none there is no backbone client, and the relay refuses to start rather than polling a URL it cannot authenticate to. This is the same file the server listing already uses.
 
-**2. The relay turned on.** `DotChatRelayConfig` is a `DotConfig`, so it layers like everything else here: exported defaults, then `user://chat_relay.json`, then the environment, then argv:
+**2. The relay turned on.** `GSChatRelayConfig` is a `GSConfig`, so it layers like everything else here: exported defaults, then `user://chat_relay.json`, then the environment, then argv:
 
 ```bash
 GS_CHAT_RELAY_ENABLED=1          # carry chat both ways
@@ -578,10 +578,10 @@ metadata:
 
 The shape is exactly `admin_menu.yml`'s: `items`, `lists`, `categories`, and per item `steps`, `category`, `ability`, `groups`, `confirm`, `flag`. As always, an entry is shown only to an admin who could type its command.
 
-**In code**, from the game's module, for anything computed while it runs (the teams there are, the rounds a mode has). The menu is in `DotRegistry` as `admin_menu`, and is found by duck type, so a game on a host without it carries on:
+**In code**, from the game's module, for anything computed while it runs (the teams there are, the rounds a mode has). The menu is in `GSRegistry` as `admin_menu`, and is found by duck type, so a game on a host without it carries on:
 
 ```gdscript
-var menu := DotRegistry.get_service(&"admin_menu")
+var menu := GSRegistry.get_service(&"admin_menu")
 if menu != null and menu.has_method("set_layer"):
     # Gone by itself when `self` leaves the tree, which a module unload does.
     menu.set_layer("mygame", {
@@ -635,11 +635,11 @@ The pull cannot touch `cfg/`, because `cfg/` is not tracked; the setup run adds 
 
 **That pulls this repository and nothing else, and two things live outside it.**
 
-**`--no-import` is overridden when the class cache is stale, and you want it to be.** `.godot/global_script_class_cache.cfg` registers every `class_name` in the project, and a DELIVERED game's scripts are parsed against it at runtime — so an addon linked or pulled after that cache was built is a class the pack cannot see. The host's own scripts are already cached, so the server boots, loads the game and looks healthy; only the pack fails, as `Could not find type "DotTimerRun"` inside a mounted script, surfacing three layers up as `No G2GGame is registered`, a game with no `map` command, and a grey screen. `setup.sh` compares the cache against the newest `.gd` under `addons/` and imports anyway when it loses, saying so.
+**`--no-import` is overridden when the class cache is stale, and you want it to be.** `.godot/global_script_class_cache.cfg` registers every `class_name` in the project, and a DELIVERED game's scripts are parsed against it at runtime — so an addon linked or pulled after that cache was built is a class the pack cannot see. The host's own scripts are already cached, so the server boots, loads the game and looks healthy; only the pack fails, as `Could not find type "GSTimerRun"` inside a mounted script, surfacing three layers up as `No G2GGame is registered`, a game with no `map` command, and a grey screen. `setup.sh` compares the cache against the newest `.gd` under `addons/` and imports anyway when it loses, saying so.
 
 **The games are separate clones too, and the loop above says `games/game-*` for that reason.** It said `../dot-*` when the games were compiled in, and that was right then: the deploy repo's own pull brought the code. It is not right now. `setup.sh` republishes every pack on an upgrade, from those clones, and `--update` is off by default — so a loop that skips them publishes **stale sources**, silently, on the command an operator runs most. A stale game still declares `class_name`, and a pack whose scripts do that mounts and is dead: the scene loads, the script does not attach, and what surfaces is `No G2GGame is registered` against a module that is fine. `./server pack` refuses such a source now, which is the backstop; pulling them is the fix.
 
-**The addons are separate clones, and by default they are inside this one.** `setup.sh` clones each one it does not have into `addons/.repos/<repo>` and points `addons/<name>` at it with a relative link, so a finished checkout is one directory with nothing outside it — which is what a `cp -r`, a tarball and a container's final stage each need, and it means a box running several servers cannot end up with one server's `git pull` changing another's. `git pull` here updates the host and the launcher and nothing else: a host newer than the addon it configures is a real failure mode — a setting this file reads and hands to a `DotServerConfig` that has no property for it, reported rather than fatal (`UNKNOWN : server.yml: … this dot-server has no …`) and doing nothing. `./setup.sh --update` pulls the addons and the games as well, wherever they turned out to be, and `./upgrade.sh` is that with the guardrails.
+**The addons are separate clones, and by default they are inside this one.** `setup.sh` clones each one it does not have into `addons/.repos/<repo>` and points `addons/<name>` at it with a relative link, so a finished checkout is one directory with nothing outside it — which is what a `cp -r`, a tarball and a container's final stage each need, and it means a box running several servers cannot end up with one server's `git pull` changing another's. `git pull` here updates the host and the launcher and nothing else: a host newer than the addon it configures is a real failure mode — a setting this file reads and hands to a `GSServerConfig` that has no property for it, reported rather than fatal (`UNKNOWN : server.yml: … this dot-server has no …`) and doing nothing. `./setup.sh --update` pulls the addons and the games as well, wherever they turned out to be, and `./upgrade.sh` is that with the guardrails.
 
 **`--addons-dir DIR` shares one set between servers instead**, which is the shape a developer machine and every box set up before this default already have. It takes either layout — a directory of addons (`DIR/dot_core`) or a directory of the repositories (`DIR/dot-core/addons/dot_core`) — links what it finds and clones what it does not *into that directory*, so one pull there fixes every server on the box, and changes every server on the box:
 
@@ -823,7 +823,7 @@ tools/package_check.sh  # vendor the addons, move the tree away from its sibling
 | `examples/live_switch.tscn` | **the same, with a real client on a real socket** |
 | `examples/reconnect.tscn` | **the real shell, connected twice**, across a server that went down and came back |
 | `examples/party_live.tscn` | parties on a real server: the booking on the ban seam, before and after a game change; party chat in the game's own chat; a claim checked against a roster |
-| `./server check` | a real `DotServer` booting, loading its default game, and shutting down — and `party_status` answering on its console, and the replay ring recording |
+| `./server check` | a real `GSServer` booting, loading its default game, and shutting down — and `party_status` answering on its console, and the replay ring recording |
 
 The third one earns its place. Switching games under a live client segfaulted the server, twice over, once going in and once coming out, and `multigame` passes the same switch with an occupant seated in the world. An occupant is not a socket.
 
@@ -844,7 +844,7 @@ node tools/browser_check.mjs \
 ## Known limits
 
 - **nginx does not carry UDP.** Since 2026-10-07 a server listens on both (`net_transport: dual`, the default): browsers over WebSocket on TCP, the desktop client over ENet on UDP, in one match. Behind nginx only the WebSocket half goes through the proxy; the ENet port (`net_enet_port`, by default the game port's number on UDP) is reached directly and has to be open on the firewall. If it is not, a desktop client falls back to WebSocket after 2.5 s and plays over TCP -- it works, it just is not UDP. See `cfg.example/net.yml`.
-- **`cfg/addon/dot_server/permissions.yml` does nothing until `cfg/addon/dot_auth/auth.yml` is turned on.** `DotAdminManager` refuses permissions to any unauthenticated session, because a guest uid is a random per-device string, so granting anything to one grants it to anyone. Correct, and it looks exactly like the file being ignored — `auth.yml` says so on boot rather than leaving you to work it out.
+- **`cfg/addon/dot_server/permissions.yml` does nothing until `cfg/addon/dot_auth/auth.yml` is turned on.** `GSAdminManager` refuses permissions to any unauthenticated session, because a guest uid is a random per-device string, so granting anything to one grants it to anyone. Correct, and it looks exactly like the file being ignored — `auth.yml` says so on boot rather than leaving you to work it out.
 - **A connecting player is a guest until this server can PROVE otherwise.** Signing in on the website fills in the display name and nothing more: that name travels as a label, exactly like the one a player types, and no server should trust a name a client chose. `cfg/addon/dot_auth/auth.yml` is what turns a label into an identity, and it ships in `strategy: ticket` with nothing to fill in: the client asks the site for a short-lived ticket for the address it dialled, and this server verifies it offline against the site's public key, so the player's account token never reaches the operator. The server learns its site id and fetches that key itself, from the site it enrolled with, over HTTPS, and keeps both in `data/ticket_trust.json`; until it has them a signed-in player is asked to try again in a moment. `server_id` and `issuer_public_key_file` pin either by hand and win over the site's. Override anything in `cfg/server/addon/dot_auth/auth.yml`. **Upgrading:** an old `auth.yml` that says `strategy: introspect` with no `server_id` (the previous default, also as a flat `cfg/auth.yml`) is read as `ticket` with one WARN naming the file; set `strategy: ticket` there to silence it, or `first_party: true` to keep `introspect` on one of the game's own servers. Each server needs one restart after the site starts issuing tickets. The site matches the address a player dialled against the server's hostname or IP and game port as listed on the site, so those must be right. Both need this server's own site credential in `data/listing.json`, and a server gets one by itself: on a start with no token it proves to the site that it answers at the address the site has for it (a challenge published in its A2S rules) and is issued one. That needs the server added and claimed on the site; `TMC_ENROLL=off` turns it off.
 - **No TLS in the server itself.** A page on HTTPS cannot open `ws://`, and the certificate and the reverse proxy in front of it are deployment rather than code — `deploy/issue-letsencrypt.sh` and `deploy/install-server-tls.sh` are how you get both.
 

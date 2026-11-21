@@ -20,9 +20,9 @@ func _init() -> void:
 	print("-- building the content client")
 	var failures := 0
 
-	var cloud := DotCloudClient.new()
+	var cloud := GSCloudClient.new()
 	cloud.name = "Cloud"
-	cloud.config = DotCloudConfig.new()
+	cloud.config = GSCloudConfig.new()
 	# A client's fetch, run headless: GameSpice Cloud's `auto` would read that as a server and
 	# leave a pack's client-only files (API 8) behind.
 	cloud.config.side = "client"
@@ -36,7 +36,7 @@ func _init() -> void:
 	])
 	cloud.manifest_url_template = "{base}/{id}/manifest.json"
 	# `register_service` is the default and is what `AirdriftGame.ensure_map_content` finds it by --
-	# `DotCloudClient.SERVICE`, which is what every other duck-typed consumer in the family looks
+	# `GSCloudClient.SERVICE`, which is what every other duck-typed consumer in the family looks
 	# under.
 	root.add_child(cloud)
 
@@ -54,12 +54,12 @@ func _init() -> void:
 	var version := String(TmcYaml.at(descriptor.value as Dictionary, "version", ""))
 
 	var mounted: Variant = await cloud.ensure(&"airdrift", version)
-	if not (mounted is DotResult) or not (mounted as DotResult).ok:
-		print("  [FAIL] could not mount airdrift: ", str((mounted as DotResult).error))
+	if not (mounted is GSResult) or not (mounted as GSResult).ok:
+		print("  [FAIL] could not mount airdrift: ", str((mounted as GSResult).error))
 		quit(1)
 		return
 
-	var prefix := DotCloudClient.mount_prefix_for(&"airdrift", version)
+	var prefix := GSCloudClient.mount_prefix_for(&"airdrift", version)
 	print("mounted at %s" % prefix)
 
 	var AirdriftGame: GDScript = _load_first(prefix, ["game/airdrift_game.gd", "game/g2g_game.gd"])
@@ -100,17 +100,17 @@ func _init() -> void:
 		quit(2)
 		return
 
-	# [b]Which client the game will actually find.[/b] `DotRegistry.register` replaces, and
-	# `DotCloudClient.register_service` defaults to on -- so anything else in the tree that builds one
+	# [b]Which client the game will actually find.[/b] `GSRegistry.register` replaces, and
+	# `GSCloudClient.register_service` defaults to on -- so anything else in the tree that builds one
 	# takes the name, and the configured client this probe made is still in the tree.
-	var found: Object = DotRegistry.get_service(&"dot_cloud_client")
+	var found: Object = GSRegistry.get_service(&"dot_cloud_client")
 	print("-- registered content client: %s (probe built %d)" % [
 		"none" if found == null else str(found.get_instance_id()), cloud.get_instance_id()
 	])
 
 	print("-- ensure_map_content(%s)" % id)
 
-	var got: DotResult = await game.ensure_map_content(id)
+	var got: GSResult = await game.ensure_map_content(id)
 
 	if not got.ok:
 		# Code and detail, not just the message. `wrap` keeps the cause in `detail`, and
@@ -128,7 +128,7 @@ func _init() -> void:
 
 	print("  ok   the catalogue has %s" % id)
 
-	var def: DotMapDef = game.maps.catalogue.get_map(id)
+	var def: GSMapDef = game.maps.catalogue.get_map(id)
 	var manifest := str(def.meta.get("manifest", ""))
 
 	if not FileAccess.file_exists(manifest):
@@ -148,7 +148,7 @@ func _init() -> void:
 	print("-- change_map(%s)" % id)
 
 	# The change a joining client actually makes.
-	var changed: DotResult = await game.change_map(id)
+	var changed: GSResult = await game.change_map(id)
 
 	if not changed.ok:
 		print("  [FAIL] change_map: %s" % changed.error.message)
@@ -184,7 +184,7 @@ func _init() -> void:
 			print("  [FAIL] the sweep finished and %s are still missing" % ", ".join(missing))
 			failures += 1
 
-	# [b]The refusal that made all of the above unreachable.[/b] `DotMapCommands` checked the catalogue
+	# [b]The refusal that made all of the above unreachable.[/b] `GSMapCommands` checked the catalogue
 	# and answered "No map called 'surf_kitsune'" before `change_fn` -- the one piece of code written
 	# to go and fetch it -- was ever called.
 	print("-- map <id> for something the catalogue has never held")
@@ -199,10 +199,10 @@ func _init() -> void:
 	await process_frame
 
 	var typed := PackedStringArray(["%s" % id])
-	var commands := DotMapCommands.new()
+	var commands := GSMapCommands.new()
 	commands.session = fresh.maps
 	commands.may_fetch_unknown = true
-	commands.change_fn = func(want: StringName) -> DotResult:
+	commands.change_fn = func(want: StringName) -> GSResult:
 		return await fresh.change_map(want)
 	var host := ProbeHost.new()
 	commands.bind(host)
@@ -251,7 +251,7 @@ func _load_first(prefix: String, paths: Array) -> GDScript:
 	return null
 
 
-## The two duck-typed shapes `DotMapCommands` binds against, in the smallest form that
+## The two duck-typed shapes `GSMapCommands` binds against, in the smallest form that
 ## satisfies it: a host with `add_command`, and a context with `reply` and `args`.
 class ProbeHost:
 	extends RefCounted

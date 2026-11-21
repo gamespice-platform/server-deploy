@@ -3,11 +3,11 @@ extends Node
 
 ## Keeps the shell's loading screen over a game until it is ready to be seen, then draws its
 ## materials once under it so their shaders compile there and not in the middle of play. Three kinds
-## of game, best first: [b]1. A game with a [DotLoadGate][/b] (GameSpice Core).
+## of game, best first: [b]1. A game with a [GSLoadGate][/b] (GameSpice Core).
 
 const CHANNEL := "tmc.game_cover"
 
-## The metadata a [DotLoadGate] looks for on an ancestor; spelled out so this file does not
+## The metadata a [GSLoadGate] looks for on an ancestor; spelled out so this file does not
 ## depend on the gate's class being present (GameSpice Core's own constant is the same string,
 ## and the suite checks they agree).
 const HOST_META := &"dot_load_gate_host"
@@ -26,7 +26,7 @@ var warm_wait_sec: float = 20.0
 ## Seconds the material warm-up may hold the screen, with a warning past it; 0 is no limit. Past it the screen lifts and the warm-up keeps drawing the rest in play, one budgeted round a frame, so nothing is skipped. Checked between frames, so it holds only because [member draw_budget_msec] keeps every frame short. Project setting [code]tmc/cover/draw_max_sec[/code] overrides it.
 var draw_max_sec: float = float(ProjectSettings.get_setting("tmc/cover/draw_max_sec", 6.0))
 
-## Milliseconds each round of the warm-up may cost its frame ([member DotRenderWarmup.budget_msec]); 0 puts every item up at once. Unbudgeted, PLAYLOT's 184 items went up in one round: one frame of serial shader compiles some 12 s long, which no time-out between frames could cut and during which the screen did not move. Project setting [code]tmc/cover/draw_budget_msec[/code] overrides it.
+## Milliseconds each round of the warm-up may cost its frame ([member GSRenderWarmup.budget_msec]); 0 puts every item up at once. Unbudgeted, PLAYLOT's 184 items went up in one round: one frame of serial shader compiles some 12 s long, which no time-out between frames could cut and during which the screen did not move. Project setting [code]tmc/cover/draw_budget_msec[/code] overrides it.
 var draw_budget_msec: float = float(ProjectSettings.get_setting("tmc/cover/draw_budget_msec", 50.0))
 
 var loading: TmcLoadingScreen = null
@@ -76,7 +76,7 @@ func mode_of(game: Node) -> String:
 
 
 
-## Called by a [DotLoadGate] entering the tree under [method claim]'s root.
+## Called by a [GSLoadGate] entering the tree under [method claim]'s root.
 func adopt_load_gate(gate: Object) -> void:
 	var id := gate.get_instance_id()
 	if _gates.has(id):
@@ -141,7 +141,7 @@ func _on_gate_ready(gate: Object) -> void:
 	var items: Array = []
 	# A gate with warm_game_root off warms only its warm_items(); null is a gate from before it.
 	if game is Node and is_instance_valid(game) and gate.get(&"warm_game_root") != false:
-		items = DotRenderWarmup.collect(game)
+		items = GSRenderWarmup.collect(game)
 	var extra: Variant = gate.call(&"warm_items")
 	if extra is Array:
 		items.append_array(extra)
@@ -162,7 +162,7 @@ func _on_gate_ready(gate: Object) -> void:
 func _on_gate_opened(gate: Object) -> void:
 	_warming.erase(gate.get_instance_id())
 	if loading.is_showing():
-		DotLog.warn(CHANNEL, "the gate opened while the screen was still up; dropping it", {
+		GSLog.warn(CHANNEL, "the gate opened while the screen was still up; dropping it", {
 			"step": "warm-up", "status": str(gate.call(&"status_text"))})
 		loading.end(TmcLoadingScreen.REASON_WARM)
 
@@ -189,7 +189,7 @@ func _watch_contract(game: Node) -> void:
 
 func _contract_wait_over(game: Node) -> void:
 	if is_instance_valid(game) and not game.has_meta(&"tmc_warmed"):
-		DotLog.warn(CHANNEL, "the game did not say it was ready to show in time; showing it", {"seconds": warm_wait_sec})
+		GSLog.warn(CHANNEL, "the game did not say it was ready to show in time; showing it", {"seconds": warm_wait_sec})
 		loading.end(TmcLoadingScreen.REASON_WARM)
 
 
@@ -222,7 +222,7 @@ func _physics_process(_delta: float) -> void:
 		var waited := Time.get_ticks_msec() - int(entry["since"])
 		if int(entry["settled"]) >= FALLBACK_SETTLE_FRAMES or waited > int(FALLBACK_MAX_SEC * 1000.0):
 			_fallback.erase(gid)
-			DotLog.debug(CHANNEL, "a game with no load gate is shown", {
+			GSLog.debug(CHANNEL, "a game with no load gate is shown", {
 				"ms": waited, "camera": int(entry["settled"]) > 0})
 			# Deferred: a one-shot warm-up, not per-frame work (it draws and awaits frames of its own).
 			_warm_up.call_deferred(game, true)
@@ -248,7 +248,7 @@ func _warm_up(game: Node, covered: bool) -> void:
 	game.set_meta(&"tmc_warmed", true)
 	if covered:
 		loading.begin(TmcLoadingScreen.REASON_WARM, "", "", true)
-	var items := DotRenderWarmup.collect(game)
+	var items := GSRenderWarmup.collect(game)
 	if game.has_method(&"warm_up_items"):
 		var extra: Variant = game.call(&"warm_up_items")
 		if extra is Array:
@@ -262,14 +262,14 @@ func _draw_once(items: Array) -> void:
 	var cam := get_viewport().get_camera_3d() if is_inside_tree() else null
 	if cam == null:
 		return
-	var warm := DotRenderWarmup.new()
+	var warm := GSRenderWarmup.new()
 	warm.name = "Warmup"
 	# The camera is often under a body a load gate froze; a disabled warm-up never ends.
 	warm.process_mode = Node.PROCESS_MODE_ALWAYS
 	warm.budget_msec = maxf(draw_budget_msec, 0.0)
 	warm.add_items(items)
 	var count := warm.item_count()
-	# Items offered against items drawn: DotRenderWarmup drops those whose pipeline another already compiles.
+	# Items offered against items drawn: GSRenderWarmup drops those whose pipeline another already compiles.
 	var offered := items.size()
 	var started := Time.get_ticks_msec()
 	cam.add_child(warm)
@@ -281,7 +281,7 @@ func _draw_once(items: Array) -> void:
 		state["placed"] = placed
 		state["seen"] = warm.describe()
 		if bool(state["deferred"]):
-			DotLog.info(CHANNEL, "the deferred material warm-up finished in play", _warm_fields(state["seen"], {"items": count, "placed": placed, "ms": Time.get_ticks_msec() - started})))
+			GSLog.info(CHANNEL, "the deferred material warm-up finished in play", _warm_fields(state["seen"], {"items": count, "placed": placed, "ms": Time.get_ticks_msec() - started})))
 	var limit_msec := int(draw_max_sec * 1000.0)
 	var frames := 0
 	var longest_usec := 0
@@ -297,7 +297,7 @@ func _draw_once(items: Array) -> void:
 	if not bool(state["done"]):
 		# Not cut: the warm-up keeps drawing its rounds in play, each held to the budget, so what it has not reached
 		# yet compiles a round at a time instead of on first use in a fight. It logs again when it ends (or, freed
-		# with its camera first, DotRenderWarmup warns with what it never drew).
+		# with its camera first, GSRenderWarmup warns with what it never drew).
 		took = _warm_fields(warm.describe() if is_instance_valid(warm) else {}, took)
 		took["seconds"] = draw_max_sec
 		took["step"] = "warm-up"
@@ -308,20 +308,20 @@ func _draw_once(items: Array) -> void:
 			# a pinned GameSpice Core from before dear_decay lacks it.
 			if &"dear_decay" in warm:
 				warm.set(&"dear_decay", 1.0)
-			DotLog.warn(CHANNEL, "the material warm-up did not finish under the loading screen; lifting it and drawing the rest in play", took)
+			GSLog.warn(CHANNEL, "the material warm-up did not finish under the loading screen; lifting it and drawing the rest in play", took)
 		else:
-			DotLog.warn(CHANNEL, "the material warm-up was freed before it finished; what it did not reach compiles on first use", took)
+			GSLog.warn(CHANNEL, "the material warm-up was freed before it finished; what it did not reach compiles on first use", took)
 		return
 	took = _warm_fields(state["seen"], took)
 	took["placed"] = state["placed"]
-	DotLog.info(CHANNEL, "drew the game's materials once under the loading screen", took)
+	GSLog.info(CHANNEL, "drew the game's materials once under the loading screen", took)
 
 
 func describe() -> Dictionary:
 	return {"gates": _gates.size(), "warming": _warming.size(), "fallback": _fallback.size()}
 
 
-## [param into] plus the warm-up's own account of its rounds from [param seen] (a [method DotRenderWarmup.describe]).
+## [param into] plus the warm-up's own account of its rounds from [param seen] (a [method GSRenderWarmup.describe]).
 static func _warm_fields(seen: Dictionary, into: Dictionary) -> Dictionary:
 	for key: String in ["deduped", "rounds", "placed", "left", "longest_round_ms", "longest_round_items", "over_budget_rounds"]:
 		if seen.has(key):

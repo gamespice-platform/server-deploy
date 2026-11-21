@@ -93,7 +93,7 @@ DEST="$DEST_ROOT/$VERSION_DIR"
 # missing template for a version that looks installed.
 #
 # The web presets here are the NOTHREADS ones -- the browser build ships without
-# thread support, which is `DotScheduler`'s whole reason for slicing on the main
+# thread support, which is `GSScheduler`'s whole reason for slicing on the main
 # thread -- and those are separate files from the threaded ones. Checking for the
 # wrong one is an install that passes its own check and fails the export. The Web
 # preset exports with Extensions Support (the dlink template, so GameSpice Sim's side module

@@ -5,15 +5,15 @@ extends Node3D
 
 const ACCEPTED := ["sandbox"]
 
-var catalogue: DotMapCatalogue = null
+var catalogue: GSMapCatalogue = null
 
 
 func _ready() -> void:
 	add_to_group(&"ws_test_game")
 	if Engine.has_meta(&"ws_ready_probe"):
 		(Engine.get_meta(&"ws_ready_probe") as Callable).call()
-	catalogue = DotMapCatalogue.new()
-	catalogue.follow_content(DotContentIndex.shared(), PackedStringArray(ACCEPTED))
+	catalogue = GSMapCatalogue.new()
+	catalogue.follow_content(GSContentIndex.shared(), PackedStringArray(ACCEPTED))
 	if "--shots" in OS.get_cmdline_user_args():
 		_draw_list()
 
@@ -26,7 +26,7 @@ func _draw_list() -> void:
 	for map in catalogue.available():
 		names.append("%s  (from %s)" % [map.display_name, map.pack_title])
 	label.text = "Workshop Game, %s session\nMaps: %s" % [
-		DotContentIndex.shared().session(), ", ".join(names) if not names.is_empty() else "none"]
+		GSContentIndex.shared().session(), ", ".join(names) if not names.is_empty() else "none"]
 	label.position = Vector2(24, 24)
 	label.add_theme_font_size_override("font_size", 22)
 	layer.add_child(label)

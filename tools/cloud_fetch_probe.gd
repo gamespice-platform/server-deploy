@@ -16,9 +16,9 @@ func _init() -> void:
 	# attempted, and the failure surfaces as "could not download".
 	await process_frame
 
-	var client := DotCloudClient.new()
+	var client := GSCloudClient.new()
 	client.name = "Cloud"
-	client.config = DotCloudConfig.new()
+	client.config = GSCloudConfig.new()
 	# A client's fetch, run headless: GameSpice Cloud's `auto` would read that as a server and
 	# leave a pack's client-only files (API 8) behind.
 	client.config.side = "client"
@@ -34,22 +34,22 @@ func _init() -> void:
 	client.config.cache_dir = "user://probe_cache_%d" % Time.get_ticks_msec()
 	root.add_child(client)
 
-	client.failed.connect(func(e: DotError) -> void:
+	client.failed.connect(func(e: GSError) -> void:
 		print("  [failed] %s" % e.message))
 
 	# The prefix comes from the client, not from a guess. `mount_root` is not a property of the config
 	# -- reading one that does not exist threw AFTER a successful mount, which made a working download
 	# look like a broken one. An ARRAY, not a String.
 	var mount_prefix: Array[String] = [""]
-	var delivered: Array[DotCloudManifest] = [null]
-	client.content_ready.connect(func(m: DotCloudManifest, prefix: String) -> void:
+	var delivered: Array[GSCloudManifest] = [null]
+	client.content_ready.connect(func(m: GSCloudManifest, prefix: String) -> void:
 		mount_prefix[0] = prefix
 		delivered[0] = m)
 
 	var url := "%s/%s/manifest.json" % [base, id]
 	print("[fetch] %s" % url)
 
-	var res: DotResult = await client.acquire(url)
+	var res: GSResult = await client.acquire(url)
 
 	if not res.ok:
 		print("[fetch] ACQUIRE FAILED: %s" % res.error.message)
@@ -59,7 +59,7 @@ func _init() -> void:
 	# [b]Ask about the version that was delivered, not a version this probe assumed.[/b] It asked for
 	# "1.0.0" whatever it had just downloaded, so every pack on any other version printed
 	# `mounted=false` directly underneath the line where the mounter said it had mounted it.
-	var got: DotCloudManifest = delivered[0]
+	var got: GSCloudManifest = delivered[0]
 	var got_version := got.version if got != null else "?"
 	print("[fetch] acquired. mounted=%s (%s@%s)" % [
 		client.is_mounted(StringName(id), got_version), id, got_version])
@@ -79,7 +79,7 @@ func _init() -> void:
 		quit(1)
 		return
 
-	var want: DotCloudFile = null
+	var want: GSCloudFile = null
 	for f in got.wanted_files():
 		if f.required:
 			want = f

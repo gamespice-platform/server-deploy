@@ -67,7 +67,7 @@ var _root := "user://tmc_burst_probe"
 var _host: Node = null
 var _relay: SlowTcpRelay = null
 var _client_side: Node = null
-var _link: DotClientLink = null
+var _link: GSClientLink = null
 var _spawned := [false]
 var _gone := [""]
 ## The other players: {side, link, spawned}.
@@ -98,7 +98,7 @@ func _ready() -> void:
 			_game = args[i + 1]
 		elif args[i] == "--limit":
 			_limit = int(args[i + 1])
-	DotLog.set_level(DotLog.Level.DEBUG if _verbose else DotLog.Level.ERROR)
+	GSLog.set_level(GSLog.Level.DEBUG if _verbose else GSLog.Level.ERROR)
 	_root += "_" + _game.replace("-", "_")
 	_result = {"game": _game, "limit": _limit}
 	_run.call_deferred()
@@ -115,7 +115,7 @@ func _process(_delta: float) -> void:
 
 func _run() -> void:
 	print("%s: the most a browser is sent in one frame" % _game)
-	DotPaths.remove_tree(_root)
+	GSPaths.remove_tree(_root)
 
 	if not PACKS.has(_game):
 		push_error("unknown game %s" % _game)
@@ -141,7 +141,7 @@ func _run() -> void:
 		await _maps()
 
 	await _teardown()
-	DotPaths.remove_tree(_root)
+	GSPaths.remove_tree(_root)
 
 	print("")
 	print("%d sections entered, %d finished" % [_entered, _finished])
@@ -246,16 +246,16 @@ func _write_config() -> void:
 			text = "enabled: false\n"
 		elif name == "log.yml":
 			text = "log_level: warn\nlog_file: false\n"
-		DotPaths.write_text(cfg.path_join(name), text)
+		GSPaths.write_text(cfg.path_join(name), text)
 	# The course pack wipeout plays from (the shared fixtures name none), as game_vote_all has it.
 	DirAccess.make_dir_recursive_absolute(cfg.path_join("server/content"))
-	DotPaths.write_text(cfg.path_join("server/content/overrides.yml"),
+	GSPaths.write_text(cfg.path_join("server/content/overrides.yml"),
 		FileAccess.get_file_as_string("res://examples/fixtures/game_vote_all/content.yml"))
 
 
 
-func _server() -> DotServer:
-	return _host.server as DotServer
+func _server() -> GSServer:
+	return _host.server as GSServer
 
 
 func _boot() -> bool:
@@ -263,14 +263,14 @@ func _boot() -> bool:
 	_host = (load("res://host/host.tscn") as PackedScene).instantiate()
 	_host.auto_start = false
 	ServerWorld.add(self, _host)
-	var started: DotResult = await _host.start(_root.path_join("cfg"), CONTENT, _root.path_join("data"))
+	var started: GSResult = await _host.start(_root.path_join("cfg"), CONTENT, _root.path_join("data"))
 	if not _check(started.ok, "the host boots", "" if started.ok else str(started.error)):
 		_cannot(1, "no host")
 		_done()
 		return false
 	var reached := await _until(func() -> bool:
 		var current := _server().games.current()
-		return current != null and current.game_id == _game and _server().games.phase == DotGameManager.Phase.IDLE, 60.0)
+		return current != null and current.game_id == _game and _server().games.phase == GSGameManager.Phase.IDLE, 60.0)
 	_check(reached, "and reaches the delivered game")
 	_relay = SlowTcpRelay.new()
 	_relay.rate_down = SlowTcpRelay.UNLIMITED
@@ -285,7 +285,7 @@ func _join() -> bool:
 	_client_side.name = "ClientSide"
 	add_child(_client_side)
 	get_tree().set_multiplayer(MultiplayerAPI.create_default_interface(), _client_side.get_path())
-	_link = DotClientLink.new()
+	_link = GSClientLink.new()
 	_link.name = "Server"
 	_link.player_name = "Browser"
 	_link.transport_preference = "ws"
@@ -298,7 +298,7 @@ func _join() -> bool:
 	var t0 := Time.get_ticks_msec()
 	var _connecting: Variant = _link.call("connect_to_server", "127.0.0.1:%d" % _relay.port())
 	var seated := await _until(func() -> bool:
-		return _spawned[0] or _gone[0] != "" or _link.phase == DotClientLink.Phase.FAILED, 60.0)
+		return _spawned[0] or _gone[0] != "" or _link.phase == GSClientLink.Phase.FAILED, 60.0)
 	if not seated or not _spawned[0] or _link.transport_used != "websocket":
 		_check(false, "the join stays under the limit in every frame",
 			"not seated on a WebSocket: transport %s, %.1f s%s" % [_link.transport_used,
@@ -323,7 +323,7 @@ func _play() -> void:
 	_done()
 
 
-func _on_notice(notice: DotNotice) -> void:
+func _on_notice(notice: GSNotice) -> void:
 	var topic := String(notice.topic) if notice.topic != &"" else "(line)"
 	_topics[topic] = int(_topics.get(topic, 0)) + 1
 	if notice.topic != &"map_menu":
@@ -341,7 +341,7 @@ func _on_notice(notice: DotNotice) -> void:
 ## player taking over from the next. Keyed by session for the probe, as eight people are.
 func _key_by_session() -> void:
 	for name in _server().modules.loaded_names():
-		var module: DotModule = _server().modules.get_module(name)
+		var module: GSModule = _server().modules.get_module(name)
 		var bridge: Variant = module.get("bridge") if module != null else null
 		if bridge is Object and "key_fn" in (bridge as Object):
 			(bridge as Object).set("key_fn", Callable())
@@ -354,14 +354,14 @@ func _join_crowd() -> void:
 	var t0 := Time.get_ticks_msec()
 	var all_in := true
 	# One after another, each as soon as the last has its game scene: a client scene finds its
-	# link through DotRegistry's `dot_client_link`, which is last-wins and shared by every client
+	# link through GSRegistry's `dot_client_link`, which is last-wins and shared by every client
 	# in this process, so seven links made at once leave six scenes on the seventh's link.
 	for i in range(CROWD - 1):
 		var side := Node.new()
 		side.name = "Crowd%d" % i
 		add_child(side)
 		get_tree().set_multiplayer(MultiplayerAPI.create_default_interface(), side.get_path())
-		var link := DotClientLink.new()
+		var link := GSClientLink.new()
 		link.name = "Server"
 		link.player_name = "Player %d" % (i + 2)
 		link.transport_preference = "ws"
@@ -386,26 +386,26 @@ func _join_crowd() -> void:
 
 ## A document with every slot of the game's schema filled, the [param n]th part of each, and
 ## every colour channel set: the most a site avatar can be in this game.
-func _full_avatar(schema: DotAvatarSchema, n: int) -> DotAvatar:
+func _full_avatar(schema: GSAvatarSchema, n: int) -> GSAvatar:
 	var avatar := schema.default_avatar()
 	for slot in schema.ordered_slots():
 		var parts: Array = []
-		for part: DotAvatarPart in schema.parts_for(slot.id):
+		for part: GSAvatarPart in schema.parts_for(slot.id):
 			if not part.retired:
 				parts.append(part)
 		if parts.is_empty():
 			continue
-		avatar.set_part(slot.id, (parts[(n + 1) % parts.size()] as DotAvatarPart).id)
-		for channel in range(DotAvatar.MAX_CHANNELS):
+		avatar.set_part(slot.id, (parts[(n + 1) % parts.size()] as GSAvatarPart).id)
+		for channel in range(GSAvatar.MAX_CHANNELS):
 			var _set := avatar.set_colour(slot.id, channel, Color.from_hsv(fmod(0.13 * n + 0.21 * channel, 1.0), 0.7, 0.8))
 	return avatar
 
 
 func _avatars() -> void:
 	_section("every player's avatar arrives at once")
-	var manager: Object = DotRegistry.get_service(&"dot_avatar_manager")
-	var schema: DotAvatarSchema = manager.get("schema") as DotAvatarSchema if manager != null else null
-	var platform: DotModule = _server().modules.get_module("platform")
+	var manager: Object = GSRegistry.get_service(&"dot_avatar_manager")
+	var schema: GSAvatarSchema = manager.get("schema") as GSAvatarSchema if manager != null else null
+	var platform: GSModule = _server().modules.get_module("platform")
 	if schema == null or platform == null or not platform.has_method("player_for"):
 		_result["avatars"] = {"frame": -1, "poll": -1, "bytes": 0, "why": "no avatar schema or platform"}
 		_check(true, "avatars: this game has no avatar schema")
@@ -447,7 +447,7 @@ func _board() -> void:
 
 func _console(line: String) -> String:
 	var captured: Array[String] = []
-	var context := DotCmdContext.console("", PackedStringArray())
+	var context := GSCmdContext.console("", PackedStringArray())
 	context.reply_sink = func(text: String) -> void: captured.append(text)
 	var _ran := _server().console.execute(line, context)
 	return " / ".join(captured)
@@ -460,21 +460,21 @@ func _directors() -> Array:
 	var stack: Array[Node] = [_host]
 	while not stack.is_empty():
 		var node: Node = stack.pop_back()
-		if node is DotVoteDirector:
+		if node is GSVoteDirector:
 			out.append(node)
 		stack.append_array(node.get_children())
 	return out
 
 
 func _voting() -> bool:
-	for director: DotVoteDirector in _directors():
+	for director: GSVoteDirector in _directors():
 		if director.is_voting():
 			return true
 	return false
 
 
 ## The ballot a round end opens, to every player. `revote` is GameSpice Vote's "open a vote now" in every
-## game (DotVoteCommands): the director's countdown, the ballot, the tally and the close are the
+## game (GSVoteCommands): the director's countdown, the ballot, the tally and the close are the
 ## messages a round end sends, without the probe having to end each game's round its own way.
 func _vote() -> void:
 	_section("the map vote: opened to %d players, %d s, closed" % [CROWD, int(VOTE_SECONDS)])
@@ -502,7 +502,7 @@ func _vote() -> void:
 ## The server's world and the map menu's two methods on it, or [].
 func _map_menu() -> Array:
 	for name in _server().modules.loaded_names():
-		var module: DotModule = _server().modules.get_module(name)
+		var module: GSModule = _server().modules.get_module(name)
 		var world: Variant = module.get("game") if module != null else null
 		if not (world is Object):
 			continue
@@ -526,7 +526,7 @@ func _maps() -> void:
 		if bool(row.get("current", false)) or int(worst["visited"]) >= MAX_MAPS:
 			continue
 		var before := _open_window()
-		var changed: DotResult = world.call(menu[2], StringName(str(row.get("id", ""))))
+		var changed: GSResult = world.call(menu[2], StringName(str(row.get("id", ""))))
 		if changed == null or not changed.ok:
 			continue
 		await _seconds(MAP_SECONDS)
@@ -544,7 +544,7 @@ func _maps() -> void:
 	_done()
 
 
-## The map menu as a player uses it (GameSpice Menu's M, over GameSpice Vote's DotVoteMapMenu): `/mapmenu` in
+## The map menu as a player uses it (GameSpice Menu's M, over GameSpice Vote's GSVoteMapMenu): `/mapmenu` in
 ## chat, the list back in notices, then `/mapmenu <id>` for a row. The owner's flag emptied, so this
 ## guest may change the map rather than start a vote for it.
 func _maps_by_menu() -> void:
@@ -613,7 +613,7 @@ func _fetch_menu_rows() -> bool:
 
 func _teardown() -> void:
 	for one: Dictionary in _crowd:
-		var link: DotClientLink = one["link"]
+		var link: GSClientLink = one["link"]
 		if is_instance_valid(link):
 			link.disconnect_from_server("probe over")
 	await get_tree().process_frame

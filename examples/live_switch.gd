@@ -28,7 +28,7 @@ var _completed := 0
 
 var _host: Node = null
 var _client_side: Node = null
-var _link: DotClientLink = null
+var _link: GSClientLink = null
 
 var _spawned := [false]
 var _refused := [""]
@@ -36,9 +36,9 @@ var _games_seen: Array[String] = []
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
-		else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
+		else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -51,7 +51,7 @@ func _run() -> void:
 		get_tree().quit(0)
 		return
 
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	if await _boot():
 		if await _test_connect():
@@ -62,7 +62,7 @@ func _run() -> void:
 			await _test_still_serving()
 
 	_teardown()
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	print("")
 	_check(
@@ -106,8 +106,8 @@ func _check(condition: bool, what: String, detail: String = "") -> bool:
 	return condition
 
 
-func _server() -> DotServer:
-	return _host.server as DotServer
+func _server() -> GSServer:
+	return _host.server as GSServer
 
 
 func _until(condition: Callable, seconds: float = 15.0) -> bool:
@@ -125,7 +125,7 @@ func _until(condition: Callable, seconds: float = 15.0) -> bool:
 func _at_game(game_id: String) -> bool:
 	var current := _server().games.current()
 	return current != null and current.game_id == game_id \
-		and _server().games.phase == DotGameManager.Phase.IDLE
+		and _server().games.phase == GSGameManager.Phase.IDLE
 
 
 
@@ -139,7 +139,7 @@ func _boot() -> bool:
 	ServerWorld.add(self, _host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 
 	if not _check(started.ok, "the host boots", str(started.error)):
 		return false
@@ -176,8 +176,8 @@ func _teardown() -> void:
 func _test_connect() -> bool:
 	_section("a client connects")
 
-	_link = DotClientLink.new()
-	# "Server", the same as DotServer. The name is the routing.
+	_link = GSClientLink.new()
+	# "Server", the same as GSServer. The name is the routing.
 	_link.name = "Server"
 	_link.player_name = "Switcher"
 	_client_side.add_child(_link)
@@ -193,7 +193,7 @@ func _test_connect() -> bool:
 	)
 
 	var address := "127.0.0.1:%d" % _host.config.server.port
-	var connecting: DotResult = await _link.connect_to_server(address)
+	var connecting: GSResult = await _link.connect_to_server(address)
 
 	if not _check(connecting.ok, "it starts connecting", str(connecting.error)):
 		_done()
@@ -216,21 +216,21 @@ func _test_connect() -> bool:
 	return true
 
 
-## The player's own block list (`sm`, GameSpice Chat's DotChatSelfMute) against a real server: the roster
+## The player's own block list (`sm`, GameSpice Chat's GSChatSelfMute) against a real server: the roster
 ## it learns without the board held, a mute by the server's key, and `!sm` typed in a real chat box
 ## never reaching the server, which is what keeps the muted player from being told.
-var _mutes: DotChatSelfMute = null
+var _mutes: GSChatSelfMute = null
 var _muted_key := [""]
 const SELF_MUTE_FILE := DATA + "/self_mute.json"
 
 
-func _new_list() -> DotChatSelfMute:
-	var list := DotChatSelfMute.new()
+func _new_list() -> GSChatSelfMute:
+	var list := GSChatSelfMute.new()
 	list.path = SELF_MUTE_FILE
 	list.refresh_sec = 0.0
 	list.link = _link
 	list.load_list()
-	DotRegistry.register(DotChatSelfMute.SERVICE, list)
+	GSRegistry.register(GSChatSelfMute.SERVICE, list)
 	return list
 
 
@@ -240,7 +240,7 @@ func _test_self_mute() -> void:
 	_mutes = _new_list()
 	_mutes.refresh()
 	var learned := await _until(func() -> bool: return not _mutes.roster.is_empty(), 5.0)
-	var session: DotClientSession = _server().sessions()[0]
+	var session: GSClientSession = _server().sessions()[0]
 	var row: Dictionary = _mutes.roster[0] if learned else {}
 	_check(learned and str(row.get("key", "")) != "" and int(row.get("peer", 0)) == session.peer_id,
 		"one board on request carries each player's key and peer (%s)" % str(row))
@@ -253,13 +253,13 @@ func _test_self_mute() -> void:
 
 	# A real box, sending what it emits the way a game does.
 	var seen: Array[String] = []
-	var watch := func(event: DotEvent) -> void:
+	var watch := func(event: GSEvent) -> void:
 		if event.name == "player_chat":
 			seen.append(str(event.data.get("text", "")))
 		elif event.name == "player_command":
 			seen.append("!" + str(event.data.get("command", "")))
 	_server().events.event_fired.connect(watch)
-	var box := DotChatWindow.new()
+	var box := GSChatWindow.new()
 	box.register_actions = false
 	box.self_mute = _mutes
 	_client_side.add_child(box)
@@ -284,7 +284,7 @@ func _test_self_mute_survives() -> void:
 	_section("the block list survives the game change")
 
 	# What a client that restarted, or a list made again, reads: the file, and a new roster.
-	DotRegistry.unregister_instance(DotChatSelfMute.SERVICE, _mutes)
+	GSRegistry.unregister_instance(GSChatSelfMute.SERVICE, _mutes)
 	var again := _new_list()
 	again.refresh()
 	var learned := await _until(func() -> bool: return not again.roster.is_empty(), 5.0)
@@ -294,7 +294,7 @@ func _test_self_mute_survives() -> void:
 	_check(learned and str(row.get("key", "")) == _muted_key[0]
 		and again.is_muted(str(row.get("name", "")), str(row.get("id", 0))),
 		"and the player is still muted in the next game: the server's key did not change")
-	DotRegistry.unregister_instance(DotChatSelfMute.SERVICE, again)
+	GSRegistry.unregister_instance(GSChatSelfMute.SERVICE, again)
 	_done()
 
 
@@ -313,7 +313,7 @@ func _test_switch() -> void:
 
 	# The whole point: it is still here to be asked.
 	_check(
-		_server().state == DotServer.State.RUNNING,
+		_server().state == GSServer.State.RUNNING,
 		"and is still running",
 		"switching under a live client used to segfault it"
 	)
@@ -351,7 +351,7 @@ func _test_switch_back() -> void:
 	var arrived := await _until(func() -> bool: return _at_game("buses"), 25.0)
 
 	_check(arrived, "buses comes back")
-	_check(_server().state == DotServer.State.RUNNING, "the server is still running")
+	_check(_server().state == GSServer.State.RUNNING, "the server is still running")
 	_check(
 		_server().modules.has_module("buses"),
 		"with its module"
@@ -383,7 +383,7 @@ func _test_still_serving() -> void:
 			]
 	)
 
-	var module: DotModule = _server().modules.get_module("buses")
+	var module: GSModule = _server().modules.get_module("buses")
 	_check(
 		module != null and module.net != null and module.net.is_running(),
 		"and the current game's netcode is running"

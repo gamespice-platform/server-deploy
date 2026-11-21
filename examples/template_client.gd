@@ -30,14 +30,14 @@ var _completed := 0
 
 var _host: Node = null
 var _client_side: Node = null
-var _link: DotClientLink = null
+var _link: GSClientLink = null
 var _spawned := [false]
 var _refused := [""]
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -53,7 +53,7 @@ func _run() -> void:
 		get_tree().quit(0)
 		return
 
-	DotPaths.remove_tree(ROOT)
+	GSPaths.remove_tree(ROOT)
 
 	var pack_dir := _package(source, package_sh)
 
@@ -64,7 +64,7 @@ func _run() -> void:
 			_test_still_serving()
 
 	await _teardown()
-	DotPaths.remove_tree(ROOT)
+	GSPaths.remove_tree(ROOT)
 
 	print("")
 	_check(_completed == _entered, "every section ran to its last line (%d of %d)" % [_completed, _entered])
@@ -135,7 +135,7 @@ func _package(source: String, package_sh: String) -> String:
 func _publish(pack_dir: String) -> bool:
 	_section("published the way the site publishes a release")
 
-	var pair := DotCloudSignature.generate_keypair()
+	var pair := GSCloudSignature.generate_keypair()
 	if not _check(pair.ok, "a signing key for this run", str(pair.error)):
 		_done()
 		return false
@@ -146,7 +146,7 @@ func _publish(pack_dir: String) -> bool:
 	var fields: Dictionary = TmcYaml.parse(str(descriptor.value), "<stamped>").value if descriptor.ok else {}
 	var client_scene := str(fields.get("client_scene", ""))
 
-	var publisher := DotCloudPublisher.new()
+	var publisher := GSCloudPublisher.new()
 	publisher.content_id = CONTENT_ID
 	publisher.version = VERSION
 	publisher.display_name = str(fields.get("name", ""))
@@ -160,7 +160,7 @@ func _publish(pack_dir: String) -> bool:
 
 	# The installer's half: the descriptor out of the pack, stamped with the id and version it
 	# was published under, at content/<repo>/game.yml.
-	DotPaths.write_text(content.path_join(GAME).path_join("game.yml"), str(descriptor.value))
+	GSPaths.write_text(content.path_join(GAME).path_join("game.yml"), str(descriptor.value))
 	_check(descriptor.ok and str(fields.get("content_id")) == CONTENT_ID
 		and str(fields.get("version")) == VERSION and client_scene != "" and not client_scene.contains("://"),
 		"its descriptor is stamped with that id and version, and names a relative client scene")
@@ -168,8 +168,8 @@ func _publish(pack_dir: String) -> bool:
 	# This run's config: the fixture, plus a content.json that trusts this run's key and no other.
 	var cfg := ROOT.path_join("cfg")
 	for name in DirAccess.get_files_at(CONFIG_FIXTURE):
-		DotPaths.write_text(cfg.path_join(name), FileAccess.get_file_as_string(CONFIG_FIXTURE.path_join(name)))
-	DotPaths.write_text(ROOT.path_join("data").path_join("content.json"), JSON.stringify({
+		GSPaths.write_text(cfg.path_join(name), FileAccess.get_file_as_string(CONFIG_FIXTURE.path_join(name)))
+	GSPaths.write_text(ROOT.path_join("data").path_join("content.json"), JSON.stringify({
 		"require_signed_manifests": true,
 		"trusted_keys": {"default": str(pair.value["public"])},
 	}))
@@ -186,7 +186,7 @@ func _boot() -> bool:
 	ServerWorld.add(self, _host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(ROOT.path_join("cfg"), ROOT.path_join("content"), ROOT.path_join("data"))
+	var started: GSResult = await _host.start(ROOT.path_join("cfg"), ROOT.path_join("content"), ROOT.path_join("data"))
 	if not _check(started.ok, "the host boots", str(started.error)):
 		_done()
 		return false
@@ -194,7 +194,7 @@ func _boot() -> bool:
 	var reached := await _until(func() -> bool:
 		var current := _server().games.current()
 		return current != null and current.game_id == GAME \
-			and _server().games.phase == DotGameManager.Phase.IDLE, 45.0)
+			and _server().games.phase == GSGameManager.Phase.IDLE, 45.0)
 	_check(reached, "and reaches the game out of the pack")
 
 	_client_side = Node.new()
@@ -208,15 +208,15 @@ func _boot() -> bool:
 func _test_connect() -> bool:
 	_section("a client joins and the game's own client scene loads")
 
-	# "Server", the same as DotServer's node. The name is the routing.
-	_link = DotClientLink.new()
+	# "Server", the same as GSServer's node. The name is the routing.
+	_link = GSClientLink.new()
 	_link.name = "Server"
 	_link.player_name = "Newcomer"
 	_client_side.add_child(_link)
 	_link.spawned.connect(func() -> void: _spawned[0] = true)
 	_link.disconnected.connect(func(reason: String) -> void: _refused[0] = reason)
 
-	var connecting: DotResult = await _link.connect_to_server("127.0.0.1:%d" % _host.config.server.port)
+	var connecting: GSResult = await _link.connect_to_server("127.0.0.1:%d" % _host.config.server.port)
 	var admitted := connecting.ok and await _until(func() -> bool: return _spawned[0] or _refused[0] != "", 45.0)
 
 	if not _check(admitted and _refused[0] == "", "it signs on", "refused: %s" % _refused[0]):
@@ -237,7 +237,7 @@ func _test_connect() -> bool:
 func _test_the_pack_mounted() -> void:
 	_section("the server runs the game out of the pack")
 
-	var module: DotModule = _server().modules.get_module(MODULE)
+	var module: GSModule = _server().modules.get_module(MODULE)
 	if not _check(module != null, "the game's module loaded"):
 		_done()
 		return
@@ -245,7 +245,7 @@ func _test_the_pack_mounted() -> void:
 	var path := String((module.get_script() as Resource).resource_path)
 	_check(path.begins_with("res://dot_cloud/%s/%s/" % [CONTENT_ID, VERSION]),
 		"from the mount, not from any build", path)
-	_check(module.get("net") != null and (module.get("net") as DotNetManager).is_running(),
+	_check(module.get("net") != null and (module.get("net") as GSNetManager).is_running(),
 		"with its netcode running")
 
 	var said := _world_says()
@@ -288,8 +288,8 @@ func _test_still_serving() -> void:
 
 
 
-func _server() -> DotServer:
-	return _host.server as DotServer
+func _server() -> GSServer:
+	return _host.server as GSServer
 
 
 func _client_scene() -> Node:
@@ -298,7 +298,7 @@ func _client_scene() -> Node:
 
 
 func _world_says() -> Dictionary:
-	var module: DotModule = _server().modules.get_module(MODULE)
+	var module: GSModule = _server().modules.get_module(MODULE)
 	var world: Variant = module.get("game") if module != null else null
 	return (world as Object).call("describe") if world != null else {}
 

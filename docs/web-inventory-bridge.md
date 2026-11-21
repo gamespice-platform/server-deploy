@@ -1,6 +1,6 @@
 # Web inventory bridge
 
-The web shell lets an embedding page (the account site's Downloads page) list and manage the content this browser has downloaded, through `window.postMessage`. The logic is dot-cloud's `DotCloudInventoryBridge`; `client/tmc_inventory_link.gd` (`TmcInventoryLink`) is the transport.
+The web shell lets an embedding page (the account site's Downloads page) list and manage the content this browser has downloaded, through `window.postMessage`. The logic is dot-cloud's `GSCloudInventoryBridge`; `client/tmc_inventory_link.gd` (`TmcInventoryLink`) is the transport.
 
 ## Enabling it
 
@@ -26,10 +26,10 @@ Reply, posted to the sender's origin as a JSON string: `{"dot", "v", "id", "op",
 ## Safety
 
 - The sender's `event.origin` is checked against the allowlist before anything else is read. An unlisted origin gets no reply, so it cannot tell a bridge exists.
-- Replies go to `event.origin`, never `*`. `DotWeb.post_to_parent` uses `*` and is not used here.
+- Replies go to `event.origin`, never `*`. `GSWeb.post_to_parent` uses `*` and is not used here.
 - A pack mounted in this session is never deleted live (a mounted pack cannot be unmounted); the reply is `STATE`, and `clear_all` takes effect on restart.
-- The listener is a JS callback made through `DotWeb.create_callback` and attached with `window.addEventListener`; nothing is evaluated, because the game origin's CSP has no `unsafe-eval`.
+- The listener is a JS callback made through `GSWeb.create_callback` and attached with `window.addEventListener`; nothing is evaluated, because the game origin's CSP has no `unsafe-eval`.
 
 ## Reporting to the account site
 
-The account site's Downloaded content page lists what each client holds and queues delete, pin and unpin actions for it (website-city `docs/api/content-inventory.md`). The shell does not talk to the site: the embedding page posts `sync` with the `pending` list from the site's last report answer, forwards the returned `{packs, ack}` to `clientContent.report` (the web client key is shared by all of a user's browsers), and repeats with the `pending` that answers. Delete and pin go through `DotCloudInventoryReport`: a delete never forces (a pinned pack waits for the site to unpin it), a mounted pack answers `refused` and is not acknowledged, so it runs after a restart, and an action on a pack this browser does not hold is acknowledged so its row settles. The page-side relay is website-city's; nothing in the shell calls the site.
+The account site's Downloaded content page lists what each client holds and queues delete, pin and unpin actions for it (website-city `docs/api/content-inventory.md`). The shell does not talk to the site: the embedding page posts `sync` with the `pending` list from the site's last report answer, forwards the returned `{packs, ack}` to `clientContent.report` (the web client key is shared by all of a user's browsers), and repeats with the `pending` that answers. Delete and pin go through `GSCloudInventoryReport`: a delete never forces (a pinned pack waits for the site to unpin it), a mounted pack answers `refused` and is not acknowledged, so it runs after a restart, and an action on a pack this browser does not hold is acknowledged so its row settles. The page-side relay is website-city's; nothing in the shell calls the site.

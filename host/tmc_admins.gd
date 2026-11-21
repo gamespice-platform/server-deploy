@@ -1,7 +1,7 @@
 class_name TmcAdmins
 extends RefCounted
 
-## `groups.yml` and `permissions.yml`, as a [DotAdminManager] source. GameSpice Server's permission model
+## `groups.yml` and `permissions.yml`, as a [GSAdminManager] source. GameSpice Server's permission model
 ## is **flags, not roles** — deliberately, because operators do not agree on what a "moderator" is,
 ## and because a game adds `slay` or `noclip` without coordinating with anybody.
 
@@ -25,7 +25,7 @@ var _users: Dictionary = {}
 
 
 ## Builds a source from the two parsed files.
-static func from(groups: Dictionary, users: Dictionary) -> DotResult:
+static func from(groups: Dictionary, users: Dictionary) -> GSResult:
 	var source := TmcAdmins.new()
 
 	for name in groups.keys():
@@ -33,8 +33,8 @@ static func from(groups: Dictionary, users: Dictionary) -> DotResult:
 		var body: Variant = groups[name]
 
 		if not (body is Dictionary):
-			return DotResult.fail(
-				DotError.CODE_INVALID,
+			return GSResult.fail(
+				GSError.CODE_INVALID,
 				"Group '%s' must be a mapping." % group_name
 			)
 
@@ -42,10 +42,10 @@ static func from(groups: Dictionary, users: Dictionary) -> DotResult:
 		var flags := PackedStringArray()
 
 		# `is_root: true` is every flag there is, present and future.
-		# [constant DotAdminFlags.ROOT] is what GameSpice Server checks, and expanding it into a
+		# [constant GSAdminFlags.ROOT] is what GameSpice Server checks, and expanding it into a
 		# list here would silently stop covering a flag added later.
 		if bool(row.get("is_root", false)):
-			flags.append(DotAdminFlags.ROOT)
+			flags.append(GSAdminFlags.ROOT)
 
 		for flag in TmcAdmins._as_list(row.get("permissions", [])):
 			flags.append(flag)
@@ -68,7 +68,7 @@ static func from(groups: Dictionary, users: Dictionary) -> DotResult:
 
 			if group != "":
 				if not source._group_flags.has(group):
-					DotLog.warn(CHANNEL, "a user names a group that does not exist", {
+					GSLog.warn(CHANNEL, "a user names a group that does not exist", {
 						"user": user, "group": group,
 					})
 				else:
@@ -93,14 +93,14 @@ static func from(groups: Dictionary, users: Dictionary) -> DotResult:
 				flags.append_array(source._group_flags[group])
 				immunity = int(source._group_immunity[group])
 			elif group != "":
-				DotLog.warn(CHANNEL, "a user names a group that does not exist", {
+				GSLog.warn(CHANNEL, "a user names a group that does not exist", {
 					"user": user, "group": group,
 				})
 
 		source._users[user] = {"flags": flags, "immunity": immunity}
 		source._note_unknown(user, flags)
 
-	DotLog.info(CHANNEL, "admins loaded", {
+	GSLog.info(CHANNEL, "admins loaded", {
 		"groups": source._group_flags.size(), "users": source._users.size(),
 	})
 
@@ -108,7 +108,7 @@ static func from(groups: Dictionary, users: Dictionary) -> DotResult:
 		# A warning rather than a refusal, for the reason above: a game defines its own flags -- `slay`,
 		# `noclip` -- and this file cannot know them, so refusing to boot over one would leave a server
 		# unmoderated rather than under-moderated. But SILENCE was worse than either.
-		DotLog.warn(
+		GSLog.warn(
 			CHANNEL,
 			"%d permission name(s) are not flags dot-server knows" % source.unknown_flags.size(),
 			{
@@ -117,15 +117,15 @@ static func from(groups: Dictionary, users: Dictionary) -> DotResult:
 			}
 		)
 
-	return DotResult.success(source)
+	return GSResult.success(source)
 
 
-## `DotAdminManager`'s duck-typed contract: `lookup(identity) -> DotResult`. [param identity] is the
-## object GameSpice Server holds for the player — `DotAuthIdentity` on an authenticated server,
-## `DotGuestIdentity` without GameSpice Auth — and both carry `uid`, `username` and `display_name`.
-func lookup(identity: Object) -> DotResult:
+## `GSAdminManager`'s duck-typed contract: `lookup(identity) -> GSResult`. [param identity] is the
+## object GameSpice Server holds for the player — `GSAuthIdentity` on an authenticated server,
+## `GSGuestIdentity` without GameSpice Auth — and both carry `uid`, `username` and `display_name`.
+func lookup(identity: Object) -> GSResult:
 	if identity == null:
-		return DotResult.fail(DotError.CODE_STATE, "No identity.")
+		return GSResult.fail(GSError.CODE_STATE, "No identity.")
 
 	for property in ["uid", "username", "display_name"]:
 		var value: Variant = identity.get(property)
@@ -137,13 +137,13 @@ func lookup(identity: Object) -> DotResult:
 
 		if key != "" and _users.has(key):
 			var row: Dictionary = _users[key]
-			return DotResult.success({
+			return GSResult.success({
 				"flags": row["flags"],
 				"immunity": row["immunity"],
 				"source": source_name(),
 			})
 
-	return DotResult.fail(DotError.CODE_STATE, "Not listed.")
+	return GSResult.fail(GSError.CODE_STATE, "Not listed.")
 
 
 func source_name() -> String:
@@ -196,6 +196,6 @@ func describe_lines() -> PackedStringArray:
 ## misspelling in a group is repeated by every user in it and a warning naming `change` four times
 ## is a warning nobody reads to the end of.
 func _note_unknown(_who: String, flags: PackedStringArray) -> void:
-	for flag in DotAdminFlags.unknown(flags):
+	for flag in GSAdminFlags.unknown(flags):
 		if not unknown_flags.has(flag):
 			unknown_flags.append(flag)

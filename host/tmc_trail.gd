@@ -6,7 +6,7 @@ extends Node
 
 const CHANNEL := "tmc.trail"
 const SERVICE := &"dot_trail_relay"
-const CLASSES := ["DotTrailRegistry", "DotTrailStore", "DotTrailEquip", "DotTrailRelay", "DotTrailEnvelope", "DotTrailConfig", "DotTrailClient", "DotTrailBackendHttp"]
+const CLASSES := ["GSTrailRegistry", "GSTrailStore", "GSTrailEquip", "GSTrailRelay", "GSTrailEnvelope", "GSTrailConfig", "GSTrailClient", "GSTrailBackendHttp"]
 
 ## Every key `trail.yml` accepts, with its type; anything else is reported as unknown.
 const KEYS := {
@@ -21,7 +21,7 @@ var backend: RefCounted = null
 ## The pack advertised as `sv_trail_pack`, "" for none.
 var pack := ""
 
-var _server: DotServer = null
+var _server: GSServer = null
 var _sessions: Dictionary = {}
 ## peer id -> {ids: PackedStringArray, at: msec}
 var _owned: Dictionary = {}
@@ -39,7 +39,7 @@ static func available() -> bool:
 
 
 ## `trail.yml` into [member TmcConfig.trail]; unknown keys are reported, not fatal.
-static func apply_config(config: TmcConfig, tree: Dictionary) -> DotResult:
+static func apply_config(config: TmcConfig, tree: Dictionary) -> GSResult:
 	config.trail = {}
 	for key in tree.keys():
 		var name := String(key)
@@ -47,50 +47,50 @@ static func apply_config(config: TmcConfig, tree: Dictionary) -> DotResult:
 			config.unknown.append("trail.yml: %s" % name)
 			continue
 		config.trail[name] = tree[key]
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
-static func install(host: Node, p_server: DotServer, config: TmcConfig, data_dir: String) -> TmcTrail:
+static func install(host: Node, p_server: GSServer, config: TmcConfig, data_dir: String) -> TmcTrail:
 	var cfg: Dictionary = config.trail
 	if not TmcConfig._truthy(cfg.get("trail_enabled", false)):
 		return null
 	if not available():
-		DotLog.warn(CHANNEL, "trail_enabled is on but dot-trail is not in this build; add `- repo: dot-trail` to cfg/content/addons.yml and run setup", {})
+		GSLog.warn(CHANNEL, "trail_enabled is on but dot-trail is not in this build; add `- repo: dot-trail` to cfg/content/addons.yml and run setup", {})
 		return null
 	var node := TmcTrail.new()
 	node.name = "Trails"
 	node._server = p_server
 	var started := node.start(cfg, data_dir)
 	if not started.ok:
-		DotLog.error(CHANNEL, "trails did not start", {"why": str(started.error)})
+		GSLog.error(CHANNEL, "trails did not start", {"why": str(started.error)})
 		node.free()
 		return null
 	host.add_child(node)
-	DotLog.info(CHANNEL, "trails are on", node.describe())
+	GSLog.info(CHANNEL, "trails are on", node.describe())
 	return node
 
 
 ## Loads the trail set, builds the relay on the server's envelope, advertises the pack.
-func start(cfg: Dictionary, data_dir: String) -> DotResult:
-	registry = script_named("DotTrailRegistry").new()
+func start(cfg: Dictionary, data_dir: String) -> GSResult:
+	registry = script_named("GSTrailRegistry").new()
 	registry.config.equip_cooldown = float(cfg.get("trail_equip_cooldown", registry.config.equip_cooldown))
 	var dir := str(cfg.get("trail_store_dir", ""))
 	dir = dir if not dir.is_empty() else data_dir.path_join("trails")
 	if DirAccess.dir_exists_absolute(dir):
-		var loaded: DotResult = script_named("DotTrailStore").new(registry).load_dir(dir)
+		var loaded: GSResult = script_named("GSTrailStore").new(registry).load_dir(dir)
 		if not loaded.ok:
 			return loaded.wrap("loading trails from " + dir)
 	_make_backend(cfg)
-	var equip: RefCounted = script_named("DotTrailEquip").new(registry)
-	relay = script_named("DotTrailRelay").create(equip, _groups, _entitlements)
+	var equip: RefCounted = script_named("GSTrailEquip").new(registry)
+	relay = script_named("GSTrailRelay").create(equip, _groups, _entitlements)
 	if _server == null:
-		return DotResult.success(self)
-	var served: DotResult = script_named("DotTrailEnvelope").serve(_server, relay, _refresh)
+		return GSResult.success(self)
+	var served: GSResult = script_named("GSTrailEnvelope").serve(_server, relay, _refresh)
 	if not served.ok:
 		return served
 	_server.client_spawned.connect(_on_spawned)
 	_server.client_disconnected.connect(_on_left)
-	DotRegistry.register(SERVICE, relay)
+	GSRegistry.register(SERVICE, relay)
 	pack = str(cfg.get("trail_pack", "")).strip_edges()
 	return _advertise()
 
@@ -102,9 +102,9 @@ func _make_backend(cfg: Dictionary) -> void:
 		return
 	var key := FileAccess.get_file_as_string(key_file).strip_edges() if FileAccess.file_exists(key_file) else ""
 	if key.is_empty():
-		DotLog.warn(CHANNEL, "no trail API key; only free and group trails can be worn", {"file": key_file})
+		GSLog.warn(CHANNEL, "no trail API key; only free and group trails can be worn", {"file": key_file})
 		return
-	var http_script := script_named("DotTrailBackendHttp")
+	var http_script := script_named("GSTrailBackendHttp")
 	backend = http_script.call(&"make", self, url)
 	backend.api_key = key
 	var path := str(cfg.get("trail_entitlements_path", ""))
@@ -112,28 +112,28 @@ func _make_backend(cfg: Dictionary) -> void:
 		backend.entitlements_path = path
 
 
-func _advertise() -> DotResult:
+func _advertise() -> GSResult:
 	if pack.is_empty() or _server.console == null:
-		return DotResult.success(self)
-	var tc: Object = script_named("DotTrailConfig").new()
+		return GSResult.success(self)
+	var tc: Object = script_named("GSTrailConfig").new()
 	tc.pack = pack
-	var res: DotResult = script_named("DotTrailClient").advertise(_server.console, tc)
-	return DotResult.success(self) if res.ok else res
+	var res: GSResult = script_named("GSTrailClient").advertise(_server.console, tc)
+	return GSResult.success(self) if res.ok else res
 
 
-func _on_spawned(session: DotClientSession) -> void:
+func _on_spawned(session: GSClientSession) -> void:
 	_sessions[session.peer_id] = session
 	relay.add_peer(session.peer_id)
 
 
-func _on_left(session: DotClientSession, _reason: String) -> void:
+func _on_left(session: GSClientSession, _reason: String) -> void:
 	_sessions.erase(session.peer_id)
 	_owned.erase(session.peer_id)
 	relay.remove_peer(session.peer_id)
 
 
 func _groups(peer: int) -> PackedStringArray:
-	var s: DotClientSession = _sessions.get(peer)
+	var s: GSClientSession = _sessions.get(peer)
 	return s.groups if s != null else PackedStringArray()
 
 
@@ -143,17 +143,17 @@ func _entitlements(peer: int) -> PackedStringArray:
 
 ## Before a refusal: asks the site what [param peer] owns, at most every 2 s, so a trail bought a moment ago can be worn.
 func _refresh(peer: int, _id: String) -> void:
-	var s: DotClientSession = _sessions.get(peer)
+	var s: GSClientSession = _sessions.get(peer)
 	if backend == null or s == null or s.userid <= 0:
 		return
 	var row: Dictionary = _owned.get(peer, {})
 	if not row.is_empty() and Time.get_ticks_msec() - int(row["at"]) < 2000:
 		return
-	var res: DotResult = await backend.entitlements(str(s.userid))
+	var res: GSResult = await backend.entitlements(str(s.userid))
 	if res.ok:
 		_owned[peer] = {"ids": res.value["ids"], "at": Time.get_ticks_msec()}
 	else:
-		DotLog.warn(CHANNEL, "entitlements unavailable", {"peer": peer, "why": str(res.error)})
+		GSLog.warn(CHANNEL, "entitlements unavailable", {"peer": peer, "why": str(res.error)})
 
 
 func describe() -> Dictionary:

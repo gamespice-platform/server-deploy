@@ -18,8 +18,8 @@ const NOT_GAMES := ["global", "avatars"]
 
 
 func _initialize() -> void:
-	DotLog.timestamps = false
-	DotLog.set_level(DotLog.Level.INFO)
+	GSLog.timestamps = false
+	GSLog.set_level(GSLog.Level.INFO)
 
 	var opts := _options()
 	var content_dir := str(opts.get("content", "content"))
@@ -126,7 +126,7 @@ func _initialize() -> void:
 
 
 ## One row of the index, read out of one `game.yml`.
-func _entry(id: String, path: String) -> DotResult:
+func _entry(id: String, path: String) -> GSResult:
 	var parsed := TmcYaml.parse_file(path)
 
 	if not parsed.ok:
@@ -136,8 +136,8 @@ func _entry(id: String, path: String) -> DotResult:
 	var content_id := str(TmcYaml.at(tree, "content_id", ""))
 
 	if content_id == "":
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"%s names no content_id" % path,
 			"a game that is not delivered cannot be installed from an origin"
 		)
@@ -163,32 +163,32 @@ func _entry(id: String, path: String) -> DotResult:
 	if bool(TmcYaml.at(tree, "default", false)):
 		row["default"] = true
 
-	return DotResult.success(row)
+	return GSResult.success(row)
 
 
 ## Copy one descriptor into the output tree, byte for byte.
-func _copy_descriptor(source: String, out_dir: String, id: String) -> DotResult:
+func _copy_descriptor(source: String, out_dir: String, id: String) -> GSResult:
 	var target_dir := out_dir.path_join(DESCRIPTOR_DIR).path_join(id)
 	var made := DirAccess.make_dir_recursive_absolute(target_dir)
 
 	if made != OK and made != ERR_ALREADY_EXISTS:
-		return DotResult.fail(
-			DotError.CODE_IO, "could not create %s" % target_dir
+		return GSResult.fail(
+			GSError.CODE_IO, "could not create %s" % target_dir
 		)
 
 	var bytes := FileAccess.get_file_as_bytes(source)
 
 	if bytes.is_empty():
-		return DotResult.fail(
-			DotError.CODE_IO, "could not read %s" % source
+		return GSResult.fail(
+			GSError.CODE_IO, "could not read %s" % source
 		)
 
 	var target := target_dir.path_join("game.yml")
 	var file := FileAccess.open(target, FileAccess.WRITE)
 
 	if file == null:
-		return DotResult.fail(
-			DotError.CODE_IO,
+		return GSResult.fail(
+			GSError.CODE_IO,
 			"could not write %s" % target,
 			error_string(FileAccess.get_open_error())
 		)
@@ -196,7 +196,7 @@ func _copy_descriptor(source: String, out_dir: String, id: String) -> DotResult:
 	file.store_buffer(bytes)
 	file.close()
 
-	return DotResult.success(target)
+	return GSResult.success(target)
 
 
 ## `--key value` pairs after the `--`, exactly as the other tools here read them.

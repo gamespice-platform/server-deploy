@@ -7,7 +7,7 @@ extends VBoxContainer
 
 const CHANNEL := "tmc.workshop_panel"
 
-## The page's id in a DotMenu.
+## The page's id in a GSMenu.
 const PAGE_ID := &"subscriptions"
 
 ## The least height of a switch or button, in pixels: a finger, not a cursor.
@@ -17,9 +17,9 @@ const TOUCH_HEIGHT := 44
 signal changed(what: String)
 
 ## The Workshop node whose list is shown. Null reads as "the Workshop is off in this build".
-var workshop: DotCloudWorkshop = null
+var workshop: GSCloudWorkshop = null
 
-## The last [method DotCloudWorkshop.sync] summary, `{}` before the first.
+## The last [method GSCloudWorkshop.sync] summary, `{}` before the first.
 var summary: Dictionary = {}
 
 ## False when the game's manifest has no `provides.accepts`.
@@ -64,11 +64,11 @@ func _ready() -> void:
 	refresh()
 
 
-## Adds the page to [param menu] (a DotMenu), built from [param make] each time it opens. A page is
+## Adds the page to [param menu] (a GSMenu), built from [param make] each time it opens. A page is
 ## data and is drawn fresh every time it is shown, so the panel is made when the page opens and
 ## freed when it closes, and reads the Workshop's state as it is then.
 static func add_to_menu(menu: Object, make: Callable) -> void:
-	var page := DotMenuPage.make(PAGE_ID, "Subscriptions", "Packs you subscribed to on the site.")
+	var page := GSMenuPage.make(PAGE_ID, "Subscriptions", "Packs you subscribed to on the site.")
 	page.build = func(_kit: Object, body: VBoxContainer) -> void:
 		var panel: TmcWorkshopPanel = make.call()
 		body.add_child(panel)
@@ -165,11 +165,11 @@ func _add_suggested_row() -> void:
 ## "", "none" and "ask" all read as one map at a time.
 static func suggested_in_background(mode: String) -> bool:
 	var m := mode.strip_edges().to_lower()
-	return m != "" and m != DotCloudSuggested.MODE_NONE and not DotCloudSuggested.asks(m)
+	return m != "" and m != GSCloudSuggested.MODE_NONE and not GSCloudSuggested.asks(m)
 
 
 func _set_suggested(background: bool) -> void:
-	var res := workshop.set_device_suggested_mode(DotCloudSuggested.MODE_ALL if background else "")
+	var res := workshop.set_device_suggested_mode(GSCloudSuggested.MODE_ALL if background else "")
 	_after("suggested", res, func() -> void: pass)
 
 
@@ -216,7 +216,7 @@ func _add_site_button() -> void:
 
 
 func _item_card(item: Dictionary) -> Control:
-	var pack := DotCloudWorkshopList.pack_of(item)
+	var pack := GSCloudWorkshopList.pack_of(item)
 	var content_id := str(pack.get("contentId", ""))
 	var sub_id := str(item.get("subscriptionId", ""))
 	var state := item_state(item)
@@ -367,7 +367,7 @@ func _label(text: String) -> Label:
 ## was just turned off), `off_device`, `skipped` (with a reason) or `failed`. Pure on the
 ## summary, so a suite can ask it without a tree.
 func item_state(item: Dictionary) -> Dictionary:
-	var pack := DotCloudWorkshopList.pack_of(item)
+	var pack := GSCloudWorkshopList.pack_of(item)
 	var content_id := str(pack.get("contentId", ""))
 	var sub_id := str(item.get("subscriptionId", ""))
 
@@ -409,17 +409,17 @@ func state_text(state: Dictionary) -> String:
 
 func skip_reason_text(reason: String) -> String:
 	match reason:
-		DotCloudWorkshop.REASON_DEVICE_OFF:
+		GSCloudWorkshop.REASON_DEVICE_OFF:
 			return _t("workshop.reason.device_off", "turned off on this device")
-		DotCloudWorkshop.REASON_METERED:
+		GSCloudWorkshop.REASON_METERED:
 			return _t("workshop.reason.metered", "you are on a metered connection")
-		DotCloudWorkshop.REASON_SCRIPT_POLICY:
+		GSCloudWorkshop.REASON_SCRIPT_POLICY:
 			return _t("workshop.reason.script_policy", "it runs code that has not been approved")
-		DotCloudWorkshop.REASON_QUOTA:
+		GSCloudWorkshop.REASON_QUOTA:
 			return _t("workshop.reason.quota", "there is no room to store it")
-		DotCloudWorkshop.REASON_TOO_MANY:
+		GSCloudWorkshop.REASON_TOO_MANY:
 			return _t("workshop.reason.too_many", "too many subscriptions to load at once")
-		DotCloudWorkshop.REASON_INCOMPATIBLE:
+		GSCloudWorkshop.REASON_INCOMPATIBLE:
 			return _t("workshop.reason.incompatible", "this game cannot use it")
 	return reason
 
@@ -460,20 +460,20 @@ func _set_device(content_id: String, off: bool) -> void:
 	_after("device", res, func() -> void: _pending["device:" + content_id] = off)
 
 
-func _after(what: String, res: DotResult, apply: Callable) -> void:
+func _after(what: String, res: GSResult, apply: Callable) -> void:
 	if res.ok:
 		apply.call()
 		_notice = ""
-		DotLog.info(CHANNEL, "subscription changed", {"what": what})
-	elif res.error != null and res.error.code == DotError.CODE_FORBIDDEN:
+		GSLog.info(CHANNEL, "subscription changed", {"what": what})
+	elif res.error != null and res.error.code == GSError.CODE_FORBIDDEN:
 		_notice = _t("workshop.forbidden",
 			"This sign-in can only change this game. Use the site to change every game.")
-	elif res.error != null and res.error.code == DotError.CODE_AUTH:
+	elif res.error != null and res.error.code == GSError.CODE_AUTH:
 		_notice = _t("workshop.sign_in", "Sign in to use your subscriptions")
 	else:
 		_notice = _t("workshop.failed", "The change was not saved: {why}",
 			{"why": res.error.message if res.error != null else ""})
-		DotLog.info(CHANNEL, "subscription change refused", {"what": what})
+		GSLog.info(CHANNEL, "subscription change refused", {"what": what})
 	changed.emit(what)
 	if is_inside_tree():
 		refresh()

@@ -23,7 +23,7 @@ const MAX_URL := 512
 const MAX_TIP := 160
 const MAX_TITLE := 64
 
-## Under [constant DotNotice.MAX_DATA_BYTES], measured as it measures: `var_to_bytes` of the
+## Under [constant GSNotice.MAX_DATA_BYTES], measured as it measures: `var_to_bytes` of the
 ## whole data, BYTES. A document past it would be dropped whole; the first version counted
 ## characters of JSON, and localised tips are two or three bytes a character.
 const MAX_DOC_BYTES := 7900
@@ -45,12 +45,12 @@ var show_delay_sec := 0.25
 
 var problems := PackedStringArray()
 
-var server: DotServer = null
+var server: GSServer = null
 
 ## `func(data: Dictionary) -> int`: to everybody playing. Seam for a suite.
 var broadcast_fn: Callable = Callable()
 
-## `func(session: DotClientSession, data: Dictionary) -> bool`. Seam for a suite.
+## `func(session: GSClientSession, data: Dictionary) -> bool`. Seam for a suite.
 var send_fn: Callable = Callable()
 
 ## Where `loading_reload` reads the file again from. Set by [method install].
@@ -64,7 +64,7 @@ var _map_session: Object = null
 
 
 static func install(
-	host: Node, p_server: DotServer, tree: Dictionary,
+	host: Node, p_server: GSServer, tree: Dictionary,
 	p_reload_fn: Callable = Callable(), p_map_session_fn: Callable = Callable()
 ) -> TmcLoading:
 	var node := TmcLoading.new()
@@ -72,7 +72,7 @@ static func install(
 	node.configure(tree)
 
 	for problem in node.problems:
-		DotLog.warn(CHANNEL, "loading.yml: %s" % problem, {})
+		GSLog.warn(CHANNEL, "loading.yml: %s" % problem, {})
 
 	if p_server == null:
 		return null
@@ -81,9 +81,9 @@ static func install(
 	node.reload_fn = p_reload_fn
 	node.map_session_fn = p_map_session_fn
 	node.broadcast_fn = func(data: Dictionary) -> int:
-		return p_server.broadcast_notice(DotNotice.make(&"", "", -1.0, TOPIC, data))
-	node.send_fn = func(session: DotClientSession, data: Dictionary) -> bool:
-		return p_server.send_notice(session, DotNotice.make(&"", "", -1.0, TOPIC, data))
+		return p_server.broadcast_notice(GSNotice.make(&"", "", -1.0, TOPIC, data))
+	node.send_fn = func(session: GSClientSession, data: Dictionary) -> bool:
+		return p_server.send_notice(session, GSNotice.make(&"", "", -1.0, TOPIC, data))
 
 	host.add_child(node)
 
@@ -95,7 +95,7 @@ static func install(
 	node._watch_maps()
 	node._register_commands()
 
-	DotLog.info(CHANNEL, "loading screens", node.describe())
+	GSLog.info(CHANNEL, "loading screens", node.describe())
 	return node
 
 
@@ -177,14 +177,14 @@ func entry_from(raw: Dictionary, where: String, prefix: String) -> Dictionary:
 
 	var tips := PackedStringArray()
 	for tip in _list(raw.get("tips", [])):
-		var clean := DotChatManager.sanitise(tip, MAX_TIP)
+		var clean := GSChatManager.sanitise(tip, MAX_TIP)
 		if clean != "":
 			tips.append(clean)
 	if not tips.is_empty():
 		out["tips"] = Array(tips.slice(0, MAX_TIPS))
 
 	if raw.has("title"):
-		var t := DotChatManager.sanitise(str(raw["title"]), MAX_TITLE)
+		var t := GSChatManager.sanitise(str(raw["title"]), MAX_TITLE)
 		if t != "":
 			out["title"] = t
 
@@ -239,7 +239,7 @@ func document() -> Dictionary:
 	return doc
 
 
-## What [param data] costs inside a notice, as [DotNotice] counts it.
+## What [param data] costs inside a notice, as [GSNotice] counts it.
 static func encoded_size(data: Dictionary) -> int:
 	return var_to_bytes(data).size()
 
@@ -271,7 +271,7 @@ func is_empty() -> bool:
 
 
 
-func _on_client_spawned(session: DotClientSession) -> void:
+func _on_client_spawned(session: GSClientSession) -> void:
 	if not enabled or is_empty() or not send_fn.is_valid():
 		return
 	send_fn.call(session, document())
@@ -289,7 +289,7 @@ func _on_game_changing(_from_key: String, _to_key: String) -> void:
 	_broadcast(_hint({"game": game_id}, games.get(game_id, {}), true))
 
 
-func _on_game_load_failed(_content_key: String, _error: DotError) -> void:
+func _on_game_load_failed(_content_key: String, _error: GSError) -> void:
 	if enabled and not is_empty():
 		_broadcast({"cancel": true})
 
@@ -352,24 +352,24 @@ func _register_commands() -> void:
 	# and this node's would be missing, or, after a second install, a lambda on a freed one.
 	for name in ["loading_screen", "loading_screen_reload"]:
 		if server.console.has_name(name):
-			DotLog.warn(CHANNEL, "a command called '%s' already exists; the loading screen did not take it" % name, {})
+			GSLog.warn(CHANNEL, "a command called '%s' already exists; the loading screen did not take it" % name, {})
 			return
 	_registered = PackedStringArray(["loading_screen", "loading_screen_reload"])
-	server.console.command("loading_screen", func(ctx: DotCmdContext) -> void:
+	server.console.command("loading_screen", func(ctx: GSCmdContext) -> void:
 		ctx.reply_lines(describe_lines()),
 		"What the loading screen shows, per game and per map.",
-		DotAdminFlags.GENERIC
+		GSAdminFlags.GENERIC
 	).with_chat()
-	server.console.command("loading_screen_reload", func(ctx: DotCmdContext) -> void:
+	server.console.command("loading_screen_reload", func(ctx: GSCmdContext) -> void:
 		if not reload_fn.is_valid():
 			ctx.reply("This server cannot re-read its loading screen.")
 			return
 		var tree: Variant = reload_fn.call()
-		if tree is DotResult:
-			if not (tree as DotResult).ok:
+		if tree is GSResult:
+			if not (tree as GSResult).ok:
 				ctx.reply_error(tree)
 				return
-			tree = (tree as DotResult).value
+			tree = (tree as GSResult).value
 		configure(tree if tree is Dictionary else {})
 		for problem in problems:
 			ctx.reply("problem: %s" % problem)
@@ -377,7 +377,7 @@ func _register_commands() -> void:
 			_broadcast(document())
 		ctx.reply("Loading screen re-read and sent to everybody playing."),
 		"Re-read cfg/loading.yml and send it to everybody playing.",
-		DotAdminFlags.CONFIG
+		GSAdminFlags.CONFIG
 	)
 
 

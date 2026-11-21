@@ -31,7 +31,7 @@ static func build_id() -> String:
 	if not OS.has_feature("web"):
 		return ""
 
-	return id_from_path(DotWeb.pathname())
+	return id_from_path(GSWeb.pathname())
 
 
 ## The build id in a URL path: the one segment that is exactly an id, or "". Public so a

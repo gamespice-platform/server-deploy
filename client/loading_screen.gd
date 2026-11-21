@@ -151,7 +151,7 @@ func _ready() -> void:
 func adopt(data: Dictionary) -> void:
 	if data.has("default") or data.has("games"):
 		if int(data.get("v", VERSION)) > VERSION:
-			DotLog.debug(CHANNEL, "a loading screen from a newer server; reading what this build knows", {})
+			GSLog.debug(CHANNEL, "a loading screen from a newer server; reading what this build knows", {})
 		_doc = {
 			"default": _clean_entry(data.get("default", {})),
 			"games": {},
@@ -284,7 +284,7 @@ func _note_begin(reason: StringName) -> void:
 	if _reasons.has(reason) or _reason_at.has(reason):
 		return
 	_reason_at[reason] = Time.get_ticks_msec()
-	DotLog.info(CHANNEL, "[TMC] cover begin: %s" % String(reason), {
+	GSLog.info(CHANNEL, "[TMC] cover begin: %s" % String(reason), {
 		"reason": String(reason), "showing": _visible, "game": _game_id})
 
 
@@ -293,7 +293,7 @@ func _note_end(reason: StringName) -> void:
 		return
 	var ms := Time.get_ticks_msec() - int(_reason_at[reason])
 	_reason_at.erase(reason)
-	DotLog.info(CHANNEL, "[TMC] cover end: %s %d ms" % [String(reason), ms], {
+	GSLog.info(CHANNEL, "[TMC] cover end: %s %d ms" % [String(reason), ms], {
 		"reason": String(reason), "ms": ms, "showing": _visible})
 
 
@@ -331,7 +331,7 @@ func _process(_delta: float) -> void:
 
 	if _visible:
 		if now - _last_activity > STALE_SEC:
-			DotLog.info(CHANNEL, "the loading screen had nothing under it for a while; taking it down", {})
+			GSLog.info(CHANNEL, "the loading screen had nothing under it for a while; taking it down", {})
 			_reasons.clear()
 			_hide(false)
 			return
@@ -420,7 +420,7 @@ func _hide(finished: bool) -> void:
 	_visible = false
 	cover_changed.emit(false)
 	var shown_ms := Time.get_ticks_msec() - _shown_msec
-	DotLog.info(CHANNEL, "[TMC] cover down", {
+	GSLog.info(CHANNEL, "[TMC] cover down", {
 		"ms": shown_ms, "finished": finished, "status": _status.text if _status != null else ""})
 	_reason_at.clear()
 	_next = {}
@@ -532,10 +532,10 @@ func _save_prefs() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("loading", "music_muted", music_muted)
 	if cfg.save(PREFS) != OK:
-		DotLog.debug(CHANNEL, "could not keep the music setting", {"path": PREFS})
+		GSLog.debug(CHANNEL, "could not keep the music setting", {"path": PREFS})
 		return
 	# user:// in a browser is an IndexedDB mirror that is only written when asked.
-	DotWeb.sync_filesystem()
+	GSWeb.sync_filesystem()
 
 
 
@@ -655,12 +655,12 @@ func _clean_entry(raw: Variant) -> Dictionary:
 		out["done"] = str(d["done"])
 	var tips: Array = []
 	for t in (d.get("tips", []) if d.get("tips", []) is Array else []):
-		var clean := DotNotice.sanitised_string(t, 160)
+		var clean := GSNotice.sanitised_string(t, 160)
 		if clean != "":
 			tips.append(clean)
 	if not tips.is_empty():
 		out["tips"] = tips
-	var title := DotNotice.sanitised_string(d.get("title", ""), 64)
+	var title := GSNotice.sanitised_string(d.get("title", ""), 64)
 	if title != "":
 		out["title"] = title
 	if d.has("volume") and (d["volume"] is float or d["volume"] is int):
@@ -710,7 +710,7 @@ func _pump() -> void:
 	# names a private address or `localhost`; a public-looking name that resolves to one is the same
 	# request into the player's own network.
 	var host := host_of(url)
-	if not allow_private_hosts and not DotPlatform.is_web() and not _is_address(host):
+	if not allow_private_hosts and not GSPlatform.is_web() and not _is_address(host):
 		_step = {"url": url, "audio": audio, "resolve": IP.resolve_hostname_queue_item(host, IP.TYPE_ANY)}
 		return
 
@@ -739,7 +739,7 @@ func _request(url: String, audio: bool) -> void:
 ## JPEG is tens of milliseconds, and this happens while the player is PLAYING[/b] -- which is the
 ## point of fetching early, and would make each picture a dropped frame or three mid-fight.
 func _received(url: String, body: PackedByteArray) -> void:
-	if not DotPlatform.has_threads():
+	if not GSPlatform.has_threads():
 		_finish(url, to_media(decode_data(body)), "not a picture or a sound this client reads")
 		return
 	var out: Array = [null]
@@ -754,7 +754,7 @@ func _finish(url: String, media: Variant, why: String) -> void:
 	_fetching = false
 	if media == null:
 		last_refusal = why
-		DotLog.info(CHANNEL, "a loading screen file could not be used", {"url": url, "why": why})
+		GSLog.info(CHANNEL, "a loading screen file could not be used", {"url": url, "why": why})
 		_media[url] = false
 	else:
 		_media[url] = media

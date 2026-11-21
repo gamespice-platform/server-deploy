@@ -75,7 +75,7 @@ var _root := "user://tmc_enet_relay"
 var _host: Node = null
 var _relay = null
 var _client_side: Node = null
-var _link: DotClientLink = null
+var _link: GSClientLink = null
 var _spawned := [false]
 var _gone := [""]
 
@@ -98,7 +98,7 @@ func _ready() -> void:
 	for i in range(args.size() - 1):
 		if args[i] == "--game":
 			_game = args[i + 1]
-	DotLog.set_level(DotLog.Level.DEBUG if _verbose else DotLog.Level.ERROR)
+	GSLog.set_level(GSLog.Level.DEBUG if _verbose else GSLog.Level.ERROR)
 	_root += "_" + _game.replace("-", "_")
 	_result = {"game": _game, "stock": _stock}
 	_run.call_deferred()
@@ -106,7 +106,7 @@ func _ready() -> void:
 
 func _run() -> void:
 	print("%s: a client on ENet through a lossy relay%s" % [_game, " (stock throttle: must fail)" if _stock else ""])
-	DotPaths.remove_tree(_root)
+	GSPaths.remove_tree(_root)
 	var content := CONTENT
 	if _game == TEMPLATE:
 		content = _publish_template()
@@ -116,7 +116,7 @@ func _run() -> void:
 		if content == FAILED:
 			print("  FAIL  dot-game-template's HEAD did not package and publish")
 			print("RELAY " + JSON.stringify(_result))
-			DotPaths.remove_tree(_root)
+			GSPaths.remove_tree(_root)
 			get_tree().quit(1)
 			return
 	else:
@@ -135,7 +135,7 @@ func _run() -> void:
 			await _window(window)
 
 	await _teardown()
-	DotPaths.remove_tree(_root)
+	GSPaths.remove_tree(_root)
 
 	print("")
 	print("%d sections entered, %d finished" % [_entered, _finished])
@@ -159,7 +159,7 @@ func _skip(why: String) -> void:
 	print("skipped: %s" % why)
 	_result["skipped"] = why
 	print("RELAY " + JSON.stringify(_result))
-	DotPaths.remove_tree(_root)
+	GSPaths.remove_tree(_root)
 	get_tree().quit(3)
 
 
@@ -233,9 +233,9 @@ func _write_config(trusted_key: String) -> void:
 		elif name == "log.yml":
 			# Warnings and worse, to the terminal only: one log per game is read by a person.
 			text = "log_level: warn\nlog_file: false\n"
-		DotPaths.write_text(cfg.path_join(name), text)
+		GSPaths.write_text(cfg.path_join(name), text)
 	if trusted_key != "":
-		DotPaths.write_text(_root.path_join("data").path_join("content.json"), JSON.stringify({
+		GSPaths.write_text(_root.path_join("data").path_join("content.json"), JSON.stringify({
 			"require_signed_manifests": true,
 			"trusted_keys": {"default": trusted_key},
 		}))
@@ -272,7 +272,7 @@ func _publish_template() -> String:
 	if OS.execute("unzip", ["-q", "-o", zip, "-d", pack_dir]) != 0:
 		return FAILED
 
-	var pair := DotCloudSignature.generate_keypair()
+	var pair := GSCloudSignature.generate_keypair()
 	if not pair.ok:
 		return FAILED
 	var descriptor := Installer.stamp_identity(
@@ -280,7 +280,7 @@ func _publish_template() -> String:
 	if not descriptor.ok:
 		return FAILED
 	var fields: Dictionary = TmcYaml.parse(str(descriptor.value), "<stamped>").value
-	var publisher := DotCloudPublisher.new()
+	var publisher := GSCloudPublisher.new()
 	publisher.content_id = TEMPLATE_ID
 	publisher.version = TEMPLATE_VERSION
 	publisher.display_name = str(fields.get("name", ""))
@@ -293,14 +293,14 @@ func _publish_template() -> String:
 	if not published.ok:
 		print("  publish: %s" % str(published.error))
 		return FAILED
-	DotPaths.write_text(content.path_join(TEMPLATE).path_join("game.yml"), str(descriptor.value))
+	GSPaths.write_text(content.path_join(TEMPLATE).path_join("game.yml"), str(descriptor.value))
 	_write_config(str(pair.value["public"]))
 	return content
 
 
 
-func _server() -> DotServer:
-	return _host.server as DotServer
+func _server() -> GSServer:
+	return _host.server as GSServer
 
 
 func _boot(content: String) -> bool:
@@ -308,14 +308,14 @@ func _boot(content: String) -> bool:
 	_host = (load("res://host/host.tscn") as PackedScene).instantiate()
 	_host.auto_start = false
 	ServerWorld.add(self, _host)
-	var started: DotResult = await _host.start(_root.path_join("cfg"), content, _root.path_join("data"))
+	var started: GSResult = await _host.start(_root.path_join("cfg"), content, _root.path_join("data"))
 	if not _check(started.ok, "the host boots", "" if started.ok else str(started.error)):
 		_cannot(2, "no host")
 		_done()
 		return false
 	var reached := await _until(func() -> bool:
 		var current := _server().games.current()
-		return current != null and current.game_id == _game and _server().games.phase == DotGameManager.Phase.IDLE, 60.0)
+		return current != null and current.game_id == _game and _server().games.phase == GSGameManager.Phase.IDLE, 60.0)
 	_check(reached, "and reaches the delivered game")
 	var cvars: Dictionary = CVARS.get(_game, {})
 	for cvar in cvars:
@@ -326,7 +326,7 @@ func _boot(content: String) -> bool:
 	var w: Array = WINDOWS[0]
 	_relay.up.configure(0.0, float(w[2]), 0.0)
 	_relay.down.configure(0.0, float(w[2]), 0.0)
-	var relayed: DotResult = _relay.start(0, "127.0.0.1", PORT)
+	var relayed: GSResult = _relay.start(0, "127.0.0.1", PORT)
 	_check(relayed.ok, "the relay listens in front of UDP %d, %d ms each way" % [PORT, int(w[2])],
 		"" if relayed.ok else str(relayed.error))
 	_done()
@@ -339,7 +339,7 @@ func _join() -> bool:
 	_client_side.name = "ClientSide"
 	add_child(_client_side)
 	get_tree().set_multiplayer(MultiplayerAPI.create_default_interface(), _client_side.get_path())
-	_link = DotClientLink.new()
+	_link = GSClientLink.new()
 	_link.name = "Server"
 	_link.player_name = "Walker"
 	_link.transport_preference = "udp"
@@ -354,7 +354,7 @@ func _join() -> bool:
 	# Not awaited: the control configures the client's peer the frame it exists, before the join.
 	var _connecting: Variant = _link.call("connect_to_server", "127.0.0.1:%d" % PORT)
 	var seated := await _until(func() -> bool:
-		return _spawned[0] or _gone[0] != "" or _link.phase == DotClientLink.Phase.FAILED, 60.0)
+		return _spawned[0] or _gone[0] != "" or _link.phase == GSClientLink.Phase.FAILED, 60.0)
 	_check(seated and _spawned[0] and _link.transport_used == "enet", "it is seated, on ENet",
 		"transport %s, %.1f s%s" % [_link.transport_used, (Time.get_ticks_msec() - t0) / 1000.0,
 			"" if _gone[0] == "" else ", " + _gone[0]])
@@ -410,9 +410,9 @@ static func _find(root: Node, cls: String) -> Array[Node]:
 	return out
 
 
-func _net(root: Node, server: bool) -> DotNetManager:
-	for n in _find(root, "DotNetManager"):
-		var m := n as DotNetManager
+func _net(root: Node, server: bool) -> GSNetManager:
+	for n in _find(root, "GSNetManager"):
+		var m := n as GSNetManager
 		if m.is_server == server and m.is_running():
 			return m
 	return null
@@ -445,7 +445,7 @@ func _measure() -> Dictionary:
 	if sn == null or cn == null:
 		return {}
 	var peer := _client_side.multiplayer.get_unique_id()
-	var buffer: DotNetInput.Buffer = sn.input_buffer_for(peer) if sn.peers().has(peer) else null
+	var buffer: GSNetInput.Buffer = sn.input_buffer_for(peer) if sn.peers().has(peer) else null
 	var consumed := buffer.last_consumed_tick() if buffer != null else 0
 	var starved := buffer.starved_count if buffer != null else 0
 	return {
@@ -458,7 +458,7 @@ func _measure() -> Dictionary:
 
 
 ## A peer's ENet packet throttle out of 32, or -1 off ENet. [param mp] is the end's multiplayer
-## peer, unwrapped through DotMeteredPeer ([code]inner[/code]) and DotDualPeer ([code]enet[/code]).
+## peer, unwrapped through GSMeteredPeer ([code]inner[/code]) and GSDualPeer ([code]enet[/code]).
 static func _throttle(mp: Object, peer_id: int) -> int:
 	var packet_peer := _packet_peer(mp, peer_id)
 	if packet_peer == null:
@@ -531,9 +531,9 @@ func _stock_back(mp: Object, peer_id: int, connected: bool) -> void:
 		return
 	var said := int(packet_peer.call("get_statistic",
 		ClassDB.class_get_integer_constant(&"ENetPacketPeer", &"PEER_PACKET_THROTTLE_DECELERATION")))
-	if said != DotTransportENet.ENET_DEFAULT_THROTTLE_DECELERATION:
-		packet_peer.call("throttle_configure", DotTransportENet.ENET_DEFAULT_THROTTLE_INTERVAL_MS,
-			DotTransportENet.ENET_DEFAULT_THROTTLE_ACCELERATION, DotTransportENet.ENET_DEFAULT_THROTTLE_DECELERATION)
+	if said != GSTransportENet.ENET_DEFAULT_THROTTLE_DECELERATION:
+		packet_peer.call("throttle_configure", GSTransportENet.ENET_DEFAULT_THROTTLE_INTERVAL_MS,
+			GSTransportENet.ENET_DEFAULT_THROTTLE_ACCELERATION, GSTransportENet.ENET_DEFAULT_THROTTLE_DECELERATION)
 
 
 ## Where the server has the client's player: the first entity GameSpice Net's registry says the client's
@@ -613,7 +613,7 @@ func _window(window: Array) -> void:
 		"the held keys move the player on the server",
 		("%d inputs; walked %.2f %s (%.2f in the idle second before)" % [inputs_got, walked[0], unit, idle[0]]) if walked[1] > 0
 			else "%d inputs; no positioned entity the client's peer owns in dot-net's registry" % inputs_got)
-	_check(_link.phase == DotClientLink.Phase.PLAYING and _gone[0] == "", "the client is still connected", _gone[0])
+	_check(_link.phase == GSClientLink.Phase.PLAYING and _gone[0] == "", "the client is still connected", _gone[0])
 	_done()
 
 

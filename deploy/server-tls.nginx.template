@@ -33,7 +33,7 @@ server {
 
     # THE BARE ROOT IS AN ADDRESS, AND HAS TO BE.
     #
-    # dot-server's WebSocket listener answers on `/game` (DotTransportWebSocket
+    # dot-server's WebSocket listener answers on `/game` (GSTransportWebSocket
     # .path), and what a client is HANDED is a host and a port: website-city's
     # boot descriptor has no notion of a path, deliberately -- a server's
     # published address is the one every other client dials too, and a desktop

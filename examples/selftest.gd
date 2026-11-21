@@ -26,9 +26,9 @@ var _completed := 0
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
-		else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
+		else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -172,10 +172,10 @@ func _test_aliases() -> void:
 	_check(zh.ok and (zh.value as TmcConfig).server.hostname == "a", "`sv_name:` wins over its alias `hostname:`")
 	var zn := TmcConfig.load_dir(_alias_cfg("zee_hostname", "hostname: \"Zee Server\"\n", ""))
 	_check(zn.ok and (zn.value as TmcConfig).server.hostname == "Zee Server", "`hostname:` alone sets the server name")
-	var hc := DotConsole.new()
+	var hc := GSConsole.new()
 	add_child(hc)
-	hc.register_cvar(DotConVar.new("hostname", "x", "name", 0))
-	hc.register_cvar(DotConVar.new("sv_gravity", "800", "g", 0))
+	hc.register_cvar(GSConVar.new("hostname", "x", "name", 0))
+	hc.register_cvar(GSConVar.new("sv_gravity", "800", "g", 0))
 	var rep := TmcAliases.check({
 		"hostname": {"target": "sv_name", "source": "t:1", "layer": "addon"},
 	}, hc)
@@ -385,7 +385,7 @@ func _test_logging() -> void:
 
 	# `on` is a BOOL in this YAML dialect, which is the whole reason the reader takes one.
 	_check(config.log_router == "on", "log_router: on is read as a mode, not as a bool")
-	_check(config.log.syslog_host == "10.0.0.9", "a router-only key reaches DotLogConfig")
+	_check(config.log.syslog_host == "10.0.0.9", "a router-only key reaches GSLogConfig")
 	_check(config.log.syslog_port == 5140, "and a numeric one is coerced")
 	_check(config.log.syslog_tcp, "and a boolean one")
 	_check(config.log.memory_capacity == 64, "log_ring_size reaches the ring")
@@ -427,7 +427,7 @@ func _test_logging() -> void:
 
 	var names := PackedStringArray()
 
-	for target: DotLogTarget in router.targets:
+	for target: GSLogTarget in router.targets:
 		names.append(target.target_name)
 
 	_check(router.targets.size() == 3,
@@ -464,7 +464,7 @@ func _test_replay() -> void:
 	_check(
 		config.replay.ring_seconds == 30.0 and config.replay.ring_max_mib == 4
 			and config.replay.keyframe_seconds == 5.0,
-		"replay_ring_seconds, _ring_max_mib and _keyframe_seconds reach DotReplayConfig"
+		"replay_ring_seconds, _ring_max_mib and _keyframe_seconds reach GSReplayConfig"
 	)
 
 	var replay_unknown := PackedStringArray()
@@ -512,7 +512,7 @@ func _test_replay() -> void:
 	)
 	_check(replay.directory == REPLAY_DIR.path_join("replays"), "an empty directory means <data>/replays (%s)" % replay.directory)
 
-	var bus := DotEventBus.new()
+	var bus := GSEventBus.new()
 	_check(replay.attach_bus(bus).ok, "the tap attaches to a dot-server event bus")
 	_check(replay.begin().ok and replay.recorder.is_recording_to_file(), "recording, to the ring and to a match file")
 
@@ -522,7 +522,7 @@ func _test_replay() -> void:
 		replay._physics_process(0.0)
 		bus.fire("player_chat", {"userid": 1, "text": "line %d" % second})
 		if second == 88:
-			bus.hook_pre("player_chat", func(e: DotEvent) -> void: e.cancel("filtered"))
+			bus.hook_pre("player_chat", func(e: GSEvent) -> void: e.cancel("filtered"))
 			bus.fire("player_chat", {"userid": 1, "text": "a blocked line"})
 			bus.unhook_all(self)
 
@@ -543,7 +543,7 @@ func _test_replay() -> void:
 	var path := str(ev.get("replay", ""))
 	_check(path.begins_with(replay.directory.path_join("clips")), "under clips/ (%s)" % path.get_file())
 
-	var file := DotReplayFile.new()
+	var file := GSReplayFile.new()
 	var opened := file.open(path)
 	_check(opened.ok and file.complete and not file.truncated, "and dot-replay's own reader calls it complete", str(opened.error))
 	_check(file.final_hash != "" and file.final_hash == str(ev.get("final_hash")), "whose final hash is the one the evidence names")
@@ -555,7 +555,7 @@ func _test_replay() -> void:
 	var blocked := false
 	var keyframe_first := false
 	for i in range(records.size()):
-		var r := records[i] as DotReplayRecord
+		var r := records[i] as GSReplayRecord
 		if i == 0:
 			keyframe_first = r.is_keyframe()
 		if r.channel == &"events":
@@ -611,7 +611,7 @@ func _test_replay() -> void:
 		var store_path := REPLAY_DIR.path_join("moderation.json")
 		manager.set("store", (store_script as GDScript).new(store_path))
 		replay.watch_moderation(manager)
-		var issued: DotResult = await manager.call("issue", 0, "uid:backbone:9", "aimbot", "console", 0)
+		var issued: GSResult = await manager.call("issue", 0, "uid:backbone:9", "aimbot", "console", 0)
 		# The re-put is awaited inside the handler; one frame lets it land.
 		await get_tree().process_frame
 		var p: Object = issued.value if issued.ok else null
@@ -636,7 +636,7 @@ func _test_replay() -> void:
 	# A game change finishes the match file and starts the next.
 	var match_path := replay.recorder.writer.path if replay.recorder.writer != null else ""
 	replay._on_game_loaded("next")
-	var finished := DotReplayFile.new()
+	var finished := GSReplayFile.new()
 	_check(
 		match_path != "" and finished.open(match_path).ok and finished.complete,
 		"a game change finishes the match file, complete"
@@ -653,7 +653,7 @@ func _test_replay() -> void:
 func _test_game_cfg_dirs() -> void:
 	_section("cfg/game/<game>/ is the game's current id; every game gets a base config")
 	var root := ProjectSettings.globalize_path("user://selftest_game_cfg")
-	DotPaths.remove_tree(root)
+	GSPaths.remove_tree(root)
 
 	# Every game the build carries.
 	var scanned := TmcContent.scan("res://content")
@@ -716,7 +716,7 @@ func _test_game_cfg_dirs() -> void:
 func _retired_cfg_dirs(content: TmcContent, root: String) -> void:
 	# A retired directory moves, whole, and is still the game's settings.
 	var old := ProjectSettings.globalize_path("user://selftest_game_cfg_old")
-	DotPaths.remove_tree(old)
+	GSPaths.remove_tree(old)
 	DirAccess.make_dir_recursive_absolute(old + "/game/game-arena")
 	DirAccess.make_dir_recursive_absolute(old + "/server/game/game-final-contact/sub")
 	DirAccess.make_dir_recursive_absolute(old + "/game/game-fatal-contact")
@@ -756,8 +756,8 @@ func _retired_cfg_dirs(content: TmcContent, root: String) -> void:
 			drift.append(retired)
 
 	_check(drift.is_empty(), "tools/cfg_sync.sh renames every retired directory the host does", str(drift))
-	DotPaths.remove_tree(root)
-	DotPaths.remove_tree(old)
+	GSPaths.remove_tree(root)
+	GSPaths.remove_tree(old)
 
 
 func _test_friends() -> void:
@@ -765,13 +765,13 @@ func _test_friends() -> void:
 
 	# The site as it is today: every route a bare 404.
 	var calls: Array = []
-	var gone := DotFriendsBackendApp.new()
+	var gone := GSFriendsBackendApp.new()
 	# Answered a frame later, like a network, so the presence post and both polls are all
 	# in flight when the first 404 lands -- which is what "once" has to survive.
-	gone.request_fn = func(method: String, path: String, _body: Dictionary) -> DotResult:
+	gone.request_fn = func(method: String, path: String, _body: Dictionary) -> GSResult:
 		calls.append("%s %s" % [method, path])
 		await get_tree().process_frame
-		return DotResult.failure(DotError.from_http(404, ""))
+		return GSResult.failure(GSError.from_http(404, ""))
 	var offs: Array = []
 	var f404 := TmcFriends.build(gone)
 	f404.switched_off.connect(func(why: String) -> void: offs.append(why))
@@ -793,9 +793,9 @@ func _test_friends() -> void:
 	f404.queue_free()
 
 	# A 404 the site EXPLAINED is a refusal, not missing routes.
-	var keyed := DotFriendsBackendApp.new()
-	keyed.request_fn = func(_m: String, _p: String, _b: Dictionary) -> DotResult:
-		return DotResult.failure(DotError.from_http(404, '{"ok":false,"code":"friends.request.deny.notFound","message":"Member not found."}'))
+	var keyed := GSFriendsBackendApp.new()
+	keyed.request_fn = func(_m: String, _p: String, _b: Dictionary) -> GSResult:
+		return GSResult.failure(GSError.from_http(404, '{"ok":false,"code":"friends.request.deny.notFound","message":"Member not found."}'))
 	var fkeyed := TmcFriends.build(keyed)
 	fkeyed.client.set_process(false)
 	add_child(fkeyed)
@@ -806,13 +806,13 @@ func _test_friends() -> void:
 	fkeyed.queue_free()
 
 	# Two friends on the site's own rules, in process.
-	var hub := DotFriendsLocalHub.new()
+	var hub := GSFriendsLocalHub.new()
 	# Members first: the hub, like the site, refuses a request to nobody it knows.
 	var alice_backend := hub.as_user("alice", "Alice")
 	var bob_backend := hub.as_user("bob", "Bob")
 	hub.send_request("alice", "bob")
 	hub.send_request("bob", "alice")   # asking somebody who asked you accepts them
-	var cfg := DotFriendsConfig.new()
+	var cfg := GSFriendsConfig.new()
 	cfg.presence_debounce_sec = 0.1
 	var alice := TmcFriends.build(alice_backend, cfg)
 	alice.client.set_process(false)
@@ -822,7 +822,7 @@ func _test_friends() -> void:
 	alice.client.advance(0.5)
 	await get_tree().process_frame
 	var seen := hub.presence_seen_by("bob", "alice")
-	_check(seen.status == DotPresence.Status.IN_GAME and seen.server_id == 12, "presence reflects a connect: in game, on server 12")
+	_check(seen.status == GSPresence.Status.IN_GAME and seen.server_id == 12, "presence reflects a connect: in game, on server 12")
 	_check(seen.joinable and seen.detail == "Playing Fatal Contact on Fixture Server", "joinable, with where (%s)" % seen.detail)
 
 	alice.on_disconnected()
@@ -830,7 +830,7 @@ func _test_friends() -> void:
 	await get_tree().process_frame
 	seen = hub.presence_seen_by("bob", "alice")
 	_check(
-		seen.status == DotPresence.Status.ONLINE and seen.server_id == 0 and not seen.joinable,
+		seen.status == GSPresence.Status.ONLINE and seen.server_id == 0 and not seen.joinable,
 		"and a disconnect: back on the menu, not followable"
 	)
 
@@ -844,16 +844,16 @@ func _test_friends() -> void:
 	bob.connect_address_fn = func(address: String) -> void: dialled.append(address)
 	add_child(bob)
 	await bob.client.refresh()
-	var refused: DotResult = await bob.join("alice")
+	var refused: GSResult = await bob.join("alice")
 	_check(
 		not refused.ok and refused.error.detail == "friends.join.deny.unsupported",
 		"a server this shell has never been on is refused honestly, with the site's key"
 	)
 	bob.on_playing("203.0.113.7:27015", "12", "Fatal Contact", "Fixture Server")
-	var followed: DotResult = await bob.join("alice")
+	var followed: GSResult = await bob.join("alice")
 	_check(followed.ok and dialled == ["203.0.113.7:27015"], "one it has is dialled at the address it knows (%s)" % [dialled])
 
-	var gone_now: DotResult = await alice.go_offline()
+	var gone_now: GSResult = await alice.go_offline()
 	seen = hub.presence_seen_by("bob", "alice")
 	_check(gone_now.ok and not seen.is_online(), "go_offline() on quit: offline to friends at once")
 
@@ -865,8 +865,8 @@ func _test_friends() -> void:
 func _test_layered_cfg() -> void:
 	_section("party, groups and security through the addons' layered loaders")
 	var root := "user://selftest_layered_cfg"
-	DotPaths.remove_tree(root)
-	DotCfgLegacy.reset()
+	GSPaths.remove_tree(root)
+	GSCfgLegacy.reset()
 	_put(root + "/party.yml", "party_enabled: false\nparty_seat_hold_sec: 30\nparty_reserve_empty_only: true\n")
 	_put(root + "/security.yml", "sec_enabled: true\nsec_caps_ratio: 0.5\nac_max_speed: 33.0\nsec_nonsense: 1\n")
 	_put(root + "/groups.yml", "groups:\n  a:\n    permissions: [x]\n")
@@ -876,7 +876,7 @@ func _test_layered_cfg() -> void:
 	_check(not flat.party_enabled and is_equal_approx(flat.party.seat_hold_sec, 30.0) and flat.party_policy.empty_only, "party.yml: the deployment's switch, the addon's key and the policy")
 	_check(flat.security.enabled and is_equal_approx(flat.security.caps_ratio, 0.5) and is_equal_approx(flat.anticheat.max_horizontal_speed, 33.0), "security.yml reaches both configs")
 	_check("\n".join(flat.console_lines).contains("sec_nonsense"), "a sec_ key the addons do not know falls through as before")
-	_check(flat.groups.has("a"), "groups.yml through DotAdminCfg")
+	_check(flat.groups.has("a"), "groups.yml through GSAdminCfg")
 	_put(root + "/addons/dot_party/party.yml", "party_seat_hold_sec: 40\n")
 	_put(root + "/server/addons/dot_party/party.yml", "party_seat_hold_sec: 50\n")
 	loaded = TmcConfig.load_dir(root)
@@ -904,21 +904,21 @@ func _test_layered_cfg() -> void:
 	_put(root + "/server/addons/dot_core/loading.yml", "loading_title: Operator\n")
 	var ld := TmcConfig.merged_file("dot-core", "loading.yml", root)
 	_check(ld.ok and String((ld.value as Dictionary).get("loading_title", "")) == "Operator", "loading.yml layers, the operator tier last")
-	DotCfgLegacy.reset()
+	GSCfgLegacy.reset()
 	_put(root + "/addons.yml", "defaults:\n  add: [dev/extra@1.2.0]\n")
 	var old_packs := TmcAddonsConfig.load_from(root, root + "/data")
 	_check(old_packs.ok and (old_packs.value as TmcAddonsConfig).defaults_add == PackedStringArray(["dev/extra@1.2.0"]),
 		"an old cfg/addons.yml is still read for packs", str(old_packs.error))
-	_check(DotCfgLegacy.warned_count() == 1, "and warns once")
+	_check(GSCfgLegacy.warned_count() == 1, "and warns once")
 	_put(root + "/content/addons.yml", "defaults:\n  add: [dev/new@2.0.0]\nentries: [dot-core]\n")
 	var new_packs := TmcAddonsConfig.load_from(root, root + "/data")
 	_check(new_packs.ok and (new_packs.value as TmcAddonsConfig).defaults_add == PackedStringArray(["dev/new@2.0.0"]),
 		"cfg/content/addons.yml wins whole when both exist, and shares its file with the download list", str(new_packs.error))
 	_put(root + "/games.yml", "rotation: old\n")
-	var legacy_rot := DotCfgLegacy.find(root + "/" + TmcGameRotation.LEGACY_FILE, root + "/" + TmcGameRotation.FILE)
+	var legacy_rot := GSCfgLegacy.find(root + "/" + TmcGameRotation.LEGACY_FILE, root + "/" + TmcGameRotation.FILE)
 	_check(legacy_rot == root + "/games.yml", "cfg/games.yml is found through the shim")
 	_put(root + "/content/games.yml", "rotation: main\ngames: [a/b]\n")
-	_check(DotCfgLegacy.find(root + "/games.yml", root + "/" + TmcGameRotation.FILE) == root + "/content/games.yml",
+	_check(GSCfgLegacy.find(root + "/games.yml", root + "/" + TmcGameRotation.FILE) == root + "/content/games.yml",
 		"cfg/content/games.yml wins when both exist")
 	var rot := TmcGameRotation.load_file(root + "/content/games.yml")
 	_check(rot.ok and (rot.value as TmcGameRotation).has_rotations(), "and reads as a rotation")
@@ -933,11 +933,11 @@ func _test_layered_cfg() -> void:
 	_check(rot2.ok and (rot2.value as TmcGameRotation).spec.get("rotations", {}).size() >= 0, "and still reads as a rotation")
 
 	# server.yml: cfg/server/server.yml, the flat file through the shim, new wins whole, extras applied.
-	DotCfgLegacy.reset()
+	GSCfgLegacy.reset()
 	_put(root + "/server.yml", "sv_name: Flat\nsv_maxplayers: 5\n")
 	var flat_srv: TmcConfig = TmcConfig.load_dir(root).value
 	_check(flat_srv.server.hostname == "Flat" and flat_srv.server.max_players == 5, "the flat cfg/server.yml is still read")
-	_check(DotCfgLegacy.warned_count() >= 1, "and warns")
+	_check(GSCfgLegacy.warned_count() >= 1, "and warns")
 	_put(root + "/server/server.yml", "sv_name: Operator\n")
 	var nested: TmcConfig = TmcConfig.load_dir(root).value
 	_check(nested.server.hostname == "Operator" and nested.server.max_players != 5, "cfg/server/server.yml wins whole over the flat file")
@@ -946,7 +946,7 @@ func _test_layered_cfg() -> void:
 	_check(extra.server.max_players == 7 and extra.server.hostname == "Operator", "another cfg/server/*.yml adds keys")
 
 	# overrides: cfg/server/content/overrides.yml, the flat content.yml through the shim, new wins whole.
-	DotCfgLegacy.reset()
+	GSCfgLegacy.reset()
 	_put(root + "/content.yml", "games:\n  game-x:\n    max_players: 3\n")
 	var old_ov := TmcGameConfig.load_from(root, root + "/data")
 	_check(old_ov.ok and (old_ov.value as TmcGameConfig).games.get("game-x", {}).get("max_players") == 3, "cfg/content.yml is still read through the shim")
@@ -960,8 +960,8 @@ func _test_layered_cfg() -> void:
 	_check(gx.get("max_players") == 9 and gx.get("cvars", {}).get("a") == "1",
 		"cfg/server/game/<g>/server.yml layers over the shipped cfg/game/<g>/server.yml", str(gx) + (tiers.error.message if not tiers.ok else ""))
 
-	DotPaths.remove_tree(root)
-	DotAddonConfig.config_root = ""
+	GSPaths.remove_tree(root)
+	GSAddonConfig.config_root = ""
 	_done()
 
 
@@ -1002,7 +1002,7 @@ func _test_admins() -> void:
 	var owner := admins.lookup(_identity("boss"))
 	_check(owner.ok, "an owner is found")
 	_check(
-		owner.ok and PackedStringArray(owner.value["flags"]).has(DotAdminFlags.ROOT),
+		owner.ok and PackedStringArray(owner.value["flags"]).has(GSAdminFlags.ROOT),
 		"and is_root becomes the root flag",
 		"expanding it into a list here would stop covering a flag added later"
 	)
@@ -1069,7 +1069,7 @@ func _test_admins() -> void:
 
 ## Something with the shape dot-server hands a source: `uid`, `username`, `display_name`.
 func _identity(name: String) -> Object:
-	var identity := DotGuestIdentity.new()
+	var identity := GSGuestIdentity.new()
 	identity.uid = "guest:%s" % name
 	identity.username = name
 	identity.display_name = name
@@ -1122,12 +1122,12 @@ func _game_ref_entries() -> void:
 
 	# Two owners' same-named games, installed side by side, both scan.
 	var root := "user://selftest_forks"
-	DotPaths.remove_tree(root)
+	GSPaths.remove_tree(root)
 	var fork_yml := "kind: pack\nscene: scenes/server.tscn\ncontent_id: %s\nversion: 1.0.0\n"
-	DotPaths.write_text(root + "/asher/game-testing/game.yml", fork_yml % "asher/game-testing")
-	DotPaths.write_text(root + "/bob/game-testing/game.yml", fork_yml % "bob/game-testing")
-	DotPaths.write_text(root + "/gamemann/game-airdrift/game.yml", fork_yml % "gamemann/game-airdrift")
-	DotPaths.write_text(root + "/arena/game.yml", "kind: pack\nscene: s.tscn\ncontent_id: arena\n")
+	GSPaths.write_text(root + "/asher/game-testing/game.yml", fork_yml % "asher/game-testing")
+	GSPaths.write_text(root + "/bob/game-testing/game.yml", fork_yml % "bob/game-testing")
+	GSPaths.write_text(root + "/gamemann/game-airdrift/game.yml", fork_yml % "gamemann/game-airdrift")
+	GSPaths.write_text(root + "/arena/game.yml", "kind: pack\nscene: s.tscn\ncontent_id: arena\n")
 	DirAccess.make_dir_recursive_absolute(root + "/emptyowner")
 	var forks := TmcContent.scan(root)
 	var index: TmcContent = forks.value if forks.ok else null
@@ -1141,35 +1141,35 @@ func _game_ref_entries() -> void:
 	_check(index != null and index.find("game-airdrift") != null
 			and index.find("game-airdrift").game_id == "gamemann/game-airdrift",
 		"a name only one owner has still works on its own (TMC_GAME=game-airdrift)")
-	DotPaths.remove_tree(root)
+	GSPaths.remove_tree(root)
 
 
 ## Dependencies pinned by the installer and read into the descriptor.
 func _game_ref_dependencies(installer: Variant, base: Dictionary) -> void:
 	var yml := "name: X\ndependencies:\n  - gamemann/surf_mesa@latest\n# kept\nscene: s.tscn\n"
-	var stamped: DotResult = installer.stamp_dependencies(yml, PackedStringArray(["gamemann/surf_mesa@1.2.0"]))
+	var stamped: GSResult = installer.stamp_dependencies(yml, PackedStringArray(["gamemann/surf_mesa@1.2.0"]))
 	_check(stamped.ok and str(stamped.value).contains("  - gamemann/surf_mesa@1.2.0\n# kept\nscene: s.tscn"),
 		"the installer pins a dependency in place and keeps what follows it", str(stamped))
-	var added: DotResult = installer.stamp_dependencies("name: X\n", PackedStringArray(["a/b@1.0.0"]))
+	var added: GSResult = installer.stamp_dependencies("name: X\n", PackedStringArray(["a/b@1.0.0"]))
 	_check(added.ok and str(added.value).ends_with("dependencies:\n  - a/b@1.0.0"),
 		"and adds the list to a descriptor that had none", str(added))
 
 	# A version kept because the newest needs newer addons must be one that mounts. Prop Hunt 0.1.15
 	# was signed before the site stamped runs_code: provides without it, 54 .gd files.
-	var stale := DotCloudManifest.new()
+	var stale := GSCloudManifest.new()
 	stale.provides = {"schema": 1, "kinds": ["game"]}
-	var gd := DotCloudFile.new()
+	var gd := GSCloudFile.new()
 	gd.path = "scripts/ph_world.gd"
 	stale.files.append(gd)
-	var declared := DotCloudManifest.new()
+	var declared := GSCloudManifest.new()
 	declared.provides = {"schema": 1, "kinds": ["game"], "runs_code": true}
 	declared.files.append(gd)
-	var data_only := DotCloudManifest.new()
+	var data_only := GSCloudManifest.new()
 	data_only.provides = {"schema": 1, "kinds": ["game"]}
-	var tex := DotCloudFile.new()
+	var tex := GSCloudFile.new()
 	tex.path = "textures/a.png"
 	data_only.files.append(tex)
-	var legacy := DotCloudManifest.new()
+	var legacy := GSCloudManifest.new()
 	legacy.files.append(gd)
 	_check(str(installer.refused_at_mount(stale)).contains("runs_code")
 			and str(installer.refused_at_mount(stale)).contains("scripts/ph_world.gd")
@@ -1180,8 +1180,8 @@ func _game_ref_dependencies(installer: Variant, base: Dictionary) -> void:
 
 	var pinned := base.duplicate()
 	pinned["dependencies"] = ["gamemann/surf_mesa@1.2.0", "modcommunity/dot-ui@v0.1.2"]
-	var built: DotResult = TmcContent.new()._build("demo", pinned)
-	_check(built.ok and PackedStringArray((built.value as DotGameDescriptor).dependencies)
+	var built: GSResult = TmcContent.new()._build("demo", pinned)
+	_check(built.ok and PackedStringArray((built.value as GSGameDescriptor).dependencies)
 			== PackedStringArray(["gamemann/surf_mesa@1.2.0", "modcommunity/dot-ui@0.1.2"]),
 		"a pinned dependency reaches the descriptor, @v spelling and all",
 		str(built.value.dependencies) if built.ok else str(built))
@@ -1200,23 +1200,23 @@ func _game_ref_pointers(installer: Variant) -> void:
 	# Pack API first, latest.json after: a fake transport that records what was asked.
 	var asked := []
 	var api_up := {"v": "2.0.0"}
-	var transport := func(url: String) -> DotResult:
+	var transport := func(url: String) -> GSResult:
 		asked.append(url)
 		if url.contains("/api/packs/latest"):
 			if api_up["v"] == "":
-				return DotResult.fail(DotError.CODE_IO, "HTTP 404")
-			return DotResult.success({"version": api_up["v"]})
+				return GSResult.fail(GSError.CODE_IO, "HTTP 404")
+			return GSResult.success({"version": api_up["v"]})
 		if url.ends_with("/a/b/latest.json"):
-			return DotResult.success({"version": "1.0.0"})
-		return DotResult.fail(DotError.CODE_IO, "<Error><Code>AccessDenied</Code></Error>")
+			return GSResult.success({"version": "1.0.0"})
+		return GSResult.fail(GSError.CODE_IO, "<Error><Code>AccessDenied</Code></Error>")
 	var cdn := PackedStringArray(["https://cdn.example/content"])
-	var viaapi: DotResult = await installer.pointer_from("a/b", "https://site.example/", cdn, 0, transport)
+	var viaapi: GSResult = await installer.pointer_from("a/b", "https://site.example/", cdn, 0, transport)
 	_check(viaapi.ok and viaapi.value["version"] == "2.0.0" and asked.size() == 1
 			and str(asked[0]) == "https://site.example/api/packs/latest?id=a%2Fb",
 		"the pack API answers first and latest.json is not asked", str(asked))
 	api_up["v"] = ""
 	asked.clear()
-	var viacdn: DotResult = await installer.pointer_from("a/b", "https://site.example", cdn, 0, transport)
+	var viacdn: GSResult = await installer.pointer_from("a/b", "https://site.example", cdn, 0, transport)
 	_check(viacdn.ok and viacdn.value["version"] == "1.0.0" and asked.size() == 2,
 		"a 404 from the pack API falls back to latest.json", str(asked))
 	asked.clear()
@@ -1228,29 +1228,29 @@ func _game_ref_pointers(installer: Variant) -> void:
 	af.close()
 	_check(installer.site_from_config(site_dir) == "https://site.example", "auth.yml backbone_url is the install site", installer.site_from_config(site_dir))
 	DirAccess.remove_absolute(site_dir + "/auth.yml")
-	var nosite: DotResult = await installer.pointer_from("a/b", "", cdn, 0, transport)
+	var nosite: GSResult = await installer.pointer_from("a/b", "", cdn, 0, transport)
 	_check(nosite.ok and asked.size() == 1 and str(asked[0]).ends_with("/a/b/latest.json"),
 		"with no site set only latest.json is asked", str(asked))
-	var both_down: DotResult = await installer.pointer_from("a/x", "https://site.example", cdn, 0, transport)
+	var both_down: GSResult = await installer.pointer_from("a/x", "https://site.example", cdn, 0, transport)
 	_check(not both_down.ok and both_down.error.detail.contains("misspelled"),
 		"both sources failing keeps the misspelled-id hint", str(both_down.error))
 
 	# The restart half of dot-cloud auto-update: after the exit-75 restart install-games asks again
 	# and must see the version published meanwhile, including through a moved_to pointer.
 	var pub := {"v": "1.0.0", "moved": ""}
-	var live := func(url: String) -> DotResult:
+	var live := func(url: String) -> GSResult:
 		if url.ends_with("/a/old/latest.json") and pub["moved"] != "":
-			return DotResult.success({"moved_to": pub["moved"]})
+			return GSResult.success({"moved_to": pub["moved"]})
 		if url.ends_with("/a/b/latest.json") or url.ends_with("/a/new/latest.json"):
-			return DotResult.success({"version": pub["v"]})
-		return DotResult.fail(DotError.CODE_IO, "HTTP 404")
-	var before: DotResult = await installer.pointer_from("a/b", "", cdn, 0, live)
+			return GSResult.success({"version": pub["v"]})
+		return GSResult.fail(GSError.CODE_IO, "HTTP 404")
+	var before: GSResult = await installer.pointer_from("a/b", "", cdn, 0, live)
 	pub["v"] = "2.0.0"
-	var after: DotResult = await installer.pointer_from("a/b", "", cdn, 0, live)
+	var after: GSResult = await installer.pointer_from("a/b", "", cdn, 0, live)
 	_check(before.ok and after.ok and before.value["version"] == "1.0.0" and after.value["version"] == "2.0.0",
 		"a restart after a newer pack was published resolves the new version", str(after))
 	pub["moved"] = "a/new"
-	var moved_after: DotResult = await installer.pointer_from("a/old", "", cdn, 0, live)
+	var moved_after: GSResult = await installer.pointer_from("a/old", "", cdn, 0, live)
 	_check(moved_after.ok and moved_after.value["moved_to"] == "a/new" and moved_after.value["version"] == "",
 		"a moved_to in latest.json is handed back through the same resolver the client shell uses", str(moved_after))
 
@@ -1263,22 +1263,22 @@ func _game_ref_pointers(installer: Variant) -> void:
 ## A renamed repository: exactly one moved_to hop is followed.
 func _game_ref_moved_pointers(installer: Variant) -> void:
 	# A renamed repository's old latest.json carries moved_to; exactly one hop is followed.
-	var plain: DotResult = installer.follow_pointer("a/old", {"version": "1.0.0"}, 0)
+	var plain: GSResult = installer.follow_pointer("a/old", {"version": "1.0.0"}, 0)
 	_check(plain.ok and plain.value["version"] == "1.0.0" and plain.value["moved_to"] == "",
 		"a latest.json with no moved_to resolves to its own version", str(plain))
-	var moved: DotResult = installer.follow_pointer("a/old", {"version": "1.0.0", "moved_to": "a/new"}, 0)
+	var moved: GSResult = installer.follow_pointer("a/old", {"version": "1.0.0", "moved_to": "a/new"}, 0)
 	_check(moved.ok and moved.value["moved_to"] == "a/new" and moved.value["version"] == "",
 		"a moved_to is handed back for the caller to follow, not the stale version", str(moved))
-	var landed: DotResult = installer.follow_pointer("a/new", {"version": "2.0.0"}, 1)
+	var landed: GSResult = installer.follow_pointer("a/new", {"version": "2.0.0"}, 1)
 	_check(landed.ok and landed.value["version"] == "2.0.0",
 		"the new id's latest.json after one hop resolves normally", str(landed))
-	var chained: DotResult = installer.follow_pointer("a/new", {"version": "2.0.0", "moved_to": "a/newer"}, 1)
-	_check(not chained.ok and chained.error.code == DotError.CODE_STATE,
+	var chained: GSResult = installer.follow_pointer("a/new", {"version": "2.0.0", "moved_to": "a/newer"}, 1)
+	_check(not chained.ok and chained.error.code == GSError.CODE_STATE,
 		"a second hop is refused with an error", str(chained))
-	var looped: DotResult = installer.follow_pointer("a/old", {"moved_to": "a/old"}, 0)
-	_check(not looped.ok and looped.error.code == DotError.CODE_STATE,
+	var looped: GSResult = installer.follow_pointer("a/old", {"moved_to": "a/old"}, 0)
+	_check(not looped.ok and looped.error.code == GSError.CODE_STATE,
 		"a moved_to naming the id itself is refused as a loop", str(looped))
-	var bad_target: DotResult = installer.follow_pointer("a/old", {"moved_to": "nonsense"}, 0)
+	var bad_target: GSResult = installer.follow_pointer("a/old", {"moved_to": "nonsense"}, 0)
 	_check(not bad_target.ok, "a moved_to that is not <owner>/<name> is refused", str(bad_target))
 
 
@@ -1286,22 +1286,22 @@ func _game_ref_moved_pointers(installer: Variant) -> void:
 func _game_ref_maps(installer: Variant, base: Dictionary) -> void:
 	# The server-only packs and the delivered maps: the same pinning, their own fields.
 	var maps_yml := "name: X\nmaps:\n  - gamemann/surf_mesa\n  - gamemann/bhop_aztec@latest\nscene: s.tscn\n"
-	var maps_stamped: DotResult = installer.stamp_dependencies(maps_yml,
+	var maps_stamped: GSResult = installer.stamp_dependencies(maps_yml,
 		PackedStringArray(["gamemann/surf_mesa@0.0.0-aa", "gamemann/bhop_aztec@0.0.0-bb"]), "maps")
 	_check(maps_stamped.ok and str(maps_stamped.value).contains(
 			"maps:\n  - gamemann/surf_mesa@0.0.0-aa\n  - gamemann/bhop_aztec@0.0.0-bb\nscene: s.tscn"),
 		"the installer pins a maps: list in place", str(maps_stamped))
-	var untouched: DotResult = installer.stamp_dependencies("name: X\n", PackedStringArray(), "maps")
+	var untouched: GSResult = installer.stamp_dependencies("name: X\n", PackedStringArray(), "maps")
 	_check(untouched.ok and str(untouched.value) == "name: X\n",
 		"and leaves a descriptor that names no maps alone", str(untouched))
 	var full := base.duplicate()
 	full["server_dependencies"] = ["gamemann/bots@1.0.0"]
 	full["maps"] = ["gamemann/surf_mesa@0.0.0-aa", "gamemann/bhop_aztec@0.0.0-bb"]
-	var full_built: DotResult = TmcContent.new()._build("demo", full)
+	var full_built: GSResult = TmcContent.new()._build("demo", full)
 	_check(full_built.ok
-			and Array((full_built.value as DotGameDescriptor).server_dependencies) == ["gamemann/bots@1.0.0"]
-			and Array((full_built.value as DotGameDescriptor).maps) == ["gamemann/surf_mesa@0.0.0-aa", "gamemann/bhop_aztec@0.0.0-bb"]
-			and (full_built.value as DotGameDescriptor).dependencies.is_empty(),
+			and Array((full_built.value as GSGameDescriptor).server_dependencies) == ["gamemann/bots@1.0.0"]
+			and Array((full_built.value as GSGameDescriptor).maps) == ["gamemann/surf_mesa@0.0.0-aa", "gamemann/bhop_aztec@0.0.0-bb"]
+			and (full_built.value as GSGameDescriptor).dependencies.is_empty(),
 		"server_dependencies and maps reach their own descriptor fields",
 		str(full_built.value.describe()) if full_built.ok else str(full_built))
 	var loose_map := base.duplicate()
@@ -1316,8 +1316,8 @@ func _game_config(text: String) -> TmcGameConfig:
 	return config if read.ok else null
 
 
-func _owner_game(id: String, maps: PackedStringArray) -> DotGameDescriptor:
-	var game := DotGameDescriptor.new()
+func _owner_game(id: String, maps: PackedStringArray) -> GSGameDescriptor:
+	var game := GSGameDescriptor.new()
 	game.game_id = id
 	game.content_id = id
 	game.maps = maps
@@ -1372,7 +1372,7 @@ defaults:
 		"cvars merge: the game's section beats defaults beats the game's own", str(game.cvars))
 	_check(game.metadata["map_vote"] == {"duration_sec": 1800, "trigger": "rtv_only"},
 		"metadata merges key by key, keeping what the owner did not mention", str(game.metadata["map_vote"]))
-	var other: DotGameDescriptor = content.games[1]
+	var other: GSGameDescriptor = content.games[1]
 	_check(other.maps == PackedStringArray(["me/z@1"]) and other.cvars["g_speed"] == "9"
 		and other.max_players == 16, "another game gets the defaults and nothing else")
 
@@ -1627,9 +1627,9 @@ games:
 	var origin := {"o/c": {"format": 1, "id": "o/c", "version": "1.0.0", "packs": ["o/m1", "o/m2"]},
 		"o/new": {"format": 2, "packs": []}}
 	var origin_state := {"up": true}
-	var fetch := func(id: String) -> DotResult:
+	var fetch := func(id: String) -> GSResult:
 		if not origin_state["up"] or not origin.has(id):
-			return DotResult.fail(DotError.CODE_IO, "origin down: " + id)
+			return GSResult.fail(GSError.CODE_IO, "origin down: " + id)
 		return TmcGameConfig.parse_collection(id, origin[id])
 	var installer := preload("res://tools/install_games.gd")
 	var first: Dictionary = await installer.resolve_collections(PackedStringArray(["o/c"]), fetch, {})
@@ -1669,7 +1669,7 @@ games:
 	_done()
 
 
-func _content_of(game: DotGameDescriptor) -> TmcContent:
+func _content_of(game: GSGameDescriptor) -> TmcContent:
 	var content := TmcContent.new()
 	content.games.append(game)
 	return content
@@ -1702,7 +1702,7 @@ func _test_content() -> void:
 	_check(
 		builtin != null and builtin.client_scene == "",
 		"and no client scene",
-		"DotClientLink refuses every absolute res:// path outside dot-cloud's mount, so "
+		"GSClientLink refuses every absolute res:// path outside dot-cloud's mount, so "
 		+ "naming one has the client refuse it and be timed out in LOADING"
 	)
 	_check(
@@ -1721,7 +1721,7 @@ func _test_content() -> void:
 	_check(
 		vote_meta is Dictionary and int((vote_meta as Dictionary).get("time_limit_sec", 0)) == 60,
 		"a game's `metadata: vote:` reaches its descriptor (%s)" % str(vote_meta),
-		"it is what DotVoteGameSource reads a game's own time limit from"
+		"it is what GSVoteGameSource reads a game's own time limit from"
 	)
 	_check(
 		builtin != null and builtin.metadata.get("map_vote", {}) is Dictionary
@@ -1804,17 +1804,17 @@ func _test_vote() -> void:
 	# Every enum written by NAME. A config file full of enum indices is one nobody can
 	# read or diff, and renumbering an enum would silently change how a server counts.
 	_check(
-		config.vote.method == DotVoteRules.Method.INSTANT_RUNOFF,
+		config.vote.method == GSVoteRules.Method.INSTANT_RUNOFF,
 		"`method: instant_runoff` reaches the counting method"
 	)
 	_check(
-		config.vote.tie_break == DotVoteRules.TieBreak.LEAST_RECENTLY_PLAYED,
+		config.vote.tie_break == GSVoteRules.TieBreak.LEAST_RECENTLY_PLAYED,
 		"in any case and with dashes (`LEAST-RECENTLY-PLAYED`)"
 	)
 	_check(
-		config.vote.fill == DotVoteRules.Fill.WEIGHTED
-			and config.vote.apply == DotVoteRules.Apply.IMMEDIATE
-			and config.vote.trigger == DotVoteRules.Trigger.RTV_ONLY,
+		config.vote.fill == GSVoteRules.Fill.WEIGHTED
+			and config.vote.apply == GSVoteRules.Apply.IMMEDIATE
+			and config.vote.trigger == GSVoteRules.Trigger.RTV_ONLY,
 		"and so do fill, apply and trigger"
 	)
 
@@ -1863,19 +1863,19 @@ func _test_vote() -> void:
 func _test_vote_rounds_without_a_match() -> void:
 	_section("finish_round in a game whose match the game vote cannot find")
 
-	var rules := DotVoteRules.new()
+	var rules := GSVoteRules.new()
 	rules.enabled = true
 	rules.duration_sec = 10.0
-	rules.time_up = DotVoteRules.TimeUp.FINISH_ROUND
+	rules.time_up = GSVoteRules.TimeUp.FINISH_ROUND
 	rules.finish_round_max_sec = 0.0
 
 	var votes := TmcVote.new()
 	votes.name = "RoundsVotes"
-	votes.director = DotVoteDirector.new()
+	votes.director = GSVoteDirector.new()
 	votes.director.name = "Director"
 	votes.director.rules = rules
 	# A list rather than the server's games: there is no server, and the ballot is not under test.
-	votes.director.source = DotVoteListSource.of_ids(["standin", "next"])
+	votes.director.source = GSVoteListSource.of_ids(["standin", "next"])
 	votes.director.register_service = false
 	votes.director.begin_on_apply = false
 	# Advisory, so `change_due` is the change and nothing tries to load a game.
@@ -1894,7 +1894,7 @@ func _test_vote_rounds_without_a_match() -> void:
 
 	var due: Array[StringName] = []
 	votes.director.change_due.connect(
-		func(id: StringName, _choice: DotVoteChoice) -> void: due.append(id)
+		func(id: StringName, _choice: GSVoteChoice) -> void: due.append(id)
 	)
 
 	votes.director.begin(&"standin")
@@ -1945,31 +1945,31 @@ func _test_vote_rounds_without_a_match() -> void:
 ## and the clock is run well past its limit. Without TmcVote's hold the director draws a game at
 ## random and announces a second change.
 func _rotation_votes(tree: Dictionary, excluded: Array = [], running: String = "") -> TmcVote:
-	var manager := DotGameManager.new()
+	var manager := GSGameManager.new()
 	for id in ["fc", "surf", "bhop", "maze", "deathrun"]:
-		var d := DotGameDescriptor.new()
+		var d := GSGameDescriptor.new()
 		d.game_id = id
 		d.content_id = "tmc/" + id
 		d.display_name = id
 		manager.games.append(d)
-	var server := DotServer.new()
+	var server := GSServer.new()
 	server.games = manager
-	var rules := DotVoteRules.new()
+	var rules := GSVoteRules.new()
 	rules.enabled = true
 	rules.duration_sec = 10.0
-	rules.empty_choice = DotVoteRules.EmptyChoice.RANDOM
+	rules.empty_choice = GSVoteRules.EmptyChoice.RANDOM
 	var rotation := TmcGameRotation.from_tree(tree)
 	var votes := TmcVote.new()
 	votes.name = "RotVotes"
 	votes.server = server
-	votes.source = DotVoteGameSource.of(manager)
+	votes.source = GSVoteGameSource.of(manager)
 	for id in excluded:
 		votes.source.excluded.append(StringName(id))
 	votes._operator_excluded = votes.source.excluded.duplicate()
 	votes.rotation = rotation
 	votes._end_vote_base = rules.end_vote
 	votes._refresh_offer()
-	votes.director = DotVoteDirector.new()
+	votes.director = GSVoteDirector.new()
 	votes.director.name = "Director"
 	votes.director.rules = rules
 	votes.director.source = votes.source
@@ -2074,11 +2074,11 @@ func _test_game_rotation() -> void:
 		"prefix": "g_", "names": {"rtv": ["rockthevote", "rock"], "vote": "pick", "timeleft": "BAD NAME"},
 	}})
 	_check(named.warnings.size() == 1, "a name that cannot be typed is dropped with one warning (%s)" % [named.warnings])
-	var console := DotConsole.new()
+	var console := GSConsole.new()
 	add_child(console)
-	console.command("g_rock", func(_c: DotCmdContext) -> void: pass, "someone else's", "")
+	console.command("g_rock", func(_c: GSCmdContext) -> void: pass, "someone else's", "")
 	votes = _rotation_votes(tree)
-	var cmds := DotVoteCommands.new()
+	var cmds := GSVoteCommands.new()
 	cmds.director = votes.director
 	cmds.prefix = TmcVote.COMMAND_PREFIX
 	cmds.names = TmcVote.COMMAND_NAMES.duplicate()
@@ -2093,7 +2093,7 @@ func _test_game_rotation() -> void:
 		"an alias that another command holds is skipped, the name beside it registers (%s)" % [cmds.skipped])
 	_check(cmds.typed("vote") == "/g_pick" and cmds.command_name("nextmap") == "g_next",
 		"the hint reads the renamed command behind the first chat prefix, and untouched roles keep the defaults (%s)" % cmds.typed("vote"))
-	var plain := DotVoteCommands.new()
+	var plain := GSVoteCommands.new()
 	plain.prefix = TmcVote.COMMAND_PREFIX
 	plain.names = TmcVote.COMMAND_NAMES.duplicate()
 	plain.spec_fn = TmcGameRotation.from_tree({}).commands
@@ -2179,21 +2179,21 @@ func _test_vote_notices() -> void:
 	var overlay := TmcNoticeOverlay.new()
 	add_child(overlay)
 
-	var sink := overlay.audio.sink as DotAudioSinkNull
+	var sink := overlay.audio.sink as GSAudioSinkNull
 	_check(sink != null, "headless, the overlay's sounds go to the null sink")
 
-	overlay.show_notice(DotNotice.make(&"", "A vote starts in", 10.0, &"game_vote"))
+	overlay.show_notice(GSNotice.make(&"", "A vote starts in", 10.0, &"game_vote"))
 	_check(
 		overlay.line_text(&"game_vote").begins_with("A vote starts in"),
 		"a notice with a topic puts up a line (%s)" % overlay.line_text(&"game_vote")
 	)
-	overlay.show_notice(DotNotice.make(&"", "A vote starts in", 9.0, &"game_vote"))
+	overlay.show_notice(GSNotice.make(&"", "A vote starts in", 9.0, &"game_vote"))
 	_check(
 		overlay.describe()["lines"].size() == 1 and overlay.line_text(&"game_vote").ends_with("9s"),
 		"and the next one for that topic replaces it rather than stacking (%s)"
 			% overlay.line_text(&"game_vote")
 	)
-	overlay.show_notice(DotNotice.make(TmcNoticeOverlay.CUE_VOTE_COUNT))
+	overlay.show_notice(GSNotice.make(TmcNoticeOverlay.CUE_VOTE_COUNT))
 	_check(
 		overlay.describe()["lines"].size() == 1,
 		"a bare cue draws nothing"
@@ -2202,14 +2202,14 @@ func _test_vote_notices() -> void:
 		sink != null and sink.count_of(TmcNoticeOverlay.CUE_VOTE_COUNT) == 1,
 		"and is played through the catalogue"
 	)
-	overlay.show_notice(DotNotice.make(&"tmc_no_such_cue"))
+	overlay.show_notice(GSNotice.make(&"tmc_no_such_cue"))
 	_check(
 		sink != null and sink.count_of(&"tmc_no_such_cue") == 0,
 		"an id the shell does not have is silence, not an error"
 	)
 	# The ballot names the line it stands for, and the line is not drawn while it is open:
 	# the two said the same thing, and the line sat on every game's top-centre HUD.
-	overlay.show_notice(DotNotice.make(&"", "", 20.0, &"game_ballot", {
+	overlay.show_notice(GSNotice.make(&"", "", 20.0, &"game_ballot", {
 		"open": true, "title": "Vote for the next game", "command": "game_vote", "seconds": 20.0,
 		"options": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}], "line": "game_vote",
 	}))
@@ -2217,12 +2217,12 @@ func _test_vote_notices() -> void:
 		overlay.has_line(&"game_vote") and not overlay.is_line_shown(&"game_vote"),
 		"an open ballot hides the line it names, and the line is still there"
 	)
-	overlay.show_notice(DotNotice.make(&"", "Restarting soon", 30.0, &"restart"))
+	overlay.show_notice(GSNotice.make(&"", "Restarting soon", 30.0, &"restart"))
 	_check(overlay.is_line_shown(&"restart"), "and only that line: another one is drawn")
-	overlay.show_notice(DotNotice.make(&"", "", -1.0, &"game_ballot", {"open": false, "winner": "A"}))
+	overlay.show_notice(GSNotice.make(&"", "", -1.0, &"game_ballot", {"open": false, "winner": "A"}))
 	_check(overlay.is_line_shown(&"game_vote"), "and once the ballot closes the line is back")
 	var result_up := overlay.ballot(&"game_ballot").visible
-	overlay.show_notice(DotNotice.make(&"", "", 20.0, &"map_ballot", {
+	overlay.show_notice(GSNotice.make(&"", "", 20.0, &"map_ballot", {
 		"open": true, "title": "Vote for the next map", "command": "votefor", "seconds": 20.0,
 		"options": [{"id": "x", "label": "X"}, {"id": "y", "label": "Y"}],
 	}))
@@ -2235,15 +2235,15 @@ func _test_vote_notices() -> void:
 		overlay.ballot(&"map_ballot").ui_theme.background.a == 1.0,
 		"and a ballot's background is opaque, so a game's HUD does not read through it"
 	)
-	overlay.show_notice(DotNotice.make(&"", "", -1.0, &"map_ballot", {"open": false}))
+	overlay.show_notice(GSNotice.make(&"", "", -1.0, &"map_ballot", {"open": false}))
 	# A headless viewport is 64 x 64, so the width is checked as the function it is.
 	_check(
 		TmcNoticeOverlay.column_width(1280.0) == 360.0 and TmcNoticeOverlay.column_width(854.0) < 300.0
 			and TmcNoticeOverlay.column_width(400.0) == 240.0,
 		"the column is a third of the frame, 240..360 px (%d at 854)" % int(TmcNoticeOverlay.column_width(854.0))
 	)
-	overlay.show_notice(DotNotice.clear(&"restart"))
-	overlay.show_notice(DotNotice.clear(&"game_vote"))
+	overlay.show_notice(GSNotice.clear(&"restart"))
+	overlay.show_notice(GSNotice.clear(&"game_vote"))
 	_check(not overlay.has_line(&"game_vote"), "and a clear takes the line down")
 	_check(
 		TmcNoticeOverlay.format_seconds(75.2) == "1:16"
@@ -2291,16 +2291,16 @@ func _test_auth() -> void:
 	# TICKET with no server_id adopts it from the site. dot-auth refuses every signed-in
 	# join until then: a ticket verified with no audience is valid on every server.
 	var work := "user://tmc_auth_test"
-	DotPaths.remove_tree(work)
-	DotPaths.ensure_dir(work)
+	GSPaths.remove_tree(work)
+	GSPaths.ensure_dir(work)
 
 	var pub := work.path_join("issuer.pub.pem")
-	DotPaths.write_text(pub, "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----\n")
+	GSPaths.write_text(pub, "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----\n")
 
 	var no_id := TmcAuth.build({
 		"enabled": true, "strategy": "ticket", "issuer_public_key_file": "issuer.pub.pem",
 	}, work, work)
-	var no_id_server: DotAuthServer = no_id.value if no_id.ok else null
+	var no_id_server: GSAuthServer = no_id.value if no_id.ok else null
 	_check(
 		no_id_server != null and no_id_server.config.adopt_ticket_trust
 			and no_id_server.config.ticket_public_key.contains("PUBLIC KEY")
@@ -2315,10 +2315,10 @@ func _test_auth() -> void:
 
 	var shipped := TmcYaml.parse_file("res://cfg.example/addon/dot_auth/auth.yml")
 	var shipped_built := TmcAuth.build(shipped.value if shipped.ok else {}, work)
-	var shipped_cfg: DotAuthConfig = (shipped_built.value as DotAuthServer).config \
+	var shipped_cfg: GSAuthConfig = (shipped_built.value as GSAuthServer).config \
 		if shipped_built.ok and shipped_built.value != null else null
 	_check(
-		shipped_cfg != null and shipped_cfg.strategy == DotAuthConfig.Strategy.TICKET
+		shipped_cfg != null and shipped_cfg.strategy == GSAuthConfig.Strategy.TICKET
 			and shipped_cfg.adopt_ticket_trust and shipped_cfg.ticket_public_key == ""
 			and shipped_cfg.backbone_url.begins_with("https://"),
 		"the shipped auth.yml is ticket mode with nothing to fill in",
@@ -2330,7 +2330,7 @@ func _test_auth() -> void:
 		(shipped_built.value as Node).free()
 	var strict := TmcAuth.build({"enabled": true, "strategy": "ticket", "require_ticket_binding": true}, work)
 	_check(strict.ok and strict.value != null
-			and (strict.value as DotAuthServer).config.require_ticket_binding,
+			and (strict.value as GSAuthServer).config.require_ticket_binding,
 		"require_ticket_binding reaches the auth server", str(strict.error))
 	if strict.ok and strict.value != null:
 		(strict.value as Node).free()
@@ -2339,7 +2339,7 @@ func _test_auth() -> void:
 	# forge any player's identity, which is the one thing the whole ticket design exists
 	# to prevent -- so it is refused by name rather than quietly working.
 	var priv := work.path_join("issuer.key.pem")
-	DotPaths.write_text(priv, "-----BEGIN PRIVATE KEY-----\nMIIB\n-----END PRIVATE KEY-----\n")
+	GSPaths.write_text(priv, "-----BEGIN PRIVATE KEY-----\nMIIB\n-----END PRIVATE KEY-----\n")
 
 	var wrong_half := TmcAuth.build({
 		"enabled": true, "strategy": "ticket", "server_id": "eu-1",
@@ -2352,8 +2352,8 @@ func _test_auth() -> void:
 		"issuer_public_key_file": "nope.pem",
 	}, work)
 	_check(
-		missing.ok and (missing.value as DotAuthServer).config.adopt_ticket_trust
-			and (missing.value as DotAuthServer).config.server_id == "eu-1",
+		missing.ok and (missing.value as GSAuthServer).config.adopt_ticket_trust
+			and (missing.value as GSAuthServer).config.server_id == "eu-1",
 		"a key file that is not there falls back to the site's keys, keeping the pinned id",
 		str(missing.error)
 	)
@@ -2370,13 +2370,13 @@ func _test_auth() -> void:
 	_check(node != null, "and produces an auth server for dot-server to find")
 
 	if node != null:
-		var cfg: DotAuthConfig = node.get("config")
+		var cfg: GSAuthConfig = node.get("config")
 		_check(
-			cfg.strategy == DotAuthConfig.Strategy.TICKET and cfg.server_id == "eu-1"
+			cfg.strategy == GSAuthConfig.Strategy.TICKET and cfg.server_id == "eu-1"
 				and cfg.allow_guests,
 			"carrying the strategy, the audience and the guest policy from the YAML"
 		)
-		# `DotAuthServer` layers a JSON file over the config it was handed, and its
+		# `GSAuthServer` layers a JSON file over the config it was handed, and its
 		# default points into `user://` -- a file no operator of this tool writes,
 		# silently outranking the YAML that is the documented surface.
 		_check(
@@ -2394,7 +2394,7 @@ func _test_auth() -> void:
 		# The template names one whatever the strategy; introspection must not need it.
 		"issuer_public_key_file": "not-here.pem",
 	}, work)
-	var scoped_node: DotAuthServer = scoped.value if scoped.ok else null
+	var scoped_node: GSAuthServer = scoped.value if scoped.ok else null
 	_check(
 		scoped_node != null and scoped_node.scoped_only,
 		"introspection refuses joins until it can ask the site as this server",
@@ -2408,7 +2408,7 @@ func _test_auth() -> void:
 		"backbone_url": "https://site.example",
 	}, work)
 	_check(
-		legacy_introspect.ok and not (legacy_introspect.value as DotAuthServer).scoped_only,
+		legacy_introspect.ok and not (legacy_introspect.value as GSAuthServer).scoped_only,
 		"and introspect_scoped: false is the old first-party behaviour, by name"
 	)
 	if legacy_introspect.ok:
@@ -2416,14 +2416,14 @@ func _test_auth() -> void:
 
 	# The flat legacy file every server got: introspect, no server_id, no first_party.
 	# Read as ticket, with one WARN naming the file, instead of guests only.
-	DotPaths.write_text(work.path_join("auth.yml"), "enabled: true\nstrategy: introspect\n")
+	GSPaths.write_text(work.path_join("auth.yml"), "enabled: true\nstrategy: introspect\n")
 	var migrated := TmcAuth.build({
 		"enabled": true, "strategy": "introspect", "server_id": "",
 		"backbone_url": "https://site.example", "allow_guests": true,
 	}, work)
-	var migrated_cfg: DotAuthConfig = (migrated.value as DotAuthServer).config if migrated.ok else null
+	var migrated_cfg: GSAuthConfig = (migrated.value as GSAuthServer).config if migrated.ok else null
 	_check(
-		migrated_cfg != null and migrated_cfg.strategy == DotAuthConfig.Strategy.TICKET
+		migrated_cfg != null and migrated_cfg.strategy == GSAuthConfig.Strategy.TICKET
 			and migrated_cfg.adopt_ticket_trust,
 		"a legacy introspect auth.yml with no server_id runs in ticket mode",
 		str(migrated.error)
@@ -2438,14 +2438,14 @@ func _test_auth() -> void:
 	# [b]The roster report[/b]: the URL from the YAML, the key from a file beside it, and a
 	# key written inline refused by name, because a secret in the YAML is a secret in every
 	# paste of the configuration.
-	DotPaths.write_text(work.path_join("report.key"), "s3cret-report-key\n")
+	GSPaths.write_text(work.path_join("report.key"), "s3cret-report-key\n")
 	var reporting := TmcAuth.build({
 		"enabled": true, "strategy": "ticket", "server_id": "eu-1",
 		"issuer_public_key_file": "issuer.pub.pem",
 		"session_report_url": "https://issuer.example", "session_report_key_file": "report.key",
 		"session_report_interval_sec": 30,
 	}, work)
-	var reporting_cfg: DotAuthConfig = (reporting.value as Node).get("config") if reporting.ok else null
+	var reporting_cfg: GSAuthConfig = (reporting.value as Node).get("config") if reporting.ok else null
 	_check(
 		reporting_cfg != null and reporting_cfg.session_report_url == "https://issuer.example"
 			and reporting_cfg.session_report_key == "s3cret-report-key"
@@ -2473,6 +2473,6 @@ func _test_auth() -> void:
 	}, work)
 	_check(not lost_key.ok, "and a key file that is not there names the path")
 
-	DotPaths.remove_tree(work)
+	GSPaths.remove_tree(work)
 	_done()
 

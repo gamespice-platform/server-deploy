@@ -22,7 +22,7 @@ const MAPS_FLAG := "--solo-maps"
 ## The pointer a publish writes beside a pack's versions.
 const LATEST_FILE := "latest.json"
 
-## `<owner>/<name>`, each a slug. The same shape `DotCloudManifest.validate_shape()` and the
+## `<owner>/<name>`, each a slug. The same shape `GSCloudManifest.validate_shape()` and the
 ## site's `BuildPackId` require; anything else is not a pack id and is refused before a
 ## request is made for it.
 const ID_PATTERN := "^[a-z0-9][a-z0-9_-]{0,63}/[a-z0-9][a-z0-9_-]{0,63}$"
@@ -68,10 +68,10 @@ static func requested() -> Dictionary:
 	var version := _arg(args, "--solo-version")
 	var map := _arg(args, "--solo-map")
 
-	if id == "" and DotPlatform.is_web():
-		id = DotWeb.query_param("solo")
-		version = DotWeb.query_param("solo_version")
-		map = DotWeb.query_param("map")
+	if id == "" and GSPlatform.is_web():
+		id = GSWeb.query_param("solo")
+		version = GSWeb.query_param("solo_version")
+		map = GSWeb.query_param("map")
 
 	id = id.strip_edges().to_lower()
 	version = version.strip_edges()
@@ -81,13 +81,13 @@ static func requested() -> Dictionary:
 		return {"id": "", "version": "", "map": ""}
 
 	if not valid_id(id) or not valid_version(version):
-		DotLog.warn(CHANNEL, "refusing a solo request that is not a pack id", {
+		GSLog.warn(CHANNEL, "refusing a solo request that is not a pack id", {
 			"id": id, "version": version,
 		})
 		return {"id": "", "version": "", "map": "", "refused": id}
 
 	if map != "" and not valid_map(map):
-		DotLog.warn(CHANNEL, "ignoring a start map that is not a map id", {"map": map})
+		GSLog.warn(CHANNEL, "ignoring a start map that is not a map id", {"map": map})
 		map = ""
 
 	return {"id": id, "version": version, "map": map}
@@ -136,40 +136,40 @@ static func falls_back(pinned: String, latest: String) -> bool:
 
 ## Reads one `latest.json` body: `{version, moved_to}`. Pure, so the selftest drives it. [param hop]
 ## is how many `moved_to` links were already followed.
-static func follow_pointer(content_id: String, body: Variant, hop: int) -> DotResult:
+static func follow_pointer(content_id: String, body: Variant, hop: int) -> GSResult:
 	if not body is Dictionary:
-		return DotResult.fail(DotError.CODE_IO, "%s is not an object" % LATEST_FILE)
+		return GSResult.fail(GSError.CODE_IO, "%s is not an object" % LATEST_FILE)
 
 	var dict := body as Dictionary
 	var moved := str(dict.get("moved_to", "")).strip_edges()
 
 	if moved != "":
 		if moved == content_id or hop >= 1:
-			return DotResult.fail(
-				DotError.CODE_STATE,
+			return GSResult.fail(
+				GSError.CODE_STATE,
 				"%s moved to %s, which is a %s." % [content_id, moved,
 					"loop" if moved == content_id else "second hop"],
 				"%s is followed one hop only; republish the pack under its real id" % LATEST_FILE
 			)
 
 		if not moved.contains("/") or moved.contains("..") or moved.contains(" "):
-			return DotResult.fail(
-				DotError.CODE_INVALID, "%s names a moved_to that is not <owner>/<name>: %s" % [content_id, moved]
+			return GSResult.fail(
+				GSError.CODE_INVALID, "%s names a moved_to that is not <owner>/<name>: %s" % [content_id, moved]
 			)
 
-		return DotResult.success({"version": "", "moved_to": moved})
+		return GSResult.success({"version": "", "moved_to": moved})
 
 	var version := str(dict.get("version", ""))
 
 	if version == "":
-		return DotResult.fail(DotError.CODE_IO, "%s named no version" % content_id)
+		return GSResult.fail(GSError.CODE_IO, "%s named no version" % content_id)
 
-	return DotResult.success({"version": version, "moved_to": ""})
+	return GSResult.success({"version": version, "moved_to": ""})
 
 
 ## The newest published version of [param id], from `latest.json` under each base in turn: `{id,
 ## version}`.
-static func resolve_latest(host: Node, id: String, bases: PackedStringArray) -> DotResult:
+static func resolve_latest(host: Node, id: String, bases: PackedStringArray) -> GSResult:
 	var first := await _fetch_pointer(host, id, bases, 0)
 
 	if not first.ok:
@@ -178,9 +178,9 @@ static func resolve_latest(host: Node, id: String, bases: PackedStringArray) -> 
 	var moved := str((first.value as Dictionary)["moved_to"])
 
 	if moved == "":
-		return DotResult.success({"id": id, "version": first.value["version"]})
+		return GSResult.success({"id": id, "version": first.value["version"]})
 
-	DotLog.warn(CHANNEL, "the config names a retired content id; change it", {
+	GSLog.warn(CHANNEL, "the config names a retired content id; change it", {
 		"retired": id, "change_to": moved,
 	})
 	var second := await _fetch_pointer(host, moved, bases, 1)
@@ -188,19 +188,19 @@ static func resolve_latest(host: Node, id: String, bases: PackedStringArray) -> 
 	if not second.ok:
 		return second.wrap("could not follow %s to %s:" % [id, moved])
 
-	return DotResult.success({"id": moved, "version": second.value["version"]})
+	return GSResult.success({"id": moved, "version": second.value["version"]})
 
 
-static func _fetch_pointer(host: Node, id: String, bases: PackedStringArray, hop: int) -> DotResult:
-	var http := DotHttp.new()
+static func _fetch_pointer(host: Node, id: String, bases: PackedStringArray, hop: int) -> GSResult:
+	var http := GSHttp.new()
 	http.name = "SoloLatest"
 	host.add_child(http)
 
 	var tried := PackedStringArray()
 
 	for base in bases:
-		var url := "%s/%s/%s" % [DotCloudClient.resolve_base_url(base).rstrip("/"), id, LATEST_FILE]
-		var res: DotResult = await http.get_json(url)
+		var url := "%s/%s/%s" % [GSCloudClient.resolve_base_url(base).rstrip("/"), id, LATEST_FILE]
+		var res: GSResult = await http.get_json(url)
 
 		if not res.ok:
 			tried.append("%s: %s" % [url, str(res.error)])
@@ -212,7 +212,7 @@ static func _fetch_pointer(host: Node, id: String, bases: PackedStringArray, hop
 			tried.append("%s named no usable version" % url)
 			continue
 
-		if followed.ok or followed.error.code != DotError.CODE_IO:
+		if followed.ok or followed.error.code != GSError.CODE_IO:
 			http.queue_free()
 			return followed
 
@@ -220,8 +220,8 @@ static func _fetch_pointer(host: Node, id: String, bases: PackedStringArray, hop
 
 	http.queue_free()
 
-	return DotResult.fail(
-		DotError.CODE_IO,
+	return GSResult.fail(
+		GSError.CODE_IO,
 		"%s has no published version." % id,
 		tried_summary(tried)
 	)
@@ -236,17 +236,17 @@ static func tried_summary(tried: PackedStringArray) -> String:
 ## The fields of a pack's `game.yml` that solo needs, read out of the mount. [b]A reader for the
 ## subset, not a YAML parser.[/b] `host/` (and [TmcYaml]) are not in the client build, and the
 ## descriptor fields read here are flat: scalars and lists of scalars at the top level.
-static func read_descriptor(mount: String) -> DotResult:
+static func read_descriptor(mount: String) -> GSResult:
 	var path := mount.path_join("game.yml")
 
 	if not FileAccess.file_exists(path):
-		return DotResult.fail(
-			DotError.CODE_IO,
+		return GSResult.fail(
+			GSError.CODE_IO,
 			"This pack has no game.yml, so it is not a game that can be played solo.",
 			path
 		)
 
-	return DotResult.success(parse_descriptor(FileAccess.get_file_as_string(path)))
+	return GSResult.success(parse_descriptor(FileAccess.get_file_as_string(path)))
 
 
 ## The flat fields of a `game.yml` text: `client_scene`, `name`, `content_id`, `version`,
@@ -404,7 +404,7 @@ static func set_skip_maps(content_id: String, skip: bool) -> void:
 	elif cfg.has_section_key("skip_maps", content_id):
 		cfg.erase_section_key("skip_maps", content_id)
 	if cfg.save(PREFS) != OK:
-		DotLog.warn(CHANNEL, "could not keep the solo maps choice", {"path": PREFS})
+		GSLog.warn(CHANNEL, "could not keep the solo maps choice", {"path": PREFS})
 		return
 	# user:// in a browser is an IndexedDB mirror that is only written when asked.
-	DotWeb.sync_filesystem()
+	GSWeb.sync_filesystem()

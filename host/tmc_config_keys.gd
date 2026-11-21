@@ -9,7 +9,7 @@ const BOOT_KEYS := {
 	"net_port": "port",
 	"net_bind_ip": "bind_address",
 	# dual (WebSocket for browsers + ENet over UDP for native clients, one match),
-	# websocket, or enet. See DotServerConfig.transport_mode.
+	# websocket, or enet. See GSServerConfig.transport_mode.
 	"net_transport": "transport_mode",
 	# ENet's UDP port; 0 is the game port's number, shared with A2S/DQP through a demux.
 	"net_enet_port": "enet_port",
@@ -38,7 +38,7 @@ const BOOT_KEYS := {
 	"content_manifest_url": "content_manifest_url",
 	# dot-server documents this as the one stdin decision that is a real decision, and it was unreachable because YAML is this deployment's only surface.
 	# A server whose stdin carries something other than commands needs it, and so does anything running two servers in one process:
-	# [DotStdinConsole] is a thread blocked in a read the engine cannot cancel, so the second keeps the process alive.
+	# [GSStdinConsole] is a thread blocked in a read the engine cannot cancel, so the second keeps the process alive.
 	"sv_stdin_console": "stdin_console_enabled",
 	# And whether a PIPE counts (GameSpice Server 5f46687): off by default, because a reader blocked on a pipe whose writer never closes keeps the process from exiting.
 	# TMC's panel talks RCON and neither the Docker image nor the systemd unit gives the server a stdin, so the default stands.
@@ -73,7 +73,7 @@ const NET_KEYS := {
 	"net_stagger_snapshots": "stagger_snapshots",
 }
 
-## Operator-facing name -> [code]DotLogConfig[/code] property, only what dot-log adds: the level, channels, mirror threshold and file settings are in [constant BOOT_KEYS]
+## Operator-facing name -> [code]GSLogConfig[/code] property, only what dot-log adds: the level, channels, mirror threshold and file settings are in [constant BOOT_KEYS]
 ## already (a server without GameSpice Log has them through GameSpice Core's sink) and are copied across in [method build_log_router]; two lists for one fact is this tree's most repeated bug.
 ## [code]log_router[/code] is NOT here: it decides whether the router is built, and is handled by name in [method _apply_settings].
 const LOG_KEYS := {
@@ -125,7 +125,7 @@ const LAYERED := {
 }
 
 ## Key prefix in `server.yml` -> the addon folder that owns it now (`cfg/addons/<addon>/`). Still
-## applied from `server.yml` until DotCfgLegacy's cutoff, with one WARN naming the keys.
+## applied from `server.yml` until GSCfgLegacy's cutoff, with one WARN naming the keys.
 ## `rcon_password` stays where it is: a secret may live in `server.yml` or the addon's folder.
 const LEGACY_KEYS := {
 	"log_": "dot_log",

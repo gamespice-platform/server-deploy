@@ -16,7 +16,7 @@ bad() { printf '  %sFAIL%s %s\n' "$RED" "$OFF" "$1"; fails=$((fails + 1)); }
 command -v python3 >/dev/null || { echo "  skip game_listing (python3 missing)"; exit 0; }
 G="$W/mg-demo"; mkdir -p "$G"
 printf 'content_id: gamemann/game-demo  # differs from the repo name on purpose\nname: Demo Run\nkind: pack\n' >"$G/game.yml"
-printf '# Demo\n\nIntro [**Dot**](https://x.invalid) built on Godot. In this 3D game, players **race** on [tracks](https://x.invalid). Second one. This is inspired by tv. Third.\n' >"$G/README.md"
+printf '# Demo\n\nIntro [**GS**](https://x.invalid) built on Godot. In this 3D game, players **race** on [tracks](https://x.invalid). Second one. This is inspired by tv. Third.\n' >"$G/README.md"
 
 python3 -I "$TOOL" --check "$G" >/dev/null 2>&1 && bad "--check passes with no file" || ok "--check fails when the file is missing"
 python3 -I "$TOOL" "$G" >/dev/null 2>&1 && [ -f "$G/deployment/game-listing.json" ] && ok "writes the file" || bad "did not write the file"

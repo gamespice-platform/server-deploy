@@ -28,7 +28,7 @@ entries:
 
 Layers, weakest first: the shipped default, `cfg/content/<file>`, then the operator's `cfg/server/content/<file>` (still read). Without `merge: true` the strongest file is the whole list. A pin is respected as written; an unpinned entry follows the origin's newest. A pack is still checked against its signature by dot-cloud, this only says what to fetch.
 
-A bad entry (both or neither of `repo` and `pack`, a name with a path in it, a pin with odd characters) fails with `DotError.CODE_INVALID` naming the file and entry number; a file that is not yml fails with `CODE_PARSE`. `examples/selftest.gd` covers the default, replace, merge, server override, pin and bad entries.
+A bad entry (both or neither of `repo` and `pack`, a name with a path in it, a pin with odd characters) fails with `GSError.CODE_INVALID` naming the file and entry number; a file that is not yml fails with `CODE_PARSE`. `examples/selftest.gd` covers the default, replace, merge, server override, pin and bad entries.
 
 A `games.yml` entry may also carry `maps: [id, ...]` (the rotation, in that order) and `rotation: sequential|random|vote`; absent means every installed map sorted by name, sequential. A map may carry its own time limit in seconds: a `maps:` item written as a block mapping (`- id: surf_b` then `time_limit: 600`) or a one-line flow mapping (`- {id: surf_b, time_limit: 600}`) (`map_rotation` returns these as `time_limits`).
 

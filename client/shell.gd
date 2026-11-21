@@ -2,7 +2,7 @@ extends Node
 
 ## The client shell: connect to a server, be sent a game, play it. It knows no particular game.
 ## A delivered pack brings no class list, so its scripts must reference each other by path (`preload("res://x.gd")`);
-## addons are laid over `res://addons/` at boot instead, see [DotCloudAddonSet] and [method _on_server_info].
+## addons are laid over `res://addons/` at boot instead, see [GSCloudAddonSet] and [method _on_server_info].
 
 const CHANNEL := "tmc.shell"
 
@@ -25,15 +25,15 @@ const AUTH_CONFIG := "res://client/auth.json"
 ## one JSON file per namespace. English ships; a language without a file falls back to it.
 const LOCALE_DIR := "res://client/locales"
 
-var link: DotClientLink = null
+var link: GSClientLink = null
 
 var _game_root: Node = null
-var _auth: DotAuthClient = null
+var _auth: GSAuthClient = null
 
 ## The content client. Created on the first connection, and kept — a second one would
-## displace the first in [DotRegistry] and the link would fetch through a client whose
+## displace the first in [GSRegistry] and the link would fetch through a client whose
 ## cache the mounted packs do not belong to.
-var _cloud: DotCloudClient = null
+var _cloud: GSCloudClient = null
 var _menu: Control = null
 var _status: Label = null
 var _address: LineEdit = null
@@ -42,7 +42,7 @@ var _identity: Label = null
 var _join: Button = null
 var _progress: ProgressBar = null
 var _detail: Label = null
-## Latest overall snapshot of a many-pack download (DotCloudJobProgress); empty when none runs.
+## Latest overall snapshot of a many-pack download (GSCloudJobProgress); empty when none runs.
 var _job: Dictionary = {}
 var _clear: Button = null
 var _clear_confirm: ConfirmationDialog = null
@@ -51,7 +51,7 @@ var _content_failed_text: Label = null
 var _mouse_before_prompt: Input.MouseMode = Input.MOUSE_MODE_VISIBLE
 
 ## Solo play (see [TmcSolo]): the pack this shell was asked to run with no server, the
-## version it resolved to, and the session object a game and its menu find in [DotRegistry].
+## version it resolved to, and the session object a game and its menu find in [GSRegistry].
 var _solo_id: String = ""
 var _solo_version: String = ""
 ## The map the solo game was asked to start on (`?map=`), "" for its own first map.
@@ -64,7 +64,7 @@ var _solo_retry: String = ""
 ## What [method _mount_in_place] did: the overlay runs; the engine refused it (restart onto it instead); or it is mounted but an
 ## addon still runs a compiled copy (blocked, as a failed boot is).
 enum InPlace { RUNNING, REFUSED, STALE }
-## Where GameSpice Cloud's boot script records the overlay it mounted ([method DotCloudAddonSet.mounted_this_boot] reads it).
+## Where GameSpice Cloud's boot script records the overlay it mounted ([method GSCloudAddonSet.mounted_this_boot] reads it).
 const OVERLAY_SETTING := "dot_cloud/addon_overlay"
 ## Whether to fetch this game's maps pack in solo; see [method TmcSolo.skip_maps].
 var _solo_maps_check: CheckBox = null
@@ -106,7 +106,7 @@ var _address_caption: Label = null
 
 ## The Workshop's sync client (see [method _ensure_workshop]): the subscribed packs a solo
 ## start mounts. Never synced for an online join.
-var _workshop: DotCloudWorkshop = null
+var _workshop: GSCloudWorkshop = null
 
 ## The site origin the Workshop talks to when it is not the one in `client/auth.json`. For a
 ## suite pointing it at a fake site; a player's page can never set it.
@@ -122,7 +122,7 @@ signal _download_answered(yes: bool)
 var restart_fn: Callable = Callable()
 
 ## The player's party, when they are signed in. See [method _build_party].
-var _party: DotPartyClient = null
+var _party: GSPartyClient = null
 
 ## Which party this link has already told the server about, so a poll does not claim twice.
 var _claimed_party: String = ""
@@ -137,7 +137,7 @@ var _friends_box: VBoxContainer = null
 const FRIENDS_SHOWN := 4
 
 ## Every sentence this shell shows a player goes through here. See [method _build_locale].
-var _locale: DotLocale = null
+var _locale: GSLocale = null
 
 ## What the server puts on the HUD over whatever game is showing: the game vote's
 ## countdown and its cues. See [TmcNoticeOverlay] for why the shell draws it.
@@ -168,7 +168,7 @@ var _joining := false
 ## number here because the link does it in one synchronous call.
 var _join_marks: Dictionary = {}
 
-## Whose packs may replace this build's addons is [TmcAddonNamespaces] (first-party defaults plus the operator's `cfg/addons/namespaces.txt`). See [DotCloudAddonSet].
+## Whose packs may replace this build's addons is [TmcAddonNamespaces] (first-party defaults plus the operator's `cfg/addons/namespaces.txt`). See [GSCloudAddonSet].
 
 ## Set while newer addons are being fetched for the server just left.
 var _addons_updating := false
@@ -186,9 +186,9 @@ func _ready() -> void:
 	)
 
 	# `?log=debug` on the page URL raises the level in a browser build, which has no command line.
-	var verbose := "--verbose" in OS.get_cmdline_user_args() or DotWeb.query_param("log") == "debug"
-	DotLog.set_level(DotLog.Level.DEBUG if verbose else DotLog.Level.INFO)
-	DotLog.info(CHANNEL, TmcNativeStatus.line())
+	var verbose := "--verbose" in OS.get_cmdline_user_args() or GSWeb.query_param("log") == "debug"
+	GSLog.set_level(GSLog.Level.DEBUG if verbose else GSLog.Level.INFO)
+	GSLog.info(CHANNEL, TmcNativeStatus.line())
 
 	TmcSiteDefault.apply(AUTH_CONFIG)
 
@@ -239,7 +239,7 @@ func _ready() -> void:
 	add_child(inventory_link)
 	inventory_link.start()
 
-	# Claims the covering job for every DotLoadGate a game makes under the game root, so
+	# Claims the covering job for every GSLoadGate a game makes under the game root, so
 	# only the loading screen shows, never the gate's own cover as well.
 	_cover = TmcGameCover.new()
 	_cover.name = "GameCover"
@@ -250,8 +250,8 @@ func _ready() -> void:
 
 	# The shell is built, so a start on the addon overlay arrived. Until this line a broken
 	# addon is still a start that died, and the boot script comes up without the overlay
-	# next time. See [DotCloudAddonSet].
-	DotCloudAddonSet.confirm_boot()
+	# next time. See [GSCloudAddonSet].
+	GSCloudAddonSet.confirm_boot()
 
 	# Awaited, because the answer changes the name the connection is opened with; one arriving after the join renames a "Guest 812" in front of everybody.
 	# Read before signing in: a restart onto newer addons says who was signed in (see [method _sign_in]).
@@ -323,7 +323,7 @@ func _build_notice_panels() -> void:
 	admin_menu.send_fn = func(path: String) -> void:
 		if link == null:
 			return
-		if not link.send_kind(TmcAdminMenuPanel.KIND, {"path": path}, DotEnvelope.Lane.EVENT):
+		if not link.send_kind(TmcAdminMenuPanel.KIND, {"path": path}, GSEnvelope.Lane.EVENT):
 			link.send_chat("/%s %s" % [TmcAdminMenuPanel.NAV_COMMAND, path])
 	# An admin who opened a menu meant the number keys for it, not for a ballot.
 	admin_menu.opened.connect(func() -> void:
@@ -342,8 +342,8 @@ func _requested_server() -> String:
 	if index >= 0 and index + 1 < args.size():
 		return args[index + 1]
 
-	if DotPlatform.is_web():
-		return DotWeb.query_param("server")
+	if GSPlatform.is_web():
+		return GSWeb.query_param("server")
 
 	return ""
 
@@ -359,7 +359,7 @@ func _user_arg(name: String) -> String:
 
 ## The launcher's sign-in code from `--auth-code <code>`, or "". A well-formed `tmc_gh_` code only (closed character set), so a stray value never reaches the backbone.
 func _launcher_auth_code() -> String:
-	if DotPlatform.is_web():
+	if GSPlatform.is_web():
 		return ""
 
 	var code := _user_arg("--auth-code").strip_edges()
@@ -376,22 +376,22 @@ func _launcher_auth_code() -> String:
 	return code
 
 
-## Signs in against the backbone when the page offers a way: inside the TMC player the site hands over a single-use code ([DotAuthWebHandoff]);
+## Signs in against the backbone when the page offers a way: inside the TMC player the site hands over a single-use code ([GSAuthWebHandoff]);
 ## elsewhere `sign_in()` fails at once and the player stays a guest, because a device-code flow puts a code to read in front of someone who wanted Play.
 ## The name is a LABEL, not proof: a server that needs to know who somebody is verifies that itself.
 func _sign_in(resumed: Dictionary = {}) -> void:
 	# The desktop app's single-use code (`--auth-code`), minted by the site's /play/launch for a signed-in player. Native only: the page handoff is the web's.
 	var launcher_code := _launcher_auth_code()
 
-	if launcher_code == "" and not DotAuthWebHandoff.supported():
+	if launcher_code == "" and not GSAuthWebHandoff.supported():
 		return
 
-	_auth = DotAuthClient.new()
+	_auth = GSAuthClient.new()
 	_auth.name = "Auth"
 	# The shell drives sign-in itself, at the one moment it makes sense: nothing
 	# here should start a login because a node entered the tree.
 	_auth.auto_sign_in = false
-	_auth.config = DotAuthConfig.new()
+	_auth.config = GSAuthConfig.new()
 	_auth.config.client_name = "TMC Web Player"
 
 	# The backbone comes from a file shipped in the build, like `client/content.json`: a browser has neither env nor argv, and a query-string URL
@@ -399,7 +399,7 @@ func _sign_in(resumed: Dictionary = {}) -> void:
 	_auth.config_file = AUTH_CONFIG if FileAccess.file_exists(AUTH_CONFIG) else ""
 
 	if _auth.config_file == "":
-		DotLog.info(
+		GSLog.info(
 			CHANNEL,
 			"no auth configuration; signing in against the default backbone",
 			{"looked_for": AUTH_CONFIG, "backbone": _auth.config.backbone_url}
@@ -409,7 +409,7 @@ func _sign_in(resumed: Dictionary = {}) -> void:
 
 	# `try_web_handoff`, not `sign_in`: `sign_in()` falls through to a device-code login, which cost every bare-link shell
 	# two backbone requests per page load for a code nobody can read.
-	var res: DotResult
+	var res: GSResult
 	if launcher_code != "":
 		# Redeemed at this client's own backbone (`--auth-backbone-url` / auth.json), never a URL argv names. Single-use, 60 s: a failure leaves a guest.
 		res = await _auth.redeem_handoff(launcher_code)
@@ -419,25 +419,25 @@ func _sign_in(resumed: Dictionary = {}) -> void:
 	# A restart onto newer addons must not sign a member out: the page's code is single-use and already spent, so the handoff fails here;
 	# the stored credentials are used only for the member the update recorded (a guest stays a guest).
 	if not res.ok and str(resumed.get("member", "")) != "":
-		var restored: DotResult = await _auth.restore_session()
+		var restored: GSResult = await _auth.restore_session()
 
-		if restored.ok and (restored.value as DotAuthIdentity).uid == str(resumed["member"]):
+		if restored.ok and (restored.value as GSAuthIdentity).uid == str(resumed["member"]):
 			res = restored
 		elif restored.ok:
 			_auth.sign_out(true)
 
 	if not res.ok:
-		DotLog.debug(
+		GSLog.debug(
 			"shell", "playing as a guest", {"why": res.code()}
 		)
 		return
 
-	var identity := res.value as DotAuthIdentity
+	var identity := res.value as GSAuthIdentity
 
 	# Said once per start with the member's uid, because "is this player still the same
 	# member after the addon restart" is the question an operator asks and the one
 	# tools/browser_update_check.mjs asserts on; the label is drawn, not logged.
-	DotLog.info(CHANNEL, "signed in", {"member": identity.uid, "name": identity.display_name})
+	GSLog.info(CHANNEL, "signed in", {"member": identity.uid, "name": identity.display_name})
 
 	_name.text = identity.display_name
 	# Read-only rather than hidden: somebody signed in should be able to SEE who
@@ -456,40 +456,40 @@ func _sign_in(resumed: Dictionary = {}) -> void:
 ## also enforces the list when minting, so a server it adds works without a new build;
 ## when it cannot answer, the list from `client/auth.json` (if any) stays.
 func _refresh_first_party() -> void:
-	var res: DotResult = await _auth.get_app("play/first-party")
+	var res: GSResult = await _auth.get_app("play/first-party")
 	if res.ok:
 		res = TmcSiteDefault.first_party_from(res.value)
 
 	if not res.ok:
-		DotLog.warn(CHANNEL, "the site's first-party servers are unavailable; keeping the shipped list", {
+		GSLog.warn(CHANNEL, "the site's first-party servers are unavailable; keeping the shipped list", {
 			"why": res.code(), "shipped": _auth.config.first_party_audiences,
 		})
 		return
 
 	_auth.config.first_party_audiences = res.value
-	DotLog.debug(CHANNEL, "first-party servers from the site", {"audiences": res.value})
+	GSLog.debug(CHANNEL, "first-party servers from the site", {"audiences": res.value})
 
 
 ## The shell's translator, from the shipped messages and the player's language (`--locale-language` on desktop, the page's in a browser).
-## A refusal is a key; [method DotLocale.explain] renders it when the catalogue has it, else the error's own English message.
+## A refusal is a key; [method GSLocale.explain] renders it when the catalogue has it, else the error's own English message.
 func _build_locale() -> void:
-	var cfg := DotLocaleConfig.new()
+	var cfg := GSLocaleConfig.new()
 	cfg.directory = LOCALE_DIR
 	var layered := cfg.load_layered()
 
 	if not layered.ok:
-		DotLog.warn(CHANNEL, "the locale settings were not usable; using the defaults", {
+		GSLog.warn(CHANNEL, "the locale settings were not usable; using the defaults", {
 			"why": str(layered.error),
 		})
-		cfg = DotLocaleConfig.new()
+		cfg = GSLocaleConfig.new()
 		cfg.directory = LOCALE_DIR
 
 	var made := cfg.make()
-	_locale = made.value as DotLocale if made.ok else DotLocale.new()
+	_locale = made.value as GSLocale if made.ok else GSLocale.new()
 
 
 ## A player's text for [param key], or [param fallback] when no language has the key.
-## The key itself is DotLocale's last resort; a player on a stripped build should still read a sentence.
+## The key itself is GSLocale's last resort; a player on a stripped build should still read a sentence.
 func _text(key: String, args: Dictionary, fallback: String) -> String:
 	if _locale == null or not _locale.has(key):
 		return fallback
@@ -497,7 +497,7 @@ func _text(key: String, args: Dictionary, fallback: String) -> String:
 
 
 ## A refusal in the player's language, or its own message.
-func _explain(error: DotError) -> String:
+func _explain(error: GSError) -> String:
 	if error == null:
 		return ""
 	return _locale.explain(error) if _locale != null else error.message
@@ -506,14 +506,14 @@ func _explain(error: DotError) -> String:
 ## The player's party, followed wherever it goes. Only when signed in, because the site only knows signed-in players.
 ## The site does not serve party routes yet (GameSpice Party's docs/backbone-contract.md), so the first 404 switches polling off for the session.
 ## [code]connect_fn[/code] is this shell's Connect path, so following the party is what the player would have done by hand.
-func _build_party(identity: DotAuthIdentity) -> void:
+func _build_party(identity: GSAuthIdentity) -> void:
 	if _auth == null or identity == null:
 		return
 
-	var backend := DotPartyBackendApp.new()
+	var backend := GSPartyBackendApp.new()
 	backend.client = _auth
 
-	_party = DotPartyClient.new()
+	_party = GSPartyClient.new()
 	_party.name = "Party"
 	_party.backend = backend
 	_party.user_id = identity.uid.trim_prefix("backbone:")
@@ -532,13 +532,13 @@ func _build_friends() -> void:
 	if _auth == null:
 		return
 
-	var backend := DotFriendsBackendApp.new()
+	var backend := GSFriendsBackendApp.new()
 	backend.client = _auth
 
 	_friends = TmcFriends.build(backend)
-	_friends.join_party_fn = func(party_id: String, _friend: DotFriend) -> DotResult:
+	_friends.join_party_fn = func(party_id: String, _friend: GSFriend) -> GSResult:
 		if _party == null:
-			return DotResult.fail(DotError.CODE_UNSUPPORTED, "No party client.", "friends.join.deny.unsupported")
+			return GSResult.fail(GSError.CODE_UNSUPPORTED, "No party client.", "friends.join.deny.unsupported")
 		return await _party.join(party_id)
 	_friends.connect_address_fn = func(address: String) -> void:
 		_address.text = address
@@ -558,7 +558,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and content_cache_off():
 		# Best effort: a pack still mounted may hold its file open on some platforms,
 		# which is why the next launch empties the folder first as well.
-		DotPaths.remove_tree(SESSION_CACHE)
+		GSPaths.remove_tree(SESSION_CACHE)
 
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and _friends != null:
 		_quit_after_offline()
@@ -620,7 +620,7 @@ func _render_friends(list: Array) -> void:
 
 	var online: Array = []
 	for f in list:
-		if f is DotFriend and (f as DotFriend).is_online():
+		if f is GSFriend and (f as GSFriend).is_online():
 			online.append(f)
 
 	_friends_box.visible = _friends != null and not _friends.off and not list.is_empty()
@@ -631,23 +631,23 @@ func _render_friends(list: Array) -> void:
 	var head := Label.new()
 	head.text = _text("shell.friends.line", {"online": online.size(), "count": list.size()},
 		"Friends: %d of %d online" % [online.size(), list.size()])
-	head.theme_type_variation = &"DotDim"
+	head.theme_type_variation = &"GSDim"
 	head.add_theme_font_size_override("font_size", 13)
 	_friends_box.add_child(head)
 
 	for i in range(mini(online.size(), FRIENDS_SHOWN)):
-		_friends_box.add_child(_friend_row(online[i] as DotFriend))
+		_friends_box.add_child(_friend_row(online[i] as GSFriend))
 
 	if online.size() > FRIENDS_SHOWN:
 		var more := Label.new()
 		more.text = _text("shell.friends.more", {"count": online.size() - FRIENDS_SHOWN},
 			"and %d more" % (online.size() - FRIENDS_SHOWN))
-		more.theme_type_variation = &"DotDim"
+		more.theme_type_variation = &"GSDim"
 		more.add_theme_font_size_override("font_size", 12)
 		_friends_box.add_child(more)
 
 
-func _friend_row(f: DotFriend) -> Control:
+func _friend_row(f: GSFriend) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	# The height a Join button needs, on every row: rendered, rows with a button and rows
@@ -664,8 +664,8 @@ func _friend_row(f: DotFriend) -> Control:
 	# Elided rather than wrapped: a hostname is the operator's to choose and can be long,
 	# and a row that wraps pushes Connect down in a frame the page sized.
 	var where := Label.new()
-	where.text = f.presence.detail if f.presence.detail != "" else DotPresence.status_name(f.presence.status)
-	where.theme_type_variation = &"DotDim"
+	where.text = f.presence.detail if f.presence.detail != "" else GSPresence.status_name(f.presence.status)
+	where.theme_type_variation = &"GSDim"
 	where.add_theme_font_size_override("font_size", 12)
 	where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	where.clip_text = true
@@ -687,16 +687,16 @@ func _join_friend(user_id: String, display_name: String) -> void:
 	if _friends == null:
 		return
 	_say(_text("shell.friends.joining", {"name": display_name}, "Joining %s…" % display_name))
-	var res: DotResult = await _friends.join(user_id)
+	var res: GSResult = await _friends.join(user_id)
 	if not res.ok:
 		_say(_locale.explain(res.error, {"name": display_name}) if _locale != null else res.error.message)
 
 
-func _follow_party(url: String, info: Dictionary) -> DotResult:
+func _follow_party(url: String, info: Dictionary) -> GSResult:
 	# Already there: a poll in the middle of a ready round must not reconnect a player who
 	# is on the right server, which would drop them and put them back.
 	if link != null and link.is_connected_to_server() and _address.text.strip_edges() == url:
-		return DotResult.success(null)
+		return GSResult.success(null)
 
 	_say(_text("shell.party.following", {"server": str(info.get("serverName", url))},
 		"Your party is playing on %s. Joining…" % str(info.get("serverName", url))))
@@ -704,12 +704,12 @@ func _follow_party(url: String, info: Dictionary) -> DotResult:
 	await _connect_to(url)
 
 	if link == null:
-		return DotResult.fail(DotError.CODE_NETWORK, "Could not follow the party.", url)
+		return GSResult.fail(GSError.CODE_NETWORK, "Could not follow the party.", url)
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
-func _on_party_changed(p: DotParty) -> void:
+func _on_party_changed(p: GSParty) -> void:
 	if _party_line == null:
 		return
 
@@ -732,9 +732,9 @@ func _on_left_party(_party_id: String, reason: String) -> void:
 	_say(_text("shell.party.left.%s" % reason, {}, "You are no longer in your party."))
 
 
-func _on_party_request_failed(what: String, error: DotError) -> void:
+func _on_party_request_failed(what: String, error: GSError) -> void:
 	if error != null and error.http_status == 404 and _party != null:
-		DotLog.info(CHANNEL, "the site does not serve party routes yet; parties are off", {
+		GSLog.info(CHANNEL, "the site does not serve party routes yet; parties are off", {
 			"what": what,
 		})
 		_party.queue_free()
@@ -743,7 +743,7 @@ func _on_party_request_failed(what: String, error: DotError) -> void:
 			_friends.on_party("")
 		return
 
-	DotLog.debug(CHANNEL, "a party request failed", {"what": what, "why": _explain(error)})
+	GSLog.debug(CHANNEL, "a party request failed", {"what": what, "why": _explain(error)})
 
 
 ## Tells the server which party this player is in, once per party per connection, as a chat command (see `TmcParty` on the server).
@@ -752,7 +752,7 @@ func _claim_party() -> void:
 	if _party == null or _party.party == null or link == null or not link.is_connected_to_server():
 		return
 
-	if link.phase != DotClientLink.Phase.PLAYING or _claimed_party == _party.party.id:
+	if link.phase != GSClientLink.Phase.PLAYING or _claimed_party == _party.party.id:
 		return
 
 	_claimed_party = _party.party.id
@@ -848,42 +848,42 @@ func _ensure_cloud() -> void:
 
 
 ## A content client configured as this shell's, not yet in the tree and with nothing listening: a solo game's server process ([method _start_sim_child]) has no screen to report to.
-func _new_cloud() -> DotCloudClient:
-	var cloud := DotCloudClient.new()
+func _new_cloud() -> GSCloudClient:
+	var cloud := GSCloudClient.new()
 	cloud.name = "Cloud"
 	# Who a pack's requires.json refusal names: "...; this CLIENT has level 2" -- the
 	# player's cue that this shell, not the server, is the one to update.
 	cloud.host_role = "client"
-	cloud.config = DotCloudConfig.new()
+	cloud.config = GSCloudConfig.new()
 	# The shell is a player's client even headless, where GameSpice Cloud's `auto` would read "server" and leave client-only files (API 8) behind.
 	# A solo game runs its server here too, so [method _start_solo] widens this to both.
 	cloud.config.side = "client"
 	cloud.add_child(_new_cloud_scheduler())
 
 	# A player may keep nothing: `--content-cache off` points the store at a session folder emptied now and on quit.
-	# An explicit `--cloud-cache-dir` wins; DotCloudConfig already reads the cache dir and size off the command line.
+	# An explicit `--cloud-cache-dir` wins; GSCloudConfig already reads the cache dir and size off the command line.
 	if content_cache_off():
 		cloud.config.cache_dir = SESSION_CACHE
-		DotPaths.remove_tree(SESSION_CACHE)
-		DotLog.info(CHANNEL, "downloads are kept for this session only", {"dir": SESSION_CACHE})
+		GSPaths.remove_tree(SESSION_CACHE)
+		GSLog.info(CHANNEL, "downloads are kept for this session only", {"dir": SESSION_CACHE})
 
 	if ResourceLoader.exists(CONTENT_CONFIG) or FileAccess.file_exists(CONTENT_CONFIG):
 		cloud.config_file = CONTENT_CONFIG
 	else:
-		DotLog.info(
+		GSLog.info(
 			CHANNEL,
 			"no content configuration; this build can only play games it already has",
 			{"looked_for": CONTENT_CONFIG}
 		)
 		cloud.config_file = ""
 
-	# Maps download from `/content` by default: the page's own origin, with no CORS headers to get right. `DotCloudClient` prepends the origin
+	# Maps download from `/content` by default: the page's own origin, with no CORS headers to get right. `GSCloudClient` prepends the origin
 	# because [HTTPRequest] parses the URL in C++ and a root-relative string is not a URL.
 	# Content elsewhere is set in `content.json` (`"content_urls": [...]`) and then needs `Access-Control-Allow-Origin`.
 	var configured := _configured_content_urls()
 	# Natively there is no page origin to resolve `/content` against: HTTPRequest rejects it ("Error parsing URL"), so a desktop shell
 	# has no default and takes its address from `content.json` or `--content-url`.
-	var default_bases := PackedStringArray(["/content"]) if DotPlatform.is_web() else PackedStringArray()
+	var default_bases := PackedStringArray(["/content"]) if GSPlatform.is_web() else PackedStringArray()
 	cloud.http_base_urls = configured if not configured.is_empty() else default_bases
 
 	# No version segment, because the published layout has none: the version is INSIDE the manifest and the mount namespaces by it; the default template 404ed on a CDN serving the map fine.
@@ -894,26 +894,26 @@ func _new_cloud() -> DotCloudClient:
 	return cloud
 
 
-## The hashing scheduler [DotCloudClient] finds as its `CloudScheduler` child, made here so the web never hashes on worker threads. On the threaded web engine a worker's `user://` reads are proxied to the browser's main thread one call a frame, so each mount-time [DotHashJob] took ~0.7 s and FC's ~700 objects sat at "Unpacking 0 of 1" for minutes (web-mt-shell-unpack-hang-1). On the main thread the same jobs share the frame budget, as they always have on the single-threaded engine.
-static func _new_cloud_scheduler() -> DotScheduler:
-	var scheduler := DotScheduler.new()
+## The hashing scheduler [GSCloudClient] finds as its `CloudScheduler` child, made here so the web never hashes on worker threads. On the threaded web engine a worker's `user://` reads are proxied to the browser's main thread one call a frame, so each mount-time [GSHashJob] took ~0.7 s and FC's ~700 objects sat at "Unpacking 0 of 1" for minutes (web-mt-shell-unpack-hang-1). On the main thread the same jobs share the frame budget, as they always have on the single-threaded engine.
+static func _new_cloud_scheduler() -> GSScheduler:
+	var scheduler := GSScheduler.new()
 	scheduler.name = "CloudScheduler"
-	scheduler.use_threads = not DotPlatform.is_web()
+	scheduler.use_threads = not GSPlatform.is_web()
 	return scheduler
 
 
 ## A pack this client is too old to run (CODE_VERSION), told plainly and passed to the page.
 ## Branches on the code, never the sentence; before GameSpice Cloud API 3 the refusal came after the download, and either way the fix is a newer client.
-func _on_cloud_failed(error: DotError) -> void:
-	if error == null or error.code != DotError.CODE_VERSION:
+func _on_cloud_failed(error: GSError) -> void:
+	if error == null or error.code != GSError.CODE_VERSION:
 		return
 	_report_client_behind(error.message)
 
 
 func _report_client_behind(sentence: String) -> void:
-	var early := DotAddonApi.build_level("dot_cloud") >= 3
+	var early := GSAddonApi.build_level("dot_cloud") >= 3
 
-	DotLog.warn(CHANNEL, "this client is older than the game it was asked to run", {
+	GSLog.warn(CHANNEL, "this client is older than the game it was asked to run", {
 		"why": sentence, "early": early,
 	})
 
@@ -921,7 +921,7 @@ func _report_client_behind(sentence: String) -> void:
 	if _menu != null and not _menu.visible:
 		show_content_failed(sentence)
 
-	if not DotPlatform.is_web():
+	if not GSPlatform.is_web():
 		return
 
 	var payload := {
@@ -930,11 +930,11 @@ func _report_client_behind(sentence: String) -> void:
 		"message": sentence,
 		"early": early,
 	}
-	DotWeb.post_to_parent(payload)
+	GSWeb.post_to_parent(payload)
 
 
 func _on_cloud_phase(phase: int, text: String) -> void:
-	if _launch_job and phase != DotCloudClient.Phase.FAILED:
+	if _launch_job and phase != GSCloudClient.Phase.FAILED:
 		# One job owns the bar, the loading cover and the text; a pack finishing is not the end of anything.
 		if loading != null:
 			loading.begin(TmcLoadingScreen.REASON_CONTENT)
@@ -943,7 +943,7 @@ func _on_cloud_phase(phase: int, text: String) -> void:
 		_status.text = _solo_pack_label if _solo_pack_label != "" else text
 
 	# In a game a failed download or mount has nowhere to be said (the menu is hidden), leaving a player on the old map with no way out; clearing downloads fixes exactly those.
-	if phase == DotCloudClient.Phase.FAILED and _menu != null and not _menu.visible:
+	if phase == GSCloudClient.Phase.FAILED and _menu != null and not _menu.visible:
 		show_content_failed(text)
 
 	# A fetch while a game is on screen is a map (or the next game's pack, which the game
@@ -951,7 +951,7 @@ func _on_cloud_phase(phase: int, text: String) -> void:
 	# already on the disk does not flash one.
 	if loading != null:
 		match phase:
-			DotCloudClient.Phase.IDLE, DotCloudClient.Phase.READY, DotCloudClient.Phase.FAILED:
+			GSCloudClient.Phase.IDLE, GSCloudClient.Phase.READY, GSCloudClient.Phase.FAILED:
 				loading.end(TmcLoadingScreen.REASON_CONTENT)
 			_:
 				# A solo game, or the suggested packs fetched after the scene is up, never
@@ -960,22 +960,22 @@ func _on_cloud_phase(phase: int, text: String) -> void:
 					loading.begin(TmcLoadingScreen.REASON_CONTENT)
 					loading.set_progress(-1.0, text)
 				else:
-					DotLog.info(CHANNEL, "[TMC] cover skipped: content fetch during live play", {"phase": phase, "text": text})
+					GSLog.info(CHANNEL, "[TMC] cover skipped: content fetch during live play", {"phase": phase, "text": text})
 
-	if phase == DotCloudClient.Phase.IDLE or phase == DotCloudClient.Phase.READY or phase == DotCloudClient.Phase.FAILED:
+	if phase == GSCloudClient.Phase.IDLE or phase == GSCloudClient.Phase.READY or phase == GSCloudClient.Phase.FAILED:
 		_job = {}
 
 	# The detail line belongs to the download. Anything else and it is stale.
-	if _detail != null and phase != DotCloudClient.Phase.DOWNLOADING:
+	if _detail != null and phase != GSCloudClient.Phase.DOWNLOADING:
 		_detail.visible = false
 
 	if _progress == null:
 		return
 
 	match phase:
-		DotCloudClient.Phase.IDLE, DotCloudClient.Phase.READY, DotCloudClient.Phase.FAILED:
+		GSCloudClient.Phase.IDLE, GSCloudClient.Phase.READY, GSCloudClient.Phase.FAILED:
 			_progress.visible = false
-		DotCloudClient.Phase.DOWNLOADING:
+		GSCloudClient.Phase.DOWNLOADING:
 			_progress.visible = true
 			_indeterminate(false)
 		_:
@@ -1131,7 +1131,7 @@ func _size_text(n: int) -> String:
 		v /= 1024.0
 		i += 1
 	var shown := snappedf(v, 0.1) if i > 0 else v
-	return _text("shell.size", {"value": shown, "unit": units[i]}, DotPaths.format_bytes(n))
+	return _text("shell.size", {"value": shown, "unit": units[i]}, GSPaths.format_bytes(n))
 
 
 func _rate_text(rate: float) -> String:
@@ -1175,7 +1175,7 @@ func _configured_inventory_origins() -> PackedStringArray:
 	return out
 
 
-## `content_urls` out of `client/content.json`, or empty. Read here because DotCloudConfig has no field for it and this file is all an operator can edit in an export;
+## `content_urls` out of `client/content.json`, or empty. Read here because GSCloudConfig has no field for it and this file is all an operator can edit in an export;
 ## parsed defensively, since a malformed file must not stop a build that can play the games it already has.
 func _configured_content_urls() -> PackedStringArray:
 	var out := PackedStringArray()
@@ -1201,7 +1201,7 @@ func _configured_content_urls() -> PackedStringArray:
 			out.append(one)
 
 	if not out.is_empty():
-		DotLog.info(
+		GSLog.info(
 			CHANNEL,
 			"content will be fetched from the URLs in content.json",
 			{"urls": ", ".join(out)}
@@ -1220,7 +1220,7 @@ func _connect_to(address: String) -> void:
 	# Online never sees a subscription: the index's session filters every catalogue and the cloud client's tag stamps a mount, so both go to `online` before anything is fetched.
 	# A pack that runs code stays resident after its game is freed, so a process that mounted one restarts first.
 	# So does one whose overlay holds a subscribed addon: the restart drops that overlay.
-	if (_workshop != null and _workshop.requires_restart_before_online()) or TmcShellSolo.plan_holds_subscription(DotCloudAddonSet.read_plan()):
+	if (_workshop != null and _workshop.requires_restart_before_online()) or TmcShellSolo.plan_holds_subscription(GSCloudAddonSet.read_plan()):
 		_restart_for_online(target)
 		return
 
@@ -1236,7 +1236,7 @@ func _connect_to(address: String) -> void:
 	loading.set_progress(-1.0, _text("shell.loading.connecting", {"server": target}, "Connecting to %s…" % target))
 
 	# Avatar files and the trail pack come down before the socket opens; bounded, never fatal.
-	var prejoin := DotGamePrejoin.new()
+	var prejoin := GSGamePrejoin.new()
 	prejoin.site_url = _workshop_site()
 	prejoin.progress_fn = func(fraction: float, text: String) -> void:
 		loading.set_progress(fraction, text)
@@ -1254,15 +1254,15 @@ func _connect_to(address: String) -> void:
 	# Before a new one is built, never after ([method _drop_link]). Belt and braces, except for a signon that failed after the socket came up ([method _fail]), where the menu returns with the link still connected.
 	_drop_link()
 
-	# Without this a browser client cannot download anything: `DotClientLink._begin_content_sync` resolves `dot_cloud_client` from [DotRegistry] and fails the join when it is null.
+	# Without this a browser client cannot download anything: `GSClientLink._begin_content_sync` resolves `dot_cloud_client` from [GSRegistry] and fails the join when it is null.
 	_ensure_cloud()
 	_enter_online_session()
 
-	link = DotClientLink.new()
+	link = GSClientLink.new()
 	# "Server", because Godot routes an RPC by the receiver's node path and GameSpice Server's node is called that; a wrong name fails every RPC, handshake included, with only a timeout to show.
 	link.name = "Server"
 	link.player_name = _name.text.strip_edges()
-	# `--udp host:port` joins over ENet (the launcher passes enet_port); `--transport auto|udp|ws` overrides. See DotClientLink.
+	# `--udp host:port` joins over ENet (the launcher passes enet_port); `--transport auto|udp|ws` overrides. See GSClientLink.
 	link.udp_address = _user_arg("--udp")
 	var preference := _user_arg("--transport")
 	if preference in ["auto", "udp", "ws"]:
@@ -1273,7 +1273,7 @@ func _connect_to(address: String) -> void:
 	link.envelope.register(TmcAddonGroups.ANNOUNCE_KIND, _on_addons_announced.bind(target))
 	trail_link.attach(link)
 	# Where the server's game scene is put. The shell never names a scene itself.
-	link.game_root_ref = DotNodeRef.of_path(_game_root.get_path())
+	link.game_root_ref = GSNodeRef.of_path(_game_root.get_path())
 	add_child(link)
 
 	link.phase_changed.connect(_on_link_phase)
@@ -1287,7 +1287,7 @@ func _connect_to(address: String) -> void:
 	# rebuilt on every connection -- see [method _drop_link].
 	link.notice_received.connect(_on_notice)
 
-	var connecting: DotResult = await link.connect_to_server(target)
+	var connecting: GSResult = await link.connect_to_server(target)
 
 	if not connecting.ok:
 		_joining = false
@@ -1304,8 +1304,8 @@ func _on_link_phase(phase: int, text: String) -> void:
 	_mark_join(phase)
 
 	if (_has_spawned or _joining) and phase in [
-			DotClientLink.Phase.CONNECTING, DotClientLink.Phase.AUTHENTICATING,
-			DotClientLink.Phase.DOWNLOADING, DotClientLink.Phase.LOADING]:
+			GSClientLink.Phase.CONNECTING, GSClientLink.Phase.AUTHENTICATING,
+			GSClientLink.Phase.DOWNLOADING, GSClientLink.Phase.LOADING]:
 		loading.begin(TmcLoadingScreen.REASON_GAME)
 		loading.set_progress(-1.0, text)
 
@@ -1323,7 +1323,7 @@ func _on_link_download(fraction: float, text: String) -> void:
 
 
 ## The server's challenge: if it runs newer addons than this build, leave, fetch them, and restart into them.
-## Before the join, because after it the old addons have run and a newer one fetched later cannot replace the compiled copy (see [DotCloudAddonSet]).
+## Before the join, because after it the old addons have run and a newer one fetched later cannot replace the compiled copy (see [GSCloudAddonSet]).
 ## Never twice for one set: after a failed start or update the join proceeds on this build's addons, because a loop is worse.
 func _on_server_info(_challenge: Dictionary, target: String) -> void:
 	if link == null or _addons_updating or _addons_skipped.has(target):
@@ -1331,17 +1331,17 @@ func _on_server_info(_challenge: Dictionary, target: String) -> void:
 
 	# Both the challenge (dot_server's sign-on) and a scoped announce land here.
 	link.server_addons = TmcAddonNamespaces.without_stale_legacy(link.server_addons)
-	var addons := DotCloudAddonSet.new(_cloud)
+	var addons := GSCloudAddonSet.new(_cloud)
 	addons.namespaces = TmcAddonNamespaces.load_shell()
 	var decided := addons.plan_for(link.server_addons)
 	var refused: Dictionary = decided["refused"]
 
 	if not refused.is_empty():
-		DotLog.debug(CHANNEL, "addons this server runs that are not taken", {"refused": refused})
+		GSLog.debug(CHANNEL, "addons this server runs that are not taken", {"refused": refused})
 
 	var wanted: Dictionary = decided["wanted"]
-	var plan := DotCloudAddonSet.read_plan()
-	var running: Dictionary = plan if DotCloudAddonSet.mounted_this_boot(plan) else {}
+	var plan := GSCloudAddonSet.read_plan()
+	var running: Dictionary = plan if GSCloudAddonSet.mounted_this_boot(plan) else {}
 	# A GameSpice Cloud before download groups (0.1.47) has no `groups` and takes every group.
 	var grouped := "groups" in addons
 
@@ -1353,7 +1353,7 @@ func _on_server_info(_challenge: Dictionary, target: String) -> void:
 		return
 
 	if _overlay_failed_here(wanted):
-		DotLog.warn(CHANNEL, "the server's addons failed to start here before; joining on this build's", {
+		GSLog.warn(CHANNEL, "the server's addons failed to start here before; joining on this build's", {
 			"server": target,
 		})
 		return
@@ -1361,7 +1361,7 @@ func _on_server_info(_challenge: Dictionary, target: String) -> void:
 	var attempt := _attempt_key(target, wanted)
 
 	if _update_attempts(attempt) >= MAX_UPDATE_RESTARTS:
-		DotLog.warn(CHANNEL, "restarting for this server's addons did not take; joining on this build's", {
+		GSLog.warn(CHANNEL, "restarting for this server's addons did not take; joining on this build's", {
 			"server": target, "restarts": _update_attempts(attempt),
 		})
 		return
@@ -1369,7 +1369,7 @@ func _on_server_info(_challenge: Dictionary, target: String) -> void:
 	if grouped:
 		addons.set("groups", TmcAddonGroups.wanted_groups(link.server_addons, wanted, running))
 
-	DotLog.info(CHANNEL, "this server runs newer addons; updating before joining", {
+	GSLog.info(CHANNEL, "this server runs newer addons; updating before joining", {
 		"server": target, "addons": wanted.keys(), "groups": addons.get("groups") if grouped else "*",
 	})
 
@@ -1386,7 +1386,7 @@ func _on_addons_announced(_peer: int, payload: Variant, target: String) -> void:
 
 	var announced: Dictionary = payload
 	link.server_addons = (announced["addons"] as Array).duplicate(true)
-	DotLog.info(CHANNEL, "the server announced addons for its next game", {
+	GSLog.info(CHANNEL, "the server announced addons for its next game", {
 		"server": target, "game": str(announced.get("game", "")), "addons": link.server_addons.size(),
 	})
 	loading.begin(TmcLoadingScreen.REASON_GAME)
@@ -1413,13 +1413,13 @@ func _groups_top_up(running: Dictionary, target: String) -> Dictionary:
 	if TmcAddonGroups.covers(have, needed):
 		return {}
 
-	DotLog.info(CHANNEL, "this server's game needs download groups the overlay lacks; rebuilding it", {
+	GSLog.info(CHANNEL, "this server's game needs download groups the overlay lacks; rebuilding it", {
 		"server": target, "have": have, "needed": needed,
 	})
 	return held.duplicate(true)
 
 
-func _update_addons(addons: DotCloudAddonSet, wanted: Dictionary, target: String, attempt: String) -> void:
+func _update_addons(addons: GSCloudAddonSet, wanted: Dictionary, target: String, attempt: String) -> void:
 	# Quietly: `_drop_link` closes without a reason, so no "Disconnected" is said about a server we rejoin at once.
 	# A release build logs one harmless engine line here (`Attempt to disconnect a nonexistent connection from 'Server'`), the same with the drop deferred.
 	_drop_link()
@@ -1436,10 +1436,10 @@ func _update_addons(addons: DotCloudAddonSet, wanted: Dictionary, target: String
 	if _auth != null and _auth.is_signed_in() and _auth.identity() != null:
 		resume["member"] = _auth.identity().uid
 
-	var built: DotResult = await addons.build(wanted, resume)
+	var built: GSResult = await addons.build(wanted, resume)
 
 	if not built.ok:
-		DotLog.error(CHANNEL, "could not update the addons; joining on this build's", {
+		GSLog.error(CHANNEL, "could not update the addons; joining on this build's", {
 			"server": target, "why": str(built.error),
 		})
 		_addons_updating = false
@@ -1459,7 +1459,7 @@ func _update_addons(addons: DotCloudAddonSet, wanted: Dictionary, target: String
 
 	# What the next start reads: the plan (where to come back to, who was signed in), the
 	# overlay's files it mounts, and the stored session that keeps the player signed in.
-	var keep := DotCloudAddonSet.plan_files(built.value)
+	var keep := GSCloudAddonSet.plan_files(built.value)
 	if resume.has("member"):
 		var tokens := _auth.config.token_store_path
 		for path in [tokens, tokens + ".salt"]:
@@ -1563,13 +1563,13 @@ func _forget_update_attempt(key: String) -> void:
 
 ## What the counts are kept under: this shell build and the addons it was exported with.
 func _attempts_build() -> String:
-	return "%s/%s" % [shell_build, DotCloudAddonSet.build_fingerprint()]
+	return "%s/%s" % [shell_build, GSCloudAddonSet.build_fingerprint()]
 
 
 func _attempts_storage() -> Variant:
 	if attempt_storage != null:
 		return attempt_storage
-	return DotWeb.get_global("sessionStorage") if DotPlatform.is_web() else null
+	return GSWeb.get_global("sessionStorage") if GSPlatform.is_web() else null
 
 
 func _write_update_attempts(counts: Dictionary) -> void:
@@ -1586,18 +1586,18 @@ func _read_update_attempts() -> Dictionary:
 		return {}
 	var raw: Variant = storage.getItem(UPDATE_ATTEMPTS_KEY)
 	var parsed: Variant = JSON.parse_string(str(raw)) if raw != null else null
-	if not (parsed is Dictionary) or not DotValue.same((parsed as Dictionary).get("build"), _attempts_build()):
+	if not (parsed is Dictionary) or not GSValue.same((parsed as Dictionary).get("build"), _attempts_build()):
 		return {}
 	var counts: Variant = (parsed as Dictionary).get("counts")
 	return (counts as Dictionary).duplicate() if counts is Dictionary else {}
 
 
-## Whether [param wanted] failed to start in THIS shell build. [method DotCloudAddonSet.failed_before] keys the mark by addons.lock alone,
+## Whether [param wanted] failed to start in THIS shell build. [method GSCloudAddonSet.failed_before] keys the mark by addons.lock alone,
 ## so a redeploy that kept the lock kept the mark, and the tab never tried that set again. The plan is stamped with the shell build that
 ## built it ([method _stamp_plan]); a mark from another build, or from a shell before the stamp, gets one more try.
 func _overlay_failed_here(wanted: Dictionary) -> bool:
-	return DotCloudAddonSet.failed_before(wanted) \
-		and DotValue.same(DotCloudAddonSet.read_plan().get("shell", ""), shell_build)
+	return GSCloudAddonSet.failed_before(wanted) \
+		and GSValue.same(GSCloudAddonSet.read_plan().get("shell", ""), shell_build)
 
 
 ## Whether the overlay [param attempt] names must not be built again in this tab: it failed to start in this shell build, or it has had
@@ -1608,11 +1608,11 @@ func _overlay_blocked(attempt: String, wanted: Dictionary) -> bool:
 
 ## Stamps the plan just built with this shell build. See [method _overlay_failed_here].
 func _stamp_plan() -> void:
-	var plan := DotCloudAddonSet.read_plan()
+	var plan := GSCloudAddonSet.read_plan()
 	if plan.is_empty():
 		return
 	plan["shell"] = shell_build
-	DotCloudAddonSet.write_plan(plan)
+	GSCloudAddonSet.write_plan(plan)
 
 
 ## Whether [param plan]'s overlay only adds to this process: no overlay is mounted yet and none of its addons is here. Such an
@@ -1629,12 +1629,12 @@ static func _overlay_additive(plan: Dictionary) -> bool:
 	return true
 
 
-## Mounts the overlay the plan on disk names in this process and confirms it, through [method DotCloudAddonSet.mount_now] (the boot script may name no class, so the shell makes the call). Only for an [method _overlay_additive] plan: mounting refreshes the global class list, and with no compiled copy of these addons in memory their scripts load from it. [constant InPlace.REFUSED] leaves the plan ready for a restart.
+## Mounts the overlay the plan on disk names in this process and confirms it, through [method GSCloudAddonSet.mount_now] (the boot script may name no class, so the shell makes the call). Only for an [method _overlay_additive] plan: mounting refreshes the global class list, and with no compiled copy of these addons in memory their scripts load from it. [constant InPlace.REFUSED] leaves the plan ready for a restart.
 func _mount_in_place() -> InPlace:
-	match DotCloudAddonSet.mount_now():
-		DotCloudAddonSet.MountNow.RUNNING:
+	match GSCloudAddonSet.mount_now():
+		GSCloudAddonSet.MountNow.RUNNING:
 			return InPlace.RUNNING
-		DotCloudAddonSet.MountNow.STALE:
+		GSCloudAddonSet.MountNow.STALE:
 			return InPlace.STALE
 	return InPlace.REFUSED
 
@@ -1642,14 +1642,14 @@ func _mount_in_place() -> InPlace:
 ## Where the last restart onto newer addons was going and who was signed in, taken once:
 ## `{server, member}`, or empty.
 func _take_resume() -> Dictionary:
-	var plan := DotCloudAddonSet.read_plan()
+	var plan := GSCloudAddonSet.read_plan()
 	var resume: Variant = plan.get("resume", {})
 
 	if not (resume is Dictionary) or (resume as Dictionary).is_empty():
 		return {}
 
 	plan["resume"] = {}
-	DotCloudAddonSet.write_plan(plan)
+	GSCloudAddonSet.write_plan(plan)
 	return resume as Dictionary
 
 
@@ -1670,30 +1670,30 @@ func _restart(keep: PackedStringArray = PackedStringArray()) -> bool:
 		restart_fn.call()
 		return true
 
-	if not DotPlatform.can_self_restart():
+	if not GSPlatform.can_self_restart():
 		return false
 
-	if DotPlatform.is_web():
+	if GSPlatform.is_web():
 		# Waits for IndexedDB to hold what the next load reads, by reading it back: one `FS.syncfs` walks every file in `user://` and takes seconds,
 		# a reload inside it loses the plan and addons, and a sync can fail outright, so no count of requests is right.
-		# See [method DotCloudAddonSet.persisted].
-		var kept: DotResult = await DotCloudAddonSet.persisted(keep, _persist_timeout(keep))
+		# See [method GSCloudAddonSet.persisted].
+		var kept: GSResult = await GSCloudAddonSet.persisted(keep, _persist_timeout(keep))
 		if not kept.ok:
 			# A reload now would come back without them: no plan is no overlay and no
 			# sign-in, and the same update again. Play on, and the next start takes it if
 			# the browser got there by then.
-			DotLog.warn(CHANNEL, "not restarting: the browser has not saved what the next start needs", {
+			GSLog.warn(CHANNEL, "not restarting: the browser has not saved what the next start needs", {
 				"why": str(kept.error),
 			})
 			return false
-		# Through the location object rather than `eval`, which a strict CSP refuses (`DotWeb.get_global`).
+		# Through the location object rather than `eval`, which a strict CSP refuses (`GSWeb.get_global`).
 		# Called as a method, not `Object.call("reload")`: on a JavaScriptObject that asks for a method named `call`.
-		var location: Variant = DotWeb.get_global("location")
+		var location: Variant = GSWeb.get_global("location")
 		if location == null:
 			return false
-		# GameSpice Game's DotGameClient arms a "Leave site?" prompt while a game is live; this reload is ours, so it is disarmed (by property, not eval, same CSP reason).
+		# GameSpice Game's GSGameClient arms a "Leave site?" prompt while a game is live; this reload is ours, so it is disarmed (by property, not eval, same CSP reason).
 		# The flag is absent when no game client installed it.
-		var tab_guard: Variant = DotWeb.get_global("__dotTabGuard")
+		var tab_guard: Variant = GSWeb.get_global("__dotTabGuard")
 		if tab_guard != null:
 			tab_guard.armed = false
 		location.reload()
@@ -1721,18 +1721,18 @@ const BUILTIN_CLIENTS := {}
 ## This process is playing alone: packs mounted from here on are `solo`, and the index offers
 ## solo entries to the catalogues that follow it.
 func _enter_solo_session() -> void:
-	DotContentIndex.shared().set_session(DotContentIndex.SESSION_SOLO)
+	GSContentIndex.shared().set_session(GSContentIndex.SESSION_SOLO)
 	if _cloud != null:
-		_cloud.session_tag = DotContentIndex.SESSION_SOLO
+		_cloud.session_tag = GSContentIndex.SESSION_SOLO
 
 
 ## This process is joining a server: nothing subscribed is visible from here, and what the
 ## server's game mounts is tagged `online` (a pack already mounted at the same id and version
 ## is reused and tagged, by GameSpice Cloud, not downloaded again).
 func _enter_online_session() -> void:
-	DotContentIndex.shared().set_session(DotContentIndex.SESSION_ONLINE)
+	GSContentIndex.shared().set_session(GSContentIndex.SESSION_ONLINE)
 	if _cloud != null:
-		_cloud.session_tag = DotContentIndex.SESSION_ONLINE
+		_cloud.session_tag = GSContentIndex.SESSION_ONLINE
 
 
 ## What the game says it takes from a subscription: `accepts` in the `provides.json` at the
@@ -1769,23 +1769,23 @@ func _workshop_site() -> String:
 
 
 ## Places the Workshop beside the content client. Idempotent.
-func _ensure_workshop() -> DotCloudWorkshop:
+func _ensure_workshop() -> GSCloudWorkshop:
 	if _workshop != null and is_instance_valid(_workshop):
 		return _workshop
 
 	_ensure_cloud()
-	_workshop = DotCloudWorkshop.new()
+	_workshop = GSCloudWorkshop.new()
 	_workshop.name = "Workshop"
 	_workshop.cloud = _cloud
-	_workshop.config = DotCloudWorkshopConfig.new()
+	_workshop.config = GSCloudWorkshopConfig.new()
 	_workshop.config.workshop_backbone_url = _workshop_site()
 	# The bearer is read when asked, so a refresh between launches is picked up; a guest, and
 	# a build with no sign-in at all, answers "".
 	_workshop.token_fn = _workshop_token
 	_workshop.ask_fn = _ask_download
 	_workshop.progress.connect(_on_workshop_progress)
-	_workshop.pack_failed.connect(func(id: String, _v: String, error: DotError) -> void:
-		DotLog.warn(CHANNEL, "a subscribed pack could not be mounted", {"pack": id, "why": str(error)}))
+	_workshop.pack_failed.connect(func(id: String, _v: String, error: GSError) -> void:
+		GSLog.warn(CHANNEL, "a subscribed pack could not be mounted", {"pack": id, "why": str(error)}))
 	add_child(_workshop)
 	return _workshop
 
@@ -1800,7 +1800,7 @@ func _workshop_token() -> String:
 ## refusal or a programmer error is an empty one, because nothing here may stop a game.
 func _sync_workshop(content_id: String, suggested: PackedStringArray = PackedStringArray()) -> Dictionary:
 	var workshop := _ensure_workshop()
-	workshop.suggested = DotCloudSuggested.from_entries(suggested)
+	workshop.suggested = GSCloudSuggested.from_entries(suggested)
 	workshop.config.workshop_backbone_url = _workshop_site()
 
 	# Refresh the bearer first: `token_fn` is synchronous and a token that has just expired
@@ -1808,10 +1808,10 @@ func _sync_workshop(content_id: String, suggested: PackedStringArray = PackedStr
 	if _auth != null and _auth.is_signed_in():
 		await _auth.valid_access_token()
 
-	var res: DotResult = await workshop.sync(content_id)
+	var res: GSResult = await workshop.sync(content_id)
 
 	if not res.ok:
-		DotLog.warn(CHANNEL, "the Workshop sync did not run", {"why": str(res.error)})
+		GSLog.warn(CHANNEL, "the Workshop sync did not run", {"why": str(res.error)})
 		return {}
 
 	return res.value as Dictionary if res.value is Dictionary else {}
@@ -1824,15 +1824,15 @@ func _sync_suggested_later(content_id: String, suggested: PackedStringArray) -> 
 	if suggested.is_empty():
 		return
 	var workshop := _ensure_workshop()
-	var declared := DotCloudSuggested.from_entries(suggested)
+	var declared := GSCloudSuggested.from_entries(suggested)
 	workshop.suggested = declared
 	var args := PackedStringArray()
 	args.append_array(OS.get_cmdline_args())
 	args.append_array(OS.get_cmdline_user_args())
 	var device_mode := workshop.device.suggested_mode() if workshop.device != null else ""
-	var mode := late_suggested_mode(device_mode, args, DotCloudSuggested.groups_of(declared))
-	if mode == DotCloudSuggested.MODE_NONE:
-		DotLog.debug(CHANNEL, "suggested packs are fetched one map at a time", {"content": content_id, "declared": suggested.size()})
+	var mode := late_suggested_mode(device_mode, args, GSCloudSuggested.groups_of(declared))
+	if mode == GSCloudSuggested.MODE_NONE:
+		GSLog.debug(CHANNEL, "suggested packs are fetched one map at a time", {"content": content_id, "declared": suggested.size()})
 		return
 	var kept_config := workshop.config.workshop_suggested
 	workshop.config.workshop_suggested = mode
@@ -1845,10 +1845,10 @@ func _sync_suggested_later(content_id: String, suggested: PackedStringArray) -> 
 ## The suggested-pack mode once a solo game is on screen: none unless the device or the command
 ## line asked for all (or groups). "ask" is none too: a question there lands on top of play.
 static func late_suggested_mode(device_mode: String, args: PackedStringArray, groups: PackedStringArray) -> String:
-	var base := device_mode if device_mode != "" else DotCloudSuggested.MODE_NONE
-	var mode := DotCloudSuggested.mode_from_args(args, groups, base)
-	if mode == "" or DotCloudSuggested.asks(mode):
-		return DotCloudSuggested.MODE_NONE
+	var base := device_mode if device_mode != "" else GSCloudSuggested.MODE_NONE
+	var mode := GSCloudSuggested.mode_from_args(args, groups, base)
+	if mode == "" or GSCloudSuggested.asks(mode):
+		return GSCloudSuggested.MODE_NONE
 	return mode
 
 
@@ -1883,8 +1883,8 @@ func _ask_download(summary: Dictionary) -> bool:
 
 	var dialog := TmcShellStyle.dialog(ConfirmationDialog.new())
 	dialog.title = _text("workshop.ask.title", {}, "Subscribed content")
-	dialog.dialog_text = _text("workshop.ask.text", {"size": DotPaths.format_bytes(int(summary.get("bytes", 0)))},
-		"Download %s of subscribed content?" % DotPaths.format_bytes(int(summary.get("bytes", 0))))
+	dialog.dialog_text = _text("workshop.ask.text", {"size": GSPaths.format_bytes(int(summary.get("bytes", 0)))},
+		"Download %s of subscribed content?" % GSPaths.format_bytes(int(summary.get("bytes", 0))))
 	dialog.confirmed.connect(func() -> void: _download_answered.emit(true))
 	dialog.canceled.connect(func() -> void: _download_answered.emit(false))
 	add_child(dialog)
@@ -1901,7 +1901,7 @@ func _make_workshop_panel() -> TmcWorkshopPanel:
 	panel.text_fn = _text
 	panel.site_url = _workshop_site()
 	# The web's sign-in is a game-bound handoff; the site refuses it an all-games change.
-	panel.game_bound = DotPlatform.is_web()
+	panel.game_bound = GSPlatform.is_web()
 	panel.no_sign_in = _auth == null
 	if _solo_session != null:
 		panel.summary = _solo_session.workshop_summary
@@ -1920,25 +1920,25 @@ func _restart_for_online(target: String) -> void:
 	if _auth != null and _auth.is_signed_in() and _auth.identity() != null:
 		resume["member"] = _auth.identity().uid
 
-	var plan := DotCloudAddonSet.read_plan()
+	var plan := GSCloudAddonSet.read_plan()
 	if TmcShellSolo.plan_holds_subscription(plan):
 		# A state the boot does not mount: the next start comes up on the build alone and resumes the join,
 		# whose own addon update builds the server's overlay if it announces one.
 		plan = {"format": int(plan.get("format", 1)), "build": plan.get("build", ""), "state": "dropped"}
 	plan["resume"] = resume
-	var keep := PackedStringArray([DotCloudAddonSet.PLAN])
+	var keep := PackedStringArray([GSCloudAddonSet.PLAN])
 	if resume.has("member"):
 		var tokens := _auth.config.token_store_path
 		for path in [tokens, tokens + ".salt"]:
 			if FileAccess.file_exists(path):
 				keep.append(path)
 
-	var written := DotCloudAddonSet.write_plan(plan)
+	var written := GSCloudAddonSet.write_plan(plan)
 	if written.ok and await _restart(keep):
 		return
 
 	# Never join with a subscribed script resident: the player restarts by hand.
-	DotLog.warn(CHANNEL, "not joining: a subscribed pack that runs code is loaded and this platform cannot restart itself", {
+	GSLog.warn(CHANNEL, "not joining: a subscribed pack that runs code is loaded and this platform cannot restart itself", {
 		"server": target,
 	})
 	_status.text = _text("workshop.restart_by_hand", {},
@@ -1959,9 +1959,9 @@ func _adopt_content_url_arg() -> void:
 ## Every menu a solo game builds leaves to the shell: GameSpice Menu's stock Leave disconnects `leave_link` when connected, and offline in a browser hides itself.
 ## Pointed at the session it reads "Back to menu" and comes here; watched with `node_added` because games build menus when they like.
 func _on_solo_node_added(node: Node) -> void:
-	if _solo_session == null or not (node is DotMenu) or not _game_root.is_ancestor_of(node):
+	if _solo_session == null or not (node is GSMenu) or not _game_root.is_ancestor_of(node):
 		return
-	var menu := node as DotMenu
+	var menu := node as GSMenu
 	menu.leave_link = _solo_session
 	menu.leave_on_its_own = true
 	(func() -> void:
@@ -1993,7 +1993,7 @@ func _end_solo_session() -> void:
 		_cloud.config.side = "client"
 	if _solo_session == null:
 		return
-	DotRegistry.unregister_instance(TmcSolo.MAPS_SERVICE, _solo_session)
+	GSRegistry.unregister_instance(TmcSolo.MAPS_SERVICE, _solo_session)
 	if is_instance_valid(_solo_session):
 		remove_child(_solo_session)
 		_solo_session.queue_free()
@@ -2006,7 +2006,7 @@ func is_solo() -> bool:
 
 
 ## The server told us which game it is running; fires on the first load and on every change.
-## The old game comes down here, not in `_on_spawned`: `DotClientLink._unload_scene` frees only a scene *it* built, so built-in games would stack, each with its own netcode manager.
+## The old game comes down here, not in `_on_spawned`: `GSClientLink._unload_scene` frees only a scene *it* built, so built-in games would stack, each with its own netcode manager.
 func _on_game_changed(game_id: String, _content_id: String, display_name: String) -> void:
 	_join_marks["game_changed"] = Time.get_ticks_usec()
 	if _joining and display_name != "":
@@ -2064,7 +2064,7 @@ func _on_spawned() -> void:
 	if not BUILTIN_CLIENTS.has(content_id):
 		# Say which side is behind, because the symptom points at neither: with an empty BUILTIN_CLIENTS the likely cause is a server older than this client,
 		# or a deployment whose GameSpice Server addon was not pulled with its host; "named a game and sent nothing" is what a `kind: builtin` descriptor looks like from here.
-		DotLog.error(CHANNEL, "the server sent no content for the game it named", {
+		GSLog.error(CHANNEL, "the server sent no content for the game it named", {
 			"content_id": content_id,
 			"builtin_clients": BUILTIN_CLIENTS.size(),
 			"hint": "this build ships no game; the server needs updating "
@@ -2087,7 +2087,7 @@ func _on_spawned() -> void:
 
 	var instance := (packed as PackedScene).instantiate()
 
-	# The link is handed over explicitly rather than looked up in DotRegistry, so that two
+	# The link is handed over explicitly rather than looked up in GSRegistry, so that two
 	# shells in one process — which is what a test does — do not both find the same one.
 	if "link" in instance:
 		instance.set("link", link)
@@ -2097,7 +2097,7 @@ func _on_spawned() -> void:
 	_watch_game_ready()
 
 
-## Holds the loading screen over a game until it is ready: [TmcGameCover] uses a game's [DotLoadGate], else the root contract (`ready_to_show`), else a camera-and-settle wait.
+## Holds the loading screen over a game until it is ready: [TmcGameCover] uses a game's [GSLoadGate], else the root contract (`ready_to_show`), else a camera-and-settle wait.
 ## The shell does it because a shader compiles synchronously at first draw under Compatibility, and a game is on screen before its map and players are.
 func _watch_game_ready() -> void:
 	_cover.watch()
@@ -2124,7 +2124,7 @@ func _clear_game() -> void:
 
 
 ## Takes the current link out of the tree, closing whatever it still has open.
-## `remove_child` before `queue_free`: the link's name "Server" is the routing and a colliding sibling is renamed ("Server2"), so the OLD node answers the handshake while [DotRegistry] hands out the new one,
+## `remove_child` before `queue_free`: the link's name "Server" is the routing and a colliding sibling is renamed ("Server2"), so the OLD node answers the handshake while [GSRegistry] hands out the new one,
 ## whose snapshots addressed to "Server/<game>" never land: no error, an empty world. `queue_free` alone defers the name's release to the end of the frame.
 func _drop_link() -> void:
 	if link == null or not is_instance_valid(link):
@@ -2142,7 +2142,7 @@ func _drop_link() -> void:
 
 ## Routes a server notice: the admin menu's pages, the loading screen's document, and
 ## everything else to the HUD overlay.
-func _on_notice(notice: DotNotice) -> void:
+func _on_notice(notice: GSNotice) -> void:
 	if notice == null:
 		return
 	match notice.topic:
@@ -2179,7 +2179,7 @@ func _leave_game_ui() -> void:
 func _mark_join(phase: int) -> void:
 	if not _joining:
 		return
-	var key: String = DotClientLink.Phase.keys()[phase]
+	var key: String = GSClientLink.Phase.keys()[phase]
 	if not _join_marks.has(key):
 		_join_marks[key] = Time.get_ticks_usec()
 
@@ -2189,7 +2189,7 @@ func _log_join() -> void:
 	if not _joining or not _join_marks.has("start"):
 		return
 	var stages := TmcJoinTimings.stages(_join_marks, Time.get_ticks_usec())
-	DotLog.info(CHANNEL, "join timings (ms)", stages)
+	GSLog.info(CHANNEL, "join timings (ms)", stages)
 	_join_marks = {}
 
 
@@ -2243,17 +2243,17 @@ const DEFAULT_CACHE := "user://dot_cloud"
 func downloaded_bytes() -> int:
 	var total := 0
 	for dir in _cache_dirs():
-		for rel in DotPaths.list_files_recursive(dir):
+		for rel in GSPaths.list_files_recursive(dir):
 			# The addon directory's plan and saved class list are bookkeeping, not content;
 			# only its overlays are something a player downloaded.
-			if dir == DotCloudAddonSet.DIR and not rel.ends_with(".pck"):
+			if dir == GSCloudAddonSet.DIR and not rel.ends_with(".pck"):
 				continue
-			total += maxi(DotPaths.file_size(dir.path_join(rel)), 0)
+			total += maxi(GSPaths.file_size(dir.path_join(rel)), 0)
 	return total
 
 
 func _cache_dirs() -> PackedStringArray:
-	var dirs := PackedStringArray([DEFAULT_CACHE, SESSION_CACHE, DotCloudAddonSet.DIR])
+	var dirs := PackedStringArray([DEFAULT_CACHE, SESSION_CACHE, GSCloudAddonSet.DIR])
 	if _cloud != null and _cloud.config != null and not _cloud.config.cache_dir in dirs:
 		dirs.append(_cloud.config.cache_dir)
 	return dirs
@@ -2263,7 +2263,7 @@ func _ask_clear() -> void:
 	if _clear_confirm == null:
 		_clear_confirm = ConfirmationDialog.new()
 		_clear_confirm.title = "Clear downloaded content"
-		_clear_confirm.ok_button_text = "Clear and restart" if DotPlatform.can_self_restart() \
+		_clear_confirm.ok_button_text = "Clear and restart" if GSPlatform.can_self_restart() \
 			else "Clear on next start"
 		_clear_confirm.confirmed.connect(request_clear)
 		TmcShellStyle.dialog(_clear_confirm)
@@ -2274,10 +2274,10 @@ func _ask_clear() -> void:
 	# Under 4 KiB is an empty store's index, not anything a player downloaded.
 	var bytes := downloaded_bytes()
 	_clear_confirm.dialog_text = (
-		("Delete %s of downloaded games and maps?\n\n" % DotPaths.format_bytes(bytes)
+		("Delete %s of downloaded games and maps?\n\n" % GSPaths.format_bytes(bytes)
 			if bytes >= 4096 else "Nothing is downloaded yet.\n\n")
 		+ ("The game restarts, and anything you play downloads again."
-			if DotPlatform.can_self_restart()
+			if GSPlatform.can_self_restart()
 			else "They are deleted the next time the game starts.")
 	)
 	_popup_dialog(_clear_confirm)
@@ -2294,15 +2294,15 @@ func _popup_dialog(dialog: AcceptDialog) -> void:
 ## and on Windows the open `.pck` cannot be deleted. So a marker is written and [method clear_pending] empties the cache on the way back up.
 ## In a browser the marker must reach IndexedDB before the reload ([method _restart]); one that did not land costs a second press.
 func request_clear() -> void:
-	DotPaths.write_text(CLEAR_PENDING, Time.get_datetime_string_from_system(true))
+	GSPaths.write_text(CLEAR_PENDING, Time.get_datetime_string_from_system(true))
 	# The addon overlay is downloaded content too. Forgotten now, so the restart below
 	# comes up on this build's own addons and nothing has it mounted when it is deleted.
-	DotCloudAddonSet.forget()
-	DotWeb.sync_filesystem()
-	DotLog.info(CHANNEL, "downloaded content will be cleared on restart",
+	GSCloudAddonSet.forget()
+	GSWeb.sync_filesystem()
+	GSLog.info(CHANNEL, "downloaded content will be cleared on restart",
 		{"bytes": downloaded_bytes()})
 
-	if not restart_fn.is_valid() and not DotPlatform.can_self_restart():
+	if not restart_fn.is_valid() and not GSPlatform.can_self_restart():
 		_say("Downloaded content will be cleared the next time the game starts.")
 		return
 
@@ -2324,26 +2324,26 @@ func clear_pending() -> int:
 	# The store first, through GameSpice Cloud, so its index agrees with the empty disk; then
 	# the directories whole, for the caches this session is not using.
 	_ensure_cloud()
-	var started: DotResult = await _cloud.start()
+	var started: GSResult = await _cloud.start()
 	if started.ok and _cloud.store != null:
 		_cloud.store.clear_all()
 	for dir in _cache_dirs():
 		if dir != _cloud.config.cache_dir:
-			DotPaths.remove_tree(dir)
+			GSPaths.remove_tree(dir)
 
 	# No flush of its own: `remove_tree` flushes, and two `FS.syncfs` in flight at once is
-	# what once lost downloads in a browser (see DotHttp). A marker that survives costs a
+	# what once lost downloads in a browser (see GSHttp). A marker that survives costs a
 	# second, empty clear on the next start.
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(CLEAR_PENDING))
 
-	DotLog.info(CHANNEL, "cleared downloaded content", {"bytes": freed})
-	_say("Cleared %s of downloaded content." % DotPaths.format_bytes(freed))
+	GSLog.info(CHANNEL, "cleared downloaded content", {"bytes": freed})
+	_say("Cleared %s of downloaded content." % GSPaths.format_bytes(freed))
 	return freed
 
 
 ## Reports something that stopped the game from starting, and puts the menu back: the only way out, since a player who cannot be shown a game needs the address box.
 func _fail(text: String) -> void:
-	DotLog.error(CHANNEL, text)
+	GSLog.error(CHANNEL, text)
 	_leave_game_ui()
 	_set_busy(false)
 	_menu.visible = true
@@ -2353,7 +2353,7 @@ func _fail(text: String) -> void:
 func _on_disconnected(reason: String) -> void:
 	# [b]Read BEFORE the link is dropped.[/b] `_drop_link` frees the node the error is
 	# on, and a build-mismatch report assembled afterwards names nothing.
-	var err: DotError = link.last_error if link != null else null
+	var err: GSError = link.last_error if link != null else null
 	var wanted: String = link.server_signon if link != null else ""
 
 	_clear_game()
@@ -2367,15 +2367,15 @@ func _on_disconnected(reason: String) -> void:
 	notices.clear_all()
 	_leave_game_ui()
 
-	# The one disconnection a player can act on, and it needs its own sentence: this build's `@rpc` surface does not match the server's, so retrying is useless (see [DotSignon]).
-	if err != null and err.code == DotError.CODE_UNSUPPORTED and wanted != "" \
-			and wanted != DotSignon.revision([DotClientLink]):
+	# The one disconnection a player can act on, and it needs its own sentence: this build's `@rpc` surface does not match the server's, so retrying is useless (see [GSSignon]).
+	if err != null and err.code == GSError.CODE_UNSUPPORTED and wanted != "" \
+			and wanted != GSSignon.revision([GSClientLink]):
 		_report_build_mismatch(wanted)
 		return
 
 	# The same revision and still refused: the kinds or message types differ. The server's CODE_VERSION sentence says who has to update, and is the whole message.
-	if err != null and err.code == DotError.CODE_VERSION and reason != "":
-		DotLog.error(CHANNEL, "refused: this build and the server cannot play together", {
+	if err != null and err.code == GSError.CODE_VERSION and reason != "":
+		GSLog.error(CHANNEL, "refused: this build and the server cannot play together", {
 			"why": reason, "detail": err.detail,
 		})
 		_claimed_party = ""
@@ -2394,18 +2394,18 @@ func _on_disconnected(reason: String) -> void:
 
 
 ## Tells the player, and tells the page. The page can load another build (every published build stays at its immutable prefix), so it is told which revision is wanted.
-## Posted rather than thrown, through [DotWeb] because the `JavaScriptBridge` singleton is only REGISTERED on the web export, so naming it fails to resolve on desktop.
+## Posted rather than thrown, through [GSWeb] because the `JavaScriptBridge` singleton is only REGISTERED on the web export, so naming it fails to resolve on desktop.
 func _report_build_mismatch(wanted: String) -> void:
-	var ours := DotSignon.revision([DotClientLink])
+	var ours := GSSignon.revision([GSClientLink])
 
 	_say(
 		"This server needs a different build of the game (it wants %s, this is %s)."
 		% [wanted, ours]
 	)
 
-	DotLog.error(CHANNEL, "build mismatch", {"server": wanted, "client": ours})
+	GSLog.error(CHANNEL, "build mismatch", {"server": wanted, "client": ours})
 
-	if not DotPlatform.is_web():
+	if not GSPlatform.is_web():
 		return
 
 	# The shape the loader reads: one message, one type, the two revisions. The page knows what it published; a client naming a build URL could be told to load one.
@@ -2415,4 +2415,4 @@ func _report_build_mismatch(wanted: String) -> void:
 		"client_signon": ours,
 	}
 
-	DotWeb.post_to_parent(payload)
+	GSWeb.post_to_parent(payload)

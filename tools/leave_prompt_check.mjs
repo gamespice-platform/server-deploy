@@ -2,7 +2,7 @@
 //
 //   node tools/leave_prompt_check.mjs
 //
-// The page guard (dot-core's web/dot_web.js, which dot-game's DotGameClient arms) is loaded and run in a stub
+// The page guard (dot-core's web/dot_web.js, which dot-game's GSGameClient arms) is loaded and run in a stub
 // game on a second origin, inside the frame tmc-loader.js builds. Closing the tab (with
 // beforeunload run, as Ctrl+W does) must raise the dialog once the guard is armed and the
 // player has clicked in the frame, must not before, and must not when the loader's frame

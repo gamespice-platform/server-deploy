@@ -25,23 +25,23 @@ const REQUIRES_TIMEOUT_S := 600
 
 
 ## [b]A publisher that adds one file the source tree does not have: requires.json.[/b]
-## `DotCloudPublisher` publishes a directory, and a game's directory is its repository -- on a
+## `GSCloudPublisher` publishes a directory, and a game's directory is its repository -- on a
 ## developer box a link to a checkout other people are working in.
-static func publisher_for(requires_file: String) -> DotCloudPublisher:
-	var pub := DotCloudPublisher.new()
+static func publisher_for(requires_file: String) -> GSCloudPublisher:
+	var pub := GSCloudPublisher.new()
 	if requires_file != "":
-		pub.extra_files = {DotAddonApi.REQUIREMENTS_FILE: requires_file}
+		pub.extra_files = {GSAddonApi.REQUIREMENTS_FILE: requires_file}
 	return pub
 
 
 ## The pack paths a side must get, from the source's `game.yml`: the descriptor for both
 ## (install-games reads it on a server, the shell on a client), its `scene` and `module` for
 ## the server, its `client_scene` for the client. Empty for a source with no descriptor.
-static func needs_for(source: String) -> DotResult:
+static func needs_for(source: String) -> GSResult:
 	var out := {}
 	var yml := source.path_join("game.yml")
 	if not FileAccess.file_exists(yml):
-		return DotResult.success(out)
+		return GSResult.success(out)
 	var read := TmcYaml.parse_file(yml)
 	if not read.ok:
 		return read.wrap("could not read %s" % yml)
@@ -54,12 +54,12 @@ static func needs_for(source: String) -> DotResult:
 	var client_scene := str(TmcYaml.at(tree, "client_scene", ""))
 	if client_scene != "":
 		out[client_scene] = "both" if out.has(client_scene) else "client"
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
 func _initialize() -> void:
-	DotLog.timestamps = false
-	DotLog.set_level(DotLog.Level.INFO)
+	GSLog.timestamps = false
+	GSLog.set_level(GSLog.Level.INFO)
 
 	var opts := _options()
 
@@ -118,7 +118,7 @@ func _initialize() -> void:
 
 	# Cleaned unconditionally, including after a failure: a half-assembled tree left in
 	# user:// is picked up by nothing and understood by nobody.
-	DotPaths.remove_tree(STAGING)
+	GSPaths.remove_tree(STAGING)
 
 	quit(EXIT_OK if failed.is_empty() and published > 0 else EXIT_FAILED)
 
@@ -127,11 +127,11 @@ func _initialize() -> void:
 ## Publish one id.
 func _publish_one(
 	id: String, content_dir: String, out_dir: String, opts: Dictionary, strict: bool
-) -> DotResult:
+) -> GSResult:
 	var dir := content_dir.path_join(id)
 
 	if not DirAccess.dir_exists_absolute(dir):
-		return DotResult.fail(DotError.CODE_STATE, "no content at %s" % dir)
+		return GSResult.fail(GSError.CODE_STATE, "no content at %s" % dir)
 
 	var spec := _read_spec(dir, id)
 
@@ -148,10 +148,10 @@ func _publish_one(
 			and (meta["include"] as Array).is_empty() \
 			and not DirAccess.dir_exists_absolute(dir.path_join("pack")):
 		if not strict:
-			return DotResult.success(false)
+			return GSResult.success(false)
 
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"%s is a builtin game: its code is in the build, not in a pack" % id,
 			"publishing it would produce a pack containing only its game.yml. "
 			+ "Give it a pack/ directory or a pack.json if it has content to deliver"
@@ -168,8 +168,8 @@ func _publish_one(
 		# five games into ONE `game/` and one `scenes/`, so there is no directory here that is any single
 		# game -- the files are separable only by their name prefix.
 		if not DirAccess.dir_exists_absolute(given):
-			return DotResult.fail(
-				DotError.CODE_STATE,
+			return GSResult.fail(
+				GSError.CODE_STATE,
 				"no directory at %s" % given,
 				"--source names the tree to publish as this pack"
 			)
@@ -194,8 +194,8 @@ func _publish_one(
 	if str(meta["kind"]) == "pack" and not opts.has("source") \
 			and (meta["include"] as Array).is_empty() \
 			and not DirAccess.dir_exists_absolute(dir.path_join("pack")):
-		var why := DotResult.fail(
-			DotError.CODE_INVALID,
+		var why := GSResult.fail(
+			GSError.CODE_INVALID,
 			"%s is delivered and its source is not in %s" % [id, content_dir],
 			"publish it from the game's own repository: "
 				+ "./server pack %s --source ../<repo>" % id
@@ -204,7 +204,7 @@ func _publish_one(
 		# Named and skipped when sweeping, refused when asked for by name -- the same
 		# split the builtin guard makes, and for the same reason: "the set you asked for
 		# contains some that cannot" is a skip, "you asked for this one" is an error.
-		return why if strict else DotResult.success(false)
+		return why if strict else GSResult.success(false)
 
 	# [b]A pack whose scripts declare `class_name` is dead before it is written.[/b] A mounted pack's
 	# globals are not registered in the host, so every cross-file type reference in it fails to compile
@@ -212,8 +212,8 @@ func _publish_one(
 	var globals := TmcPackScan.class_names_in(source)
 
 	if not globals.is_empty():
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"%s declares class_name and cannot be delivered: %s" % [
 				id, ", ".join(globals)
 			],
@@ -225,8 +225,8 @@ func _publish_one(
 	# An empty pack publishes a manifest that mounts and contains nothing, which is
 	# indistinguishable from one whose files failed to upload.
 	if TmcPackScan.count_files(source) == 0:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"there is nothing to publish in %s" % source,
 			"an empty pack mounts and contains nothing, which reads as a broken upload"
 		)
@@ -286,8 +286,8 @@ func _publish_one(
 	# true` because a pack can contain scripts, so an unsigned pack is one that every client declines
 	# to mount -- and the operator would have a directory that looks finished.
 	if key_path == "" or not FileAccess.file_exists(key_path):
-		return DotResult.fail(
-			DotError.CODE_STATE,
+		return GSResult.fail(
+			GSError.CODE_STATE,
 			"no signing key at %s" % (key_path if key_path != "" else "(none given)"),
 			"dot-cloud refuses unsigned manifests, so this pack would mount nowhere"
 		)
@@ -309,9 +309,9 @@ func _publish_one(
 
 	var published := pub.publish(source, out_dir.path_join(out_name))
 
-	if published.ok and requires_file != "" and not _lists(published.value, DotAddonApi.REQUIREMENTS_FILE):
-		return DotResult.fail(
-			DotError.CODE_STATE,
+	if published.ok and requires_file != "" and not _lists(published.value, GSAddonApi.REQUIREMENTS_FILE):
+		return GSResult.fail(
+			GSError.CODE_STATE,
 			"%s was published without its requires.json" % meta["id"],
 			"the file was derived but dot-cloud's publisher did not take it "
 			+ "(tools/pack.gd's publisher_for hands it over as extra_files)"
@@ -324,10 +324,10 @@ func _publish_one(
 static func _lists(result: Variant, path: String) -> bool:
 	var manifest: Variant = (result as Dictionary).get("manifest") if result is Dictionary else null
 
-	if not manifest is DotCloudManifest:
+	if not manifest is GSCloudManifest:
 		return false
 
-	for f: Variant in (manifest as DotCloudManifest).files:
+	for f: Variant in (manifest as GSCloudManifest).files:
 		if str(f.path) == path:
 			return true
 
@@ -338,27 +338,27 @@ static func _lists(result: Variant, path: String) -> bool:
 ## Derive [param source]'s requires.json into [param out_path], the way dot-ci's `package.sh --pack`
 ## does: GameSpice Core's `tools/dot_requires.gd`, run with `--path` the source project.
 ## [param pins] is addon to level, the levels the shell this box ships has; omitted, they are read from addons.lock ([method pinned_args]). A floor above one fails the derivation, never clamped to it.
-static func derive_requires(source: String, out_path: String, pins: Dictionary = {}) -> DotResult:
+static func derive_requires(source: String, out_path: String, pins: Dictionary = {}) -> GSResult:
 	var src := ProjectSettings.globalize_path(source)
 
 	if not FileAccess.file_exists(src.path_join("project.godot")):
-		return DotResult.success("")
+		return GSResult.success("")
 
 	if not FileAccess.file_exists(src.path_join("addons/dot_core/tools/dot_requires.gd")):
 		print("  note: %s has no addons/dot_core/tools/dot_requires.gd; the pack ships without requires.json" % src)
-		return DotResult.success("")
+		return GSResult.success("")
 
-	if FileAccess.file_exists(src.path_join(DotAddonApi.REQUIREMENTS_FILE)):
-		var audit := _run_requires(src, ["--check", DotAddonApi.REQUIREMENTS_FILE])
+	if FileAccess.file_exists(src.path_join(GSAddonApi.REQUIREMENTS_FILE)):
+		var audit := _run_requires(src, ["--check", GSAddonApi.REQUIREMENTS_FILE])
 
 		if int(audit["code"]) != 0:
-			return DotResult.fail(
-				DotError.CODE_INVALID,
+			return GSResult.fail(
+				GSError.CODE_INVALID,
 				"%s/requires.json does not cover what the game uses" % src,
 				str(audit["output"]).strip_edges()
 			)
 
-		return DotResult.success("")
+		return GSResult.success("")
 
 	var out_abs := ProjectSettings.globalize_path(out_path)
 	DirAccess.make_dir_recursive_absolute(out_abs.get_base_dir())
@@ -367,28 +367,28 @@ static func derive_requires(source: String, out_path: String, pins: Dictionary =
 	var pin_args := pinned_args(pins if not pins.is_empty() else pinned_levels())
 	var run := _run_requires(src, ["--out", out_abs] + pin_args)
 
-	# A source never imported has no class cache: dot_requires.gd then fails to PARSE (its DotAddonApi
+	# A source never imported has no class cache: dot_requires.gd then fails to PARSE (its GSAddonApi
 	# is unknown) before it can print its own "import the project first" and exit 2 -- the case on a
 	# GPU box, where a game sibling is staged from its files alone.
-	var unimported := int(run["code"]) != 0 and str(run["output"]).contains("Identifier \"DotAddonApi\" not declared")
+	var unimported := int(run["code"]) != 0 and str(run["output"]).contains("Identifier \"GSAddonApi\" not declared")
 	if unimported or (int(run["code"]) == 2 and str(run["output"]).contains("import the project first")):
 		_godot(["--headless", "--path", src, "--import"])
 		run = _run_requires(src, ["--out", out_abs] + pin_args)
 
 	if int(run["code"]) != 0:
-		return DotResult.fail(
-			DotError.CODE_STATE,
+		return GSResult.fail(
+			GSError.CODE_STATE,
 			"could not derive requires.json for %s" % src,
 			str(run["output"]).strip_edges()
 		)
 
-	var parsed := DotAddonApi.parse(FileAccess.get_file_as_string(out_abs))
+	var parsed := GSAddonApi.parse(FileAccess.get_file_as_string(out_abs))
 
 	# Empty is allowed, as package.sh allows it: a map repository that is a project and names
 	# no addon class needs nothing, and saying so is still a file.
 	if not parsed.ok:
-		return DotResult.fail(
-			DotError.CODE_STATE,
+		return GSResult.fail(
+			GSError.CODE_STATE,
 			"requires.json for %s came out unreadable" % src,
 			str(run["output"]).strip_edges()
 		)
@@ -398,10 +398,10 @@ static func derive_requires(source: String, out_path: String, pins: Dictionary =
 		said.append("%s %d" % [addon, int((parsed.value as Dictionary)[addon])])
 	said.sort()
 	print("  requires.json: %s" % ", ".join(said))
-	return DotResult.success(out_abs)
+	return GSResult.success(out_abs)
 
 
-## The addon levels at the commits addons.lock pins, which is what the shell this box ships has: dot-core's [method DotAddonApi.pinned_levels] reads each addon folder at the locked ref.
+## The addon levels at the commits addons.lock pins, which is what the shell this box ships has: dot-core's [method GSAddonApi.pinned_levels] reads each addon folder at the locked ref.
 ## The repositories are looked for in GS_REPOS_ROOT (old name DOT_REPOS_ROOT), beside this project, then in TMC_REPOS_DIR and ~/godot; a root fills only the addons the earlier ones could not read. An addon none could read is left out, so a floor on it is judged against the linked build.
 static func pinned_levels() -> Dictionary:
 	var here := ProjectSettings.globalize_path("res://")
@@ -411,7 +411,7 @@ static func pinned_levels() -> Dictionary:
 	for root in roots:
 		if root == "":
 			continue
-		var found := DotAddonApi.pinned_levels(lock, root)
+		var found := GSAddonApi.pinned_levels(lock, root)
 		for addon in found:
 			if not out.has(addon):
 				out[addon] = found[addon]
@@ -454,7 +454,7 @@ static func _godot(args: Array) -> Dictionary:
 
 
 ## Everything the publisher needs, from `pack.json`, then `game.yml`, then defaults.
-func _read_spec(dir: String, id: String) -> DotResult:
+func _read_spec(dir: String, id: String) -> GSResult:
 	var meta := {
 		"id": id,
 		"version": "0.0.0",
@@ -481,7 +481,7 @@ func _read_spec(dir: String, id: String) -> DotResult:
 	var game_yml := dir.path_join("game.yml")
 
 	if FileAccess.file_exists(game_yml):
-		# [b]`parse` returns a DotResult, not the tree.[/b] The first version of this read it as `var
+		# [b]`parse` returns a GSResult, not the tree.[/b] The first version of this read it as `var
 		# tree: Variant = TmcYaml.parse(...)` and then asked `tree is Dictionary`, which is never true.
 		var read := TmcYaml.parse_file(game_yml)
 
@@ -500,13 +500,13 @@ func _read_spec(dir: String, id: String) -> DotResult:
 
 	if not FileAccess.file_exists(pack_json):
 		meta["kind"] = kind
-		return DotResult.success(meta)
+		return GSResult.success(meta)
 
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(pack_json))
 
 	if not (parsed is Dictionary):
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"%s is not a JSON object" % pack_json,
 			"a pack descriptor is { \"version\": ..., \"include\": [...] }"
 		)
@@ -518,8 +518,8 @@ func _read_spec(dir: String, id: String) -> DotResult:
 	# excluded, and nothing anywhere says so.
 	for key in doc:
 		if not meta.has(key):
-			return DotResult.fail(
-				DotError.CODE_INVALID,
+			return GSResult.fail(
+				GSError.CODE_INVALID,
 				"%s: unknown key '%s'" % [pack_json, key],
 				"expected one of: %s" % ", ".join(PackedStringArray(meta.keys()))
 			)
@@ -529,45 +529,45 @@ func _read_spec(dir: String, id: String) -> DotResult:
 
 	for key in ["include", "exclude", "exclude_dirs", "optional", "mirrors"]:
 		if not (meta[key] is Array):
-			return DotResult.fail(
-				DotError.CODE_INVALID, "%s: '%s' must be a list" % [pack_json, key]
+			return GSResult.fail(
+				GSError.CODE_INVALID, "%s: '%s' must be a list" % [pack_json, key]
 			)
 
 	if not (meta["groups"] is Dictionary):
-		return DotResult.fail(
-			DotError.CODE_INVALID, "%s: 'groups' must be an object" % pack_json
+		return GSResult.fail(
+			GSError.CODE_INVALID, "%s: 'groups' must be an object" % pack_json
 		)
 
 	if not (meta["addon"] is Dictionary):
-		return DotResult.fail(
-			DotError.CODE_INVALID, "%s: 'addon' must be an object" % pack_json
+		return GSResult.fail(
+			GSError.CODE_INVALID, "%s: 'addon' must be an object" % pack_json
 		)
 
 	for key in (meta["addon"] as Dictionary):
 		if not key in ["entry", "side"]:
-			return DotResult.fail(
-				DotError.CODE_INVALID, "%s: addon: unknown key '%s'" % [pack_json, key],
+			return GSResult.fail(
+				GSError.CODE_INVALID, "%s: addon: unknown key '%s'" % [pack_json, key],
 				"expected entry and side"
 			)
 
 	if (meta["addon"] as Dictionary).has("side") \
 			and not str(meta["addon"]["side"]) in ["server", "client", "both"]:
-		return DotResult.fail(
-			DotError.CODE_INVALID, "%s: addon: side must be server, client or both" % pack_json
+		return GSResult.fail(
+			GSError.CODE_INVALID, "%s: addon: side must be server, client or both" % pack_json
 		)
 
 	meta["kind"] = kind
 
-	return DotResult.success(meta)
+	return GSResult.success(meta)
 
 
 
 ## Copy everything `include` names into [param staged], then drop what `exclude` matches.
-func _assemble(meta: Dictionary, staged: String) -> DotResult:
-	DotPaths.remove_tree(staged)
+func _assemble(meta: Dictionary, staged: String) -> GSResult:
+	GSPaths.remove_tree(staged)
 
 	if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(staged)) != OK:
-		return DotResult.fail(DotError.CODE_IO, "could not create %s" % staged)
+		return GSResult.fail(GSError.CODE_IO, "could not create %s" % staged)
 
 	for raw in (meta["include"] as Array):
 		var from := ""
@@ -580,8 +580,8 @@ func _assemble(meta: Dictionary, staged: String) -> DotResult:
 			from = str(raw)
 
 		if from == "":
-			return DotResult.fail(
-				DotError.CODE_INVALID,
+			return GSResult.fail(
+				GSError.CODE_INVALID,
 				"an include entry names no source",
 				"either \"path\" or { \"from\": \"path\", \"to\": \"where\" }"
 			)
@@ -602,10 +602,10 @@ func _assemble(meta: Dictionary, staged: String) -> DotResult:
 	for pattern in (meta["exclude"] as Array):
 		_drop_matching(staged, str(pattern))
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
-func _copy_into(source: String, dest: String) -> DotResult:
+func _copy_into(source: String, dest: String) -> GSResult:
 	var abs_source := ProjectSettings.globalize_path(source)
 	var abs_dest := ProjectSettings.globalize_path(dest)
 
@@ -613,13 +613,13 @@ func _copy_into(source: String, dest: String) -> DotResult:
 		DirAccess.make_dir_recursive_absolute(abs_dest.get_base_dir())
 
 		if DirAccess.copy_absolute(abs_source, abs_dest) != OK:
-			return DotResult.fail(DotError.CODE_IO, "could not copy %s" % source)
+			return GSResult.fail(GSError.CODE_IO, "could not copy %s" % source)
 
-		return DotResult.success(null)
+		return GSResult.success(null)
 
 	if not DirAccess.dir_exists_absolute(abs_source):
-		return DotResult.fail(
-			DotError.CODE_STATE,
+		return GSResult.fail(
+			GSError.CODE_STATE,
 			"include: nothing at %s" % source,
 			"paths are relative to the project root"
 		)
@@ -629,7 +629,7 @@ func _copy_into(source: String, dest: String) -> DotResult:
 	var dir := DirAccess.open(abs_source)
 
 	if dir == null:
-		return DotResult.fail(DotError.CODE_IO, "could not read %s" % source)
+		return GSResult.fail(GSError.CODE_IO, "could not read %s" % source)
 
 	dir.list_dir_begin()
 	var name := dir.get_next()
@@ -646,7 +646,7 @@ func _copy_into(source: String, dest: String) -> DotResult:
 
 	dir.list_dir_end()
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 func _drop_matching(root: String, pattern: String) -> void:
@@ -748,7 +748,7 @@ func _options() -> Dictionary:
 	return out
 
 
-## [param name] (a DOT_ name) read as its GS_ spelling first, then as itself: what DotConfig.gs_env does,
+## [param name] (a DOT_ name) read as its GS_ spelling first, then as itself: what GSConfig.gs_env does,
 ## written out because the dot-core addons.lock pins predates gs_env and a call to it does not compile there.
 static func _gs_env(name: String) -> String:
 	if name.begins_with("DOT_"):

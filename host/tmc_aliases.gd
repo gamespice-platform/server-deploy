@@ -57,7 +57,7 @@ static func merge_layer(aliases: Dictionary, layer: String, path: String, text: 
 		if aliases.has(removal["name"]):
 			aliases.erase(removal["name"])
 		else:
-			DotLog.warn(TmcConfig.CHANNEL, "%s:%d: remove: `%s` is not an alias an earlier layer made" % [path, removal["line"], removal["name"]])
+			GSLog.warn(TmcConfig.CHANNEL, "%s:%d: remove: `%s` is not an alias an earlier layer made" % [path, removal["line"], removal["name"]])
 	for alias_name: String in parsed["set"]:
 		var entry: Dictionary = parsed["set"][alias_name]
 		var first := String(entry["target"]).split(" ")[0]
@@ -75,7 +75,7 @@ static func merge_layer(aliases: Dictionary, layer: String, path: String, text: 
 		if aliases.has(first2) and String(entry2["layer"]) == layer:
 			errors.append("%s: alias `%s` points at the alias `%s`; name the real target (chains and loops are refused)" % [entry2["source"], alias_name, first2])
 	for message in errors:
-		DotLog.error(TmcConfig.CHANNEL, message)
+		GSLog.error(TmcConfig.CHANNEL, message)
 	return errors
 
 
@@ -116,7 +116,7 @@ static func names_own_target(alias_name: String, target_key: String) -> bool:
 
 ## After the console is up: every alias target must be a real setting, command or cvar, and no alias may shadow one. Failures are ERR lines naming the file and line, and entries in the returned `unknown`.
 ## The valid ones are registered on the console too, so the alias works at a prompt and over RCON as well as in a file. Returns `{failures: int, unknown: PackedStringArray}`.
-static func check(aliases: Dictionary, console: DotConsole) -> Dictionary:
+static func check(aliases: Dictionary, console: GSConsole) -> Dictionary:
 	var failures := 0
 	var unknown := PackedStringArray()
 	for alias_name: String in aliases:
@@ -129,7 +129,7 @@ static func check(aliases: Dictionary, console: DotConsole) -> Dictionary:
 				or console.find_cvar(first) != null or console.find_command(first) != null):
 			problem = "alias `%s` points at `%s`, which is not a setting, cvar or command this server has" % [alias_name, first]
 		if problem != "":
-			DotLog.error(TmcConfig.CHANNEL, "%s: %s" % [entry["source"], problem])
+			GSLog.error(TmcConfig.CHANNEL, "%s: %s" % [entry["source"], problem])
 			unknown.append("%s: %s" % [entry["source"], problem])
 			if String(entry["layer"]) != "game":
 				failures += 1

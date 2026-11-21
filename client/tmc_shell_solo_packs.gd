@@ -18,10 +18,10 @@ const SLICE_EXTENSIONS := ["tscn", "scn", "tres", "res"]
 
 
 ## The newest version of a pack named without one, resolved once per launch so the prefetch and the mount pass agree.
-func _resolve_solo_key(key: String) -> DotResult:
+func _resolve_solo_key(key: String) -> GSResult:
 	if shell._solo_key_cache.has(key):
-		return DotResult.success(shell._solo_key_cache[key])
-	var latest: DotResult = await TmcSolo.resolve_latest(shell, str(TmcSolo.split_key(key)["id"]), shell._cloud.http_base_urls)
+		return GSResult.success(shell._solo_key_cache[key])
+	var latest: GSResult = await TmcSolo.resolve_latest(shell, str(TmcSolo.split_key(key)["id"]), shell._cloud.http_base_urls)
 	if latest.ok:
 		shell._solo_key_cache[key] = latest.value
 	return latest
@@ -36,7 +36,7 @@ func _solo_map_packs(content_id: String) -> PackedStringArray:
 	for key in TmcSolo.map_packs(content_id):
 		var one := TmcSolo.per_map_key(key, shell._solo_map)
 		if one != "" and (await _resolve_solo_key(one)).ok:
-			DotLog.info(shell.CHANNEL, "fetching only the start map's pack", {"map": shell._solo_map, "pack": one, "instead_of": key})
+			GSLog.info(shell.CHANNEL, "fetching only the start map's pack", {"map": shell._solo_map, "pack": one, "instead_of": key})
 			out.append(one)
 		else:
 			out.append(key)
@@ -44,12 +44,12 @@ func _solo_map_packs(content_id: String) -> PackedStringArray:
 	return out
 
 
-## The Workshop sync for a solo launch, before its overlay is decided: a game whose `provides.json` states `accepts` has its subscribed packs planned and registered with the launch job (mounted after [method _prefetch_solo] downloads them, by [method DotCloudWorkshop.mount_pending]). The value is the summary's `addons` (dot-cloud 28), the subscribed addon packs for [method _solo_overlay]; empty for any other game.
+## The Workshop sync for a solo launch, before its overlay is decided: a game whose `provides.json` states `accepts` has its subscribed packs planned and registered with the launch job (mounted after [method _prefetch_solo] downloads them, by [method GSCloudWorkshop.mount_pending]). The value is the summary's `addons` (dot-cloud 28), the subscribed addon packs for [method _solo_overlay]; empty for any other game.
 func _solo_workshop_plan(content_id: String, version: String) -> Array:
-	var game: DotResult = await shell._cloud.resolve_manifest(StringName(content_id), version)
+	var game: GSResult = await shell._cloud.resolve_manifest(StringName(content_id), version)
 	if not game.ok:
 		return []
-	var provides: DotResult = await shell._cloud.read_pack_file(game.value as DotCloudManifest, "provides.json")
+	var provides: GSResult = await shell._cloud.read_pack_file(game.value as GSCloudManifest, "provides.json")
 	if not provides.ok or shell._accepts_from_text((provides.value as PackedByteArray).get_string_from_utf8()).is_empty():
 		return []
 	var workshop = shell._ensure_workshop()
@@ -65,12 +65,12 @@ func _solo_workshop_plan(content_id: String, version: String) -> Array:
 ## [method _solo_workshop_plan]) and downloads them all, mounting none.
 ## Nothing here is fatal: a pack that cannot be fetched now is reported by the mount pass that follows, as it was before.
 func _prefetch_solo(content_id: String, version: String) -> void:
-	var game: DotResult = await shell._cloud.resolve_manifest(StringName(content_id), version)
+	var game: GSResult = await shell._cloud.resolve_manifest(StringName(content_id), version)
 	if not game.ok:
 		return
-	var manifest := game.value as DotCloudManifest
+	var manifest := game.value as GSCloudManifest
 	var all_groups := PackedStringArray(["*"]) # solo has no server to say which map, so total every group
-	var takes_groups := DotAddonApi.build_level("dot_cloud") >= 23
+	var takes_groups := GSAddonApi.build_level("dot_cloud") >= 23
 	if takes_groups:
 		await shell._cloud.job_register_manifest(manifest, all_groups)
 	else:
@@ -78,7 +78,7 @@ func _prefetch_solo(content_id: String, version: String) -> void:
 
 	var keys := PackedStringArray()
 	var map_keys := PackedStringArray()
-	var yml: DotResult = await shell._cloud.read_pack_file(manifest, "game.yml")
+	var yml: GSResult = await shell._cloud.read_pack_file(manifest, "game.yml")
 	if yml.ok:
 		var desc := TmcSolo.parse_descriptor((yml.value as PackedByteArray).get_string_from_utf8())
 		keys.append_array(desc["dependencies"] as PackedStringArray)
@@ -88,7 +88,7 @@ func _prefetch_solo(content_id: String, version: String) -> void:
 
 	# Map packs take the groups the mount pass will ask for (TmcSolo.map_groups), so the total is what moves.
 	var passes: Array = [[await _solo_refs(keys), all_groups],
-		[await _solo_refs(map_keys), TmcSolo.map_groups(DotPlatform.is_web(), shell._solo_map)]]
+		[await _solo_refs(map_keys), TmcSolo.map_groups(GSPlatform.is_web(), shell._solo_map)]]
 	for pass_refs: Array in passes:
 		var refs: Array = pass_refs[0]
 		if refs.is_empty():
@@ -111,7 +111,7 @@ func _solo_refs(keys: PackedStringArray) -> Array:
 		var id := str(parts["id"])
 		var ver := str(parts["version"])
 		if ver == "":
-			var latest: DotResult = await _resolve_solo_key(key)
+			var latest: GSResult = await _resolve_solo_key(key)
 			if not latest.ok:
 				continue
 			id = str(latest.value["id"])
@@ -123,16 +123,16 @@ func _solo_refs(keys: PackedStringArray) -> Array:
 ## Fetches and mounts one pack by `<id>[@<version>]`, resolving a missing version to the newest; returns the `<id>@<version>` mounted.
 ## [param announce] names what is fetched and its size in the status line, so a download the player did not ask for is named.
 ## [param groups] are the download groups asked: every one by default, a map pack's from [method TmcSolo.map_groups].
-func _ensure_solo_pack(key: String, announce: bool = false, groups: PackedStringArray = PackedStringArray(["*"])) -> DotResult:
+func _ensure_solo_pack(key: String, announce: bool = false, groups: PackedStringArray = PackedStringArray(["*"])) -> GSResult:
 	var parts := TmcSolo.split_key(key)
 	var id := str(parts["id"])
 	var version := str(parts["version"])
 
 	if not TmcSolo.valid_id(id) or not TmcSolo.valid_version(version):
-		return DotResult.fail(DotError.CODE_INVALID, "Not a pack id.", key)
+		return GSResult.fail(GSError.CODE_INVALID, "Not a pack id.", key)
 
 	if version == "":
-		var latest: DotResult = await _resolve_solo_key(key)
+		var latest: GSResult = await _resolve_solo_key(key)
 		if not latest.ok:
 			return latest
 		id = str(latest.value["id"])
@@ -142,24 +142,24 @@ func _ensure_solo_pack(key: String, announce: bool = false, groups: PackedString
 		shell._solo_pack_label = await _describe_solo_pack(id, version, groups)
 		shell._say(shell._solo_pack_label)
 
-	var got: DotResult = await shell._cloud.ensure(StringName(id), version, groups)
+	var got: GSResult = await shell._cloud.ensure(StringName(id), version, groups)
 	if not got.ok:
 		shell._solo_pack_label = ""
 		return got
 
-	return DotResult.success("%s@%s" % [id, version])
+	return GSResult.success("%s@%s" % [id, version])
 
 
 ## "Fetching maps: <name> (<size>)…". The size is what is still to download (a pack already
 ## on the disk is "already downloaded"), from the manifest alone. A manifest that will not
-## resolve here only costs the size: [method DotCloudClient.ensure] reports the real failure.
+## resolve here only costs the size: [method GSCloudClient.ensure] reports the real failure.
 func _describe_solo_pack(id: String, version: String, groups: PackedStringArray = PackedStringArray(["*"])) -> String:
 	var pack_name := id.get_slice("/", 1)
-	var resolved: DotResult = await shell._cloud.resolve_manifest(StringName(id), version)
+	var resolved: GSResult = await shell._cloud.resolve_manifest(StringName(id), version)
 	if not resolved.ok:
 		return shell._text("shell.solo.fetching", {"name": pack_name}, "Fetching maps: %s…" % pack_name)
 
-	var manifest := resolved.value as DotCloudManifest
+	var manifest := resolved.value as GSCloudManifest
 	if manifest.display_name != "":
 		pack_name = manifest.display_name
 
@@ -199,14 +199,14 @@ func _pack_script_paths(keys: Array[String]) -> PackedStringArray:
 static func _in_tooling_dir(path: String) -> bool:
 	var parts := path.split("/")
 	for i in parts.size() - 1:
-		if DotCloudClient.WARM_SKIP_DIRS.has(parts[i]):
+		if GSCloudClient.WARM_SKIP_DIRS.has(parts[i]):
 			return true
 	return false
 
 
 ## Compiles a delivered pack's scripts a slice per frame with GameSpice Cloud's warm_content, then slice-loads its scenes and resources. An addon without warm_content falls back to [method _slice_load] for everything. Both are no-ops natively. On the web they run on the main thread even on the threaded engine: a [method ResourceLoader.load_threaded_request] there never finished (FC's 326 scripts at 0 % for minutes, no frame drawn; web-mt-shell-unpack-hang-1), so warm_content is forced past its own "threads exist" skip.
 func _warm_pack(keys: Array[String]) -> Variant:
-	if shell._cloud == null or not shell._cloud.has_method("warm_content") or not DotPlatform.is_web():
+	if shell._cloud == null or not shell._cloud.has_method("warm_content") or not GSPlatform.is_web():
 		await _slice_load(_pack_script_paths(keys))
 		return null
 
@@ -245,10 +245,10 @@ static func _scene_dependency_paths(path: String) -> PackedStringArray:
 ## Fills the resource cache across frames so the following [code]load()[/code] is a hit and the cover keeps animating (a browser without threads compiles every script in one frame).
 ## Native builds skip it unless [param force]; a failure only means the plain load() does the work.
 func _slice_load(paths: PackedStringArray, force: bool = false) -> void:
-	if paths.is_empty() or not (force or DotPlatform.is_web()):
+	if paths.is_empty() or not (force or GSPlatform.is_web()):
 		return
 
-	var loader := DotCloudSliceLoader.new()
+	var loader := GSCloudSliceLoader.new()
 	loader.progress.connect(func(done: int, total: int, _path: String) -> void:
 		var fraction := float(done) / float(maxi(total, 1))
 		if shell._progress != null:
@@ -258,8 +258,8 @@ func _slice_load(paths: PackedStringArray, force: bool = false) -> void:
 			shell.loading.set_progress(fraction, shell._text("shell.loading.scripts", {}, "Preparing the game…")))
 
 	# Never threaded on the web: see [method _warm_pack].
-	var res: DotResult = await loader.load_all(shell.get_tree(), paths, not DotPlatform.is_web())
+	var res: GSResult = await loader.load_all(shell.get_tree(), paths, not GSPlatform.is_web())
 	shell.slice_frames_yielded = loader.frames_yielded
 
 	if not res.ok:
-		DotLog.warn(shell.CHANNEL, "slice preload stopped early", {"why": str(res.error)})
+		GSLog.warn(shell.CHANNEL, "slice preload stopped early", {"why": str(res.error)})

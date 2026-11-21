@@ -57,8 +57,8 @@ var _rows: Array[Dictionary] = []
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -84,7 +84,7 @@ func _run() -> void:
 		get_tree().quit(0)
 		return
 
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	var rpc_watch := RpcPathWatch.new()
 	OS.add_logger(rpc_watch)
@@ -102,7 +102,7 @@ func _run() -> void:
 				await _pass_through(game)
 
 	await _teardown()
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 	OS.remove_logger(rpc_watch)
 
 	_print_table()
@@ -159,10 +159,10 @@ func _skip(count: int, why: String) -> void:
 		_check(false, "skipped: %s" % why)
 
 
-func _server() -> DotServer:
+func _server() -> GSServer:
 	if _host == null or not is_instance_valid(_host):
 		return null
-	return _host.server as DotServer
+	return _host.server as GSServer
 
 
 func _until(condition: Callable, seconds: float = 20.0) -> bool:
@@ -180,14 +180,14 @@ func _until(condition: Callable, seconds: float = 20.0) -> bool:
 func _at_game(game_id: String) -> bool:
 	var current := _server().games.current()
 	return current != null and current.game_id == game_id \
-		and _server().games.phase == DotGameManager.Phase.IDLE
+		and _server().games.phase == GSGameManager.Phase.IDLE
 
 
-func _link_of(shell: Node) -> DotClientLink:
+func _link_of(shell: Node) -> GSClientLink:
 	if shell == null or not is_instance_valid(shell):
 		return null
 	var link: Variant = shell.link
-	return link as DotClientLink if link != null and is_instance_valid(link) else null
+	return link as GSClientLink if link != null and is_instance_valid(link) else null
 
 
 ## [param shell] is in [param game_id]: told of it, its scene loaded, playing.
@@ -195,7 +195,7 @@ func _client_in(shell: Node, game_id: String) -> bool:
 	var link := _link_of(shell)
 	return (
 		link != null and link.server_game_id == game_id
-		and link.phase == DotClientLink.Phase.PLAYING
+		and link.phase == GSClientLink.Phase.PLAYING
 		and link._scene_instance != null and is_instance_valid(link._scene_instance)
 	)
 
@@ -280,7 +280,7 @@ func _boot() -> bool:
 	ServerWorld.add(self, _host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 
 	if not _check(started.ok, "the host boots", str(started.error)):
 		_skip(1, "the host did not boot")

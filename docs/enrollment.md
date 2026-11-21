@@ -19,7 +19,7 @@ The challenge is public once published, so it completes nothing alone; the secre
 - **It waits at most 30 s at boot**, because the game's identity layer looks for the credential as the first module loads. If it is late, it keeps asking until the enrollment expires and the host picks the token up live (`_on_enrolled_late`: the listing and sign-in checks at once; parties and avatar reads at the next restart or game change).
 - **Re-enrolling rotates.** Delete the token and restart: the new credential revokes the last one enrollment made for that server (`Enrolled by the server`). An owner's hand-made integrations are never touched, and a token an operator put in the file is never replaced.
 - **Only a command-line boot enrolls** (`enroll_with_site`, set by `_run`, not under `--selftest`). The suites embed the host through `start()` with fixture data and would otherwise each ask the production site who they are. `TMC_ENROLL=off` turns it off.
-- **`TmcReport` defaults its config's strategy to `introspect`.** The listing borrows `DotAuthConfig` for its URL and token, and the default `ticket` strategy demands a `server_id` and key, so a file holding only a token (what enrollment writes) was refused.
+- **`TmcReport` defaults its config's strategy to `introspect`.** The listing borrows `GSAuthConfig` for its URL and token, and the default `ticket` strategy demands a `server_id` and key, so a file holding only a token (what enrollment writes) was refused.
 
 ## The same credential gives ticket mode its id and key
 

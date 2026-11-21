@@ -1,16 +1,16 @@
 extends Node
 
-## A stand-in for a loaded game that plays rounds and keeps no `DotMatch` the game vote can find.
+## A stand-in for a loaded game that plays rounds and keeps no `GSMatch` the game vote can find.
 ## Used by `examples/selftest.gd` ("finish_round in a game whose match the game vote cannot find").
 
 ## The game's own vote, the director `TmcVote` finds in the tree and hears rounds from.
-var director: DotVoteDirector = null
+var director: GSVoteDirector = null
 
 
 func _init() -> void:
 	name = "RoundsWithoutAMatch"
 
-	director = DotVoteDirector.new()
+	director = GSVoteDirector.new()
 	director.name = "MapVote"
 	# Its own clock is not what is under test, and the registry's vote service is not this one's.
 	director.register_service = false

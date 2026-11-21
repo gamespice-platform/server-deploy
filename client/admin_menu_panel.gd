@@ -213,7 +213,7 @@ func _send_path(path: String) -> void:
 
 func _begin_input(row: Dictionary) -> void:
 	_input_path = str(row["input"])
-	_input_hint.text = "%s — Enter to send, Esc to cancel" % DotNotice.sanitised_string(row.get("prompt", "Type it"))
+	_input_hint.text = "%s — Enter to send, Esc to cancel" % GSNotice.sanitised_string(row.get("prompt", "Type it"))
 	_text_box.text = ""
 	_text_box.visible = true
 	_input_hint.visible = true
@@ -241,7 +241,7 @@ func _on_submit(text: String) -> void:
 ## What a typed entry may carry: no quote, no semicolon, nothing below a space, bounded.
 ## The server cleans it again; this is so what is sent is what was meant.
 static func clean_text(text: String) -> String:
-	var out := DotChatManager.sanitise(text, MAX_TEXT)
+	var out := GSChatManager.sanitise(text, MAX_TEXT)
 	return out.replace("\"", "'").replace(";", ",").strip_edges()
 
 
@@ -292,12 +292,12 @@ func _clean_rows(given: Variant) -> Array:
 	for raw in given:
 		if not (raw is Dictionary):
 			continue
-		var row := {"label": DotNotice.sanitised_string(raw.get("label", ""), 80)}
+		var row := {"label": GSNotice.sanitised_string(raw.get("label", ""), 80)}
 		if raw.has("go") and str(raw["go"]) != "":
 			row["go"] = str(raw["go"])
 		elif raw.has("input") and str(raw["input"]) != "":
 			row["input"] = str(raw["input"])
-			row["prompt"] = DotNotice.sanitised_string(raw.get("prompt", ""), 64)
+			row["prompt"] = GSNotice.sanitised_string(raw.get("prompt", ""), 64)
 		elif bool(raw.get("back", false)):
 			row["back"] = true
 		out.append(row)
@@ -310,8 +310,8 @@ func _numbered() -> Array:
 
 
 func _render() -> void:
-	_title.text = DotNotice.sanitised_string(_page.get("title", "Admin menu"), 80)
-	var sub := DotNotice.sanitised_string(_page.get("subtitle", ""), 120)
+	_title.text = GSNotice.sanitised_string(_page.get("title", "Admin menu"), 80)
+	var sub := GSNotice.sanitised_string(_page.get("subtitle", ""), 120)
 	_subtitle.text = sub
 	_subtitle.visible = sub != ""
 

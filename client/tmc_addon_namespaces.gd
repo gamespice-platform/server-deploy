@@ -1,7 +1,7 @@
 class_name TmcAddonNamespaces
 extends RefCounted
 
-## Whose packs may REPLACE this shell's own `addons/<dir>`: the `namespaces` list [DotCloudAddonSet] takes an overlay from. Shell-shared, so every shell build (web, desktop) and the server's addon announcement read one list. An entry ending in `/` is an owner, anything else one exact content id (the matching [DotCloudAddonSet] does). The defaults are first-party. An operator who exports THEIR OWN shell may add owners in `cfg/addons/namespaces.txt` (one per line, `#` comments), which the export presets already include. It is read from the shell build and never from a server: a server that could extend it could replace the player's code.
+## Whose packs may REPLACE this shell's own `addons/<dir>`: the `namespaces` list [GSCloudAddonSet] takes an overlay from. Shell-shared, so every shell build (web, desktop) and the server's addon announcement read one list. An entry ending in `/` is an owner, anything else one exact content id (the matching [GSCloudAddonSet] does). The defaults are first-party. An operator who exports THEIR OWN shell may add owners in `cfg/addons/namespaces.txt` (one per line, `#` comments), which the export presets already include. It is read from the shell build and never from a server: a server that could extend it could replace the player's code.
 
 ## The organisation's (both its ids), and the game addons published under their author (the weapons packs, natural-disasters).
 ## A shell carries none of those (it is gs-* addons only), so these are what it fetches them under when a server announces them.
@@ -98,7 +98,7 @@ static func load_shell() -> PackedStringArray:
 	var out := resolve(extra, rejected)
 
 	if not rejected.is_empty():
-		DotLog.warn("tmc.shell", "addon namespaces ignored (not owner/ or owner/repo)", {"entries": rejected})
+		GSLog.warn("tmc.shell", "addon namespaces ignored (not owner/ or owner/repo)", {"entries": rejected})
 
 	return out
 
@@ -137,7 +137,7 @@ static func dir_for(repo: String, version: String = "") -> String:
 ## Whether [param repo] at [param version] still holds its legacy directory (a renamed repository, at or below [constant LEGACY_LAST]).
 static func holds_legacy(repo: String, version: String) -> bool:
 	var last := str(LEGACY_LAST.get(str(PUBLISHED_AS.get(repo, repo)), ""))
-	return last != "" and version != "" and DotCloudAddonSet.compare_versions(version.trim_prefix("v"), last) <= 0
+	return last != "" and version != "" and GSCloudAddonSet.compare_versions(version.trim_prefix("v"), last) <= 0
 
 
 ## [param announced] without a legacy directory its announced version no longer holds. A server-deploy older than
@@ -152,7 +152,7 @@ static func without_stale_legacy(announced: Array) -> Array:
 			var version := str((raw as Dictionary).get("version", ""))
 
 			if is_legacy_dir(dir) and not holds_legacy(lock_repo(dir), version):
-				DotLog.warn("tmc.addons", "the server announced a stale legacy directory; not taken", {
+				GSLog.warn("tmc.addons", "the server announced a stale legacy directory; not taken", {
 					"dir": dir, "version": version, "holds": dir_for(lock_repo(dir)),
 				})
 				continue
@@ -176,11 +176,11 @@ static func warn_legacy(dir: String, ref: String) -> void:
 
 	_warned[key] = true
 	var current := str(LEGACY_DIRS.find_key(dir))
-	DotLog.warn("tmc.addons", "addons/%s is a legacy directory (deprecated): %s still holds it; a newer tag holds addons/%s" % [dir, ref, current],
+	GSLog.warn("tmc.addons", "addons/%s is a legacy directory (deprecated): %s still holds it; a newer tag holds addons/%s" % [dir, ref, current],
 		{"dir": dir, "ref": ref, "current": current})
 
 
-## The pack [param dir]'s code is published as: `{repo, id, old_repo, old_id}`, where `repo` is the id's name ([DotCloudAddonSet] refuses any other).
+## The pack [param dir]'s code is published as: `{repo, id, old_repo, old_id}`, where `repo` is the id's name ([GSCloudAddonSet] refuses any other).
 ## `dot-*` packs are the organisation's (`gamespice-platform/<name>`, with the `modcommunity/dot-<name>` alias as `old_*`), the game addons their author's (no alias).
 static func pack_for(dir: String) -> Dictionary:
 	var lock := lock_repo(dir)
@@ -194,7 +194,7 @@ static func pack_for(dir: String) -> Dictionary:
 
 
 ## The `{repo, id}` a server announces for [param dir]: the old id while it has one. Every shell exported so far takes only `modcommunity/`, and
-## [DotCloudAddonSet] compares the version by `repo` against the shell's lock, which names `dot-<name>`; the alias receives every new version.
+## [GSCloudAddonSet] compares the version by `repo` against the shell's lock, which names `dot-<name>`; the alias receives every new version.
 static func announced_pack_for(dir: String) -> Dictionary:
 	var pack := pack_for(dir)
 
@@ -213,7 +213,7 @@ static func dir_for_id(id: String, version: String = "") -> String:
 	return dir_for(id.get_file(), version)
 
 
-## Whether [param id] (`owner/repo`) falls under [param namespaces], as [DotCloudAddonSet] decides.
+## Whether [param id] (`owner/repo`) falls under [param namespaces], as [GSCloudAddonSet] decides.
 static func covers(namespaces: PackedStringArray, id: String) -> bool:
 	for entry in namespaces:
 		if (entry.ends_with("/") and id.begins_with(entry)) or id == entry:

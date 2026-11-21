@@ -1,8 +1,8 @@
 extends Node
 
-## Boots a [DotServer] from `cfg/` and `content/` and prints an address a friend can paste; this is what `./server` runs, and it decides nothing a config file could have said.
+## Boots a [GSServer] from `cfg/` and `content/` and prints an address a friend can paste; this is what `./server` runs, and it decides nothing a config file could have said.
 ## The boot order is GameSpice Server's and load-bearing: console lines run inside `boot()` (the only window where `sv_tickrate` and the port can still be set), then the listener opens and locks,
-## then games register, because [method DotGameManager.change_game] needs a known game, then the default game and its module load.
+## then games register, because [method GSGameManager.change_game] needs a known game, then the default game and its module load.
 
 const CHANNEL := "tmc.host"
 
@@ -17,19 +17,19 @@ const EXIT_CONTENT := 7
 var config: TmcConfig = null
 var content: TmcContent = null
 var admins: TmcAdmins = null
-var server: DotServer = null
+var server: GSServer = null
 
 ## The query responder. Answers A2S and DQP; see GameSpice Server Query.
-var query_host: DotQueryHost = null
+var query_host: GSQueryHost = null
 
 ## The sink layer, when `log_router` is not `off`. See [method _build_logging].
-var log_router: DotLogRouter = null
+var log_router: GSLogRouter = null
 
 ## The guard. Built for every server, and it ships in dry run.
-var guard: DotSecurityManager = null
+var guard: GSSecurityManager = null
 
 ## The detectors, reporting into the same guard.
-var anticheat: DotAntiCheat = null
+var anticheat: GSAntiCheat = null
 
 ## Voting for the next game, or null when `vote.yml` turns it off.
 var votes: TmcVote = null
@@ -45,7 +45,7 @@ var loading: TmcLoading = null
 var listing: TmcReport = null
 
 ## The auth server cfg/auth.yml asked for, or null.
-var auth: DotAuthServer = null
+var auth: GSAuthServer = null
 
 ## Parties, the booking this server keeps, party chat and the optional queue. Built for
 ## every game, like the guard. See [TmcParty].
@@ -93,7 +93,7 @@ var addons: TmcAddonAnnounce = TmcAddonAnnounce.new(self)
 
 func _ready() -> void:
 	# The RPC routing is not optional: Godot addresses an RPC by the receiver's node path *relative to its MultiplayerAPI root* (`/root` by default),
-	# so a [DotServer] at `/root/Host/Server` would send calls to "Host/Server" that the client shell's `/root/Shell/Server` answers with `Node not found`, handshake included.
+	# so a [GSServer] at `/root/Host/Server` would send calls to "Host/Server" that the client shell's `/root/Shell/Server` answers with `Node not found`, handshake included.
 	# Scoping an API to this subtree makes both ends send and expect "Server".
 	get_tree().set_multiplayer(
 		MultiplayerAPI.create_default_interface(), get_path()
@@ -114,8 +114,8 @@ func _ready() -> void:
 func _run() -> void:
 	var args := OS.get_cmdline_user_args()
 
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in args else DotLog.Level.INFO
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in args else GSLog.Level.INFO
 	)
 
 	_config_dir = _value(args, "--config", "cfg")
@@ -154,7 +154,7 @@ func _run() -> void:
 
 	if _selftest:
 		# A boot test must not need the live port: `./server check` runs on boxes where one is often already serving, and "already in use" is true but not the question asked.
-		# Port 0 lets the OS pick; RCON goes off with it because `DotServerConfig.validate` refuses an ephemeral game port alongside an RCON password with no explicit port.
+		# Port 0 lets the OS pick; RCON goes off with it because `GSServerConfig.validate` refuses an ephemeral game port alongside an RCON password with no explicit port.
 		config.server.port = 0
 		config.server.rcon_password = ""
 
@@ -237,7 +237,7 @@ func start(
 	config_dir: String,
 	content_dir: String,
 	data_dir: String
-) -> DotResult:
+) -> GSResult:
 	_config_dir = config_dir
 	_content_dir = content_dir
 	_data_dir = data_dir
@@ -274,9 +274,9 @@ func start(
 	var built: bool = await _boot()
 
 	if not built:
-		return DotResult.fail(DotError.CODE_STATE, "The server did not come up.")
+		return GSResult.fail(GSError.CODE_STATE, "The server did not come up.")
 
-	return DotResult.success(self)
+	return GSResult.success(self)
 
 
 ## A TCP port nothing holds right now; 0 when none could be probed.
@@ -304,7 +304,7 @@ const SERVER_NUMBER_FLAGS := {"--port": "port", "--max-players": "max_players", 
 
 
 ## `--sv-*` style overrides, for one run without editing a file.
-## Deliberately narrow (a port, a bind address, a name, a game): a flag is invisible to whoever reads the config file next, and secrets are refused for [method DotConfig.sensitive_keys]'s reason (argv is readable by every process).
+## Deliberately narrow (a port, a bind address, a name, a game): a flag is invisible to whoever reads the config file next, and secrets are refused for [method GSConfig.sensitive_keys]'s reason (argv is readable by every process).
 func _apply_overrides(args: PackedStringArray) -> void:
 	var bind := _value(args, "--bind", "")
 
@@ -365,7 +365,7 @@ func _apply_overrides(args: PackedStringArray) -> void:
 			config.server.content_base_urls = origins
 
 	# Two spellings: `--map` is what `server` and TMC_MAP hand down, `+map` is what anybody who has run a dedicated server types.
-	# `+map` reaches here rather than the console because DotConsole runs `+command` after the listener opens but BEFORE a game is loaded, so the `map` command did not exist yet and the argument was silently dropped.
+	# `+map` reaches here rather than the console because GSConsole runs `+command` after the listener opens but BEFORE a game is loaded, so the `map` command did not exist yet and the argument was silently dropped.
 	# `--map` wins a disagreement, being the explicit one and the one a unit file sets.
 	var map_id := _value(args, "--map", _value(args, "+map", ""))
 
@@ -376,7 +376,7 @@ func _apply_overrides(args: PackedStringArray) -> void:
 
 	for flag in ["--rcon-password", "--password"]:
 		if flag in args:
-			DotLog.warn(CHANNEL, "a secret on the command line is refused", {
+			GSLog.warn(CHANNEL, "a secret on the command line is refused", {
 				"flag": flag,
 				"why": "argv is readable by other processes; put it in cfg/server.yml",
 			})
@@ -409,7 +409,7 @@ func _apply_web_overrides(args: PackedStringArray) -> void:
 
 ## The owner's per-game settings from `cfg/server/content/overrides.yml` (cvars, metadata, player counts, maps), laid over each `game.yml` before any descriptor is read.
 ## Here rather than in TmcContent.scan because the scan knows a content directory and nothing about cfg/ or data/; see TmcGameConfig.
-func _apply_game_config() -> DotResult:
+func _apply_game_config() -> GSResult:
 	var loaded := TmcGameConfig.load_from(_config_dir, _absolute(_data_dir))
 
 	if not loaded.ok:
@@ -419,27 +419,27 @@ func _apply_game_config() -> DotResult:
 
 	# Before the settings are laid over the descriptors, so the file shows the game's own defaults.
 	for written in TmcGameCfgDirs.write_base_configs(_config_dir, content):
-		DotLog.info(CHANNEL, "wrote a base config for a game with none", {"file": "cfg/" + written})
+		GSLog.info(CHANNEL, "wrote a base config for a game with none", {"file": "cfg/" + written})
 
 	overrides.apply_all(content)
 
 	for line in overrides.warnings:
-		DotLog.warn(CHANNEL, line)
+		GSLog.warn(CHANNEL, line)
 
 	if not overrides.errors.is_empty():
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"cfg/%s: %s" % [TmcGameConfig.FILE, "; ".join(overrides.errors)],
 			"a bare map name needs map_owner:, sv_map_content_owner or an owner/map spelling"
 		)
 
-	return DotResult.success(overrides)
+	return GSResult.success(overrides)
 
 
 ## The server owner's extra packs (`cfg/addons.yml`), appended to each game's dependencies
 ## AFTER the game's own settings are applied, so a `remove:` there cannot be undone here. A
 ## malformed file is a configuration error (exit 5), not a content one: the content is fine.
-func _apply_addons_config() -> DotResult:
+func _apply_addons_config() -> GSResult:
 	var loaded := TmcAddonsConfig.load_from(_config_dir, _absolute(_data_dir))
 
 	if not loaded.ok:
@@ -449,16 +449,16 @@ func _apply_addons_config() -> DotResult:
 	extras.apply_all(content)
 
 	for line in extras.warnings:
-		DotLog.warn(CHANNEL, line)
+		GSLog.warn(CHANNEL, line)
 
-	return DotResult.success(extras)
+	return GSResult.success(extras)
 
 
 func _boot() -> bool:
 	if not _build_server_node():
 		return false
 
-	# A `kind: pack` game needs a cloud client on the SERVER too: `DotGameManager` fetches and mounts the new game's content itself before asking anybody else,
+	# A `kind: pack` game needs a cloud client on the SERVER too: `GSGameManager` fetches and mounts the new game's content itself before asking anybody else,
 	# because the scene it loads is a path inside the mount. Added before boot() so the registration is in place before the game manager runs its initial change.
 	_build_cloud()
 
@@ -466,7 +466,7 @@ func _boot() -> bool:
 	# arrive the moment the listener opens.
 	addons.advertise()
 
-	# Before boot() for a second reason, the challenge: `DotServer` answers a connecting client with the strategy it wants by asking the registry for `dot_auth_server`,
+	# Before boot() for a second reason, the challenge: `GSServer` answers a connecting client with the strategy it wants by asking the registry for `dot_auth_server`,
 	# so one registered after the listener opens was reported to every client in flight as absent.
 	if not _build_auth():
 		return false
@@ -493,7 +493,7 @@ func _boot() -> bool:
 		# Legitimate, and said out loud. GameSpice Server supports a server with no game and a
 		# player who connects to one sees nothing, which is indistinguishable from a
 		# broken server unless somebody says so.
-		DotLog.warn(CHANNEL, "no game to load; the server will run empty", {
+		GSLog.warn(CHANNEL, "no game to load; the server will run empty", {
 			"content": _content_dir,
 		})
 		return true
@@ -515,7 +515,7 @@ func _boot() -> bool:
 
 	await _enroll_and_report()
 
-	var loaded: DotResult = await server.games.change_game(wanted, "boot")
+	var loaded: GSResult = await server.games.change_game(wanted, "boot")
 
 	if not loaded.ok:
 		_die(EXIT_CONTENT, str(loaded.error))
@@ -538,7 +538,7 @@ func _current_game_id(wanted: String) -> String:
 	var current := TmcGameRef.current_id(wanted)
 
 	if current != wanted.strip_edges() and content.find(wanted) == null:
-		DotLog.warn(CHANNEL, "TMC_GAME names a retired game id; loading the current one, change it", {
+		GSLog.warn(CHANNEL, "TMC_GAME names a retired game id; loading the current one, change it", {
 			"retired": wanted, "loading": current,
 		})
 		wanted = current
@@ -546,7 +546,7 @@ func _current_game_id(wanted: String) -> String:
 	return wanted
 
 
-## The DotServer and its query host, added to the tree but not booted, with the YAML's console lines compiled for its startup.
+## The GSServer and its query host, added to the tree but not booted, with the YAML's console lines compiled for its startup.
 ## False once the boot has been given up on.
 func _build_server_node() -> bool:
 	# Everything the server writes goes under one directory. Set before `boot()` because
@@ -556,38 +556,38 @@ func _build_server_node() -> bool:
 	config.server.bans_path = "%s/bans.json" % _data_dir
 	config.server.audit_log_path = "%s/audit.jsonl" % _data_dir
 
-	# Before the server exists, because the first line this boot emits is the interesting one: the router registers itself as a DotLog sink on entering the tree,
+	# Before the server exists, because the first line this boot emits is the interesting one: the router registers itself as a GSLog sink on entering the tree,
 	# so what is built before it is not covered, and a log is most wanted for why the boot went wrong.
 	_build_logging()
 	# Which GameSpice Sim modules run native and which run their GDScript twins (same results, slower).
-	DotLog.info(CHANNEL, TmcNativeStatus.line())
+	GSLog.info(CHANNEL, TmcNativeStatus.line())
 
-	server = DotServer.new()
+	server = GSServer.new()
 	server.name = "Server"
 	server.config = config.server
 	server.config_file = ""
 	server.auto_boot = false
 
 	if log_router != null:
-		# GameSpice Server duck-types this: a `DotLogSink` for a rotating file or a GameSpice Log
+		# GameSpice Server duck-types this: a `GSLogSink` for a rotating file or a GameSpice Log
 		# router for the whole sink layer, recognised by what it can do rather than by
 		# what it is called. Pointed at the router, it does not make a second file writer.
-		server.log_sink_ref = DotNodeRef.of_path(NodePath("../DotLogRouter"))
+		server.log_sink_ref = GSNodeRef.of_path(NodePath("../GSLogRouter"))
 	# Both config slots are named absolutely, so GameSpice Server's search path cannot reach the `server.cfg` and `autoexec.cfg` its own addon ships,
 	# which would run after the operator's YAML and silently override it. `cfg/autoexec.cfg` is still honoured, and runs after the listener opens.
 	config.server.autoexec_config = "%s/autoexec.cfg" % _config_dir
 	# The operator's net_max_* as ceilings on whatever game loads: GameSpice Game's
-	# DotGameModule reads this meta before its netcode starts. The name is spelled out
-	# (it is DotGameNetcode.CEILING_META) so the host does not need GameSpice Game linked to boot.
+	# GSGameModule reads this meta before its netcode starts. The name is spelled out
+	# (it is GSGameNetcode.CEILING_META) so the host does not need GameSpice Game linked to boot.
 	server.set_meta(&"dot_net_ceiling", config.net_ceiling())
 	add_child(server)
 
 	# Queries are their own addon now and only answer if a host is plugged in; `a2s_enabled: true` ships in cfg/server.yml,
 	# so a deployment without this quietly drops off every listing.
-	query_host = DotQueryHost.new()
+	query_host = GSQueryHost.new()
 	query_host.name = "QueryHost"
 	query_host.app_url = config.app_url
-	query_host.server_ref = DotNodeRef.of_path(NodePath("../Server"))
+	query_host.server_ref = GSNodeRef.of_path(NodePath("../Server"))
 	add_child(query_host)
 
 	# The YAML's console lines are compiled to a `.cfg` and handed to GameSpice Server's own
@@ -607,7 +607,7 @@ func _build_server_node() -> bool:
 
 ## Opens the listener and plugs the operator's admins in. False once the boot has been given up on.
 func _start_listener_and_admins() -> bool:
-	var booted: DotResult = await server.boot()
+	var booted: GSResult = await server.boot()
 
 	if not booted.ok:
 		# "Already in use" is the common one and a *port* failure, not a configuration one: treating it as a misconfiguration would stop retrying,
@@ -633,10 +633,10 @@ func _start_listener_and_admins() -> bool:
 	if config.alias_failures > 0:
 		_die(EXIT_CONFIG, "an alias names something this server does not have (see the ERR lines above)")
 		return false
-	server.console.command("aliases", func(ctx: DotCmdContext) -> void:
+	server.console.command("aliases", func(ctx: GSCmdContext) -> void:
 		ctx.reply_lines(config.alias_lines()),
 		"List the effective aliases (cvars and commands) with the layer and file:line each came from.",
-		DotAdminFlags.CHANGEMAP)
+		GSAdminFlags.CHANGEMAP)
 	var added := server.admins.add_source(admins)
 
 	if not added.ok:
@@ -648,7 +648,7 @@ func _start_listener_and_admins() -> bool:
 
 ## The backbone credential and the site listing, before the first game loads.
 func _enroll_and_report() -> void:
-	# Before the first game, because the game's identity layer needs the credential: `DotPlatformIdentity` finds `dot_backbone_client` while the module loads
+	# Before the first game, because the game's identity layer needs the credential: `GSPlatformIdentity` finds `dot_backbone_client` while the module loads
 	# and reads avatars through it; built after, every booted game kept avatars in a local file the site never sees. Reports are on the client's timer, so nothing is reported early.
 	# The credential is asked for first when there is none: an unenrolled box proves it is the server at its listed address and is issued one (see [TmcEnroll]); awaited, bounded.
 	var listing_path := "%s/listing.json" % _data_dir
@@ -657,7 +657,7 @@ func _enroll_and_report() -> void:
 	if enroll_with_site:
 		enroll = await TmcEnroll.at_boot(
 			self, server, listing_path,
-			auth.config.backbone_url if auth != null and auth.config != null else DotAuthConfig.new().backbone_url,
+			auth.config.backbone_url if auth != null and auth.config != null else GSAuthConfig.new().backbone_url,
 			config.public_address
 		)
 
@@ -673,10 +673,10 @@ func _enroll_and_report() -> void:
 func _install_services() -> void:
 	# After the first game is loaded, because the director has to be told what is running: a vote that starts on no game has no clock and offers the game everybody is playing on its first ballot.
 	# games.yml: no file is every game; an unreadable one is an ERROR and plays every game too, because a vote that cannot start is worse.
-	var rotation_read := TmcGameRotation.load_file(DotCfgLegacy.find(
+	var rotation_read := TmcGameRotation.load_file(GSCfgLegacy.find(
 		"%s/%s" % [_config_dir, TmcGameRotation.LEGACY_FILE], "%s/%s" % [_config_dir, TmcGameRotation.FILE]))
 	if not rotation_read.ok:
-		DotLog.error(CHANNEL, "cfg/content/games.yml could not be read; every installed game plays", {
+		GSLog.error(CHANNEL, "cfg/content/games.yml could not be read; every installed game plays", {
 			"why": str(rotation_read.error),
 		})
 	var games_rotation: TmcGameRotation = rotation_read.value if rotation_read.ok else null
@@ -699,7 +699,7 @@ func _install_services() -> void:
 	# The recorder's settings for whichever game declares a schema; it builds the recorder.
 	if config.bot_record.path == "":
 		config.bot_record.path = _absolute(_data_dir).path_join("bot/demos")
-	DotRegistry.register(&"bot_record_config", config.bot_record)
+	GSRegistry.register(&"bot_record_config", config.bot_record)
 
 	radio = TmcRadio.install(self, server, config, _absolute(_data_dir))
 	trail = TmcTrail.install(self, server, config, _absolute(_data_dir))
@@ -713,7 +713,7 @@ func _install_services() -> void:
 	admin_menu = TmcAdminMenu.install(self, server, config.admin_menu, map_session)
 
 	# After the first game too: it watches that game's map session for per-map screens.
-	var reread := func() -> DotResult:
+	var reread := func() -> GSResult:
 		return TmcConfig.merged_file("dot-core", "loading.yml", _config_dir)
 
 	loading = TmcLoading.install(self, server, config.loading, reread, map_session)
@@ -727,13 +727,13 @@ func _build_logging() -> void:
 	if log_router == null:
 		return
 
-	log_router.name = "DotLogRouter"
-	# The router is what applies the levels from here on. `DotServer._apply_log_levels`
+	log_router.name = "GSLogRouter"
+	# The router is what applies the levels from here on. `GSServer._apply_log_levels`
 	# does it again during boot with the same values out of the same config, which is
 	# idempotent and stays because a server with `log_router: off` still needs it.
 	add_child(log_router)
 
-	DotLog.debug(CHANNEL, "the sink layer is up", log_router.describe())
+	GSLog.debug(CHANNEL, "the sink layer is up", log_router.describe())
 
 
 ## Gives scoped introspection the listing's integration client. See [TmcAuth].
@@ -742,25 +742,25 @@ func _hand_backbone_to_auth() -> void:
 	if auth == null or auth.config == null:
 		return
 	var adopting := auth.config.adopt_ticket_trust
-	if auth.config.strategy != DotAuthConfig.Strategy.INTROSPECT and not adopting:
+	if auth.config.strategy != GSAuthConfig.Strategy.INTROSPECT and not adopting:
 		return
 
-	var client: DotBackboneClient = listing.backbone if listing != null else null
+	var client: GSBackboneClient = listing.backbone if listing != null else null
 
 	if client == null:
 		if adopting and auth.config.server_id == "":
-			DotLog.warn(CHANNEL, "this server does not know its site id yet; signed-in players wait", {
+			GSLog.warn(CHANNEL, "this server does not know its site id yet; signed-in players wait", {
 				"fix": "enroll (data/listing.json), or set server_id in auth.yml",
 			})
 		elif auth.scoped_only:
-			DotLog.warn(CHANNEL, "introspection has no integration credential; signed-in players will be refused", {
+			GSLog.warn(CHANNEL, "introspection has no integration credential; signed-in players will be refused", {
 				"fix": "put an integration token with the USER_LOOKUP scope in data/listing.json",
 			})
 		return
 
 	auth.backbone = client
 	if not adopting:
-		DotLog.info(CHANNEL, "sign-ins are verified by the site, as this server")
+		GSLog.info(CHANNEL, "sign-ins are verified by the site, as this server")
 
 
 ## The site issued a credential after the boot stopped waiting for it. The listing and the sign-in check take it now, so the next member joins as themselves;
@@ -774,7 +774,7 @@ func _on_enrolled_late(_token: String, listing_path: String) -> void:
 
 	listing = TmcReport.install(self, server, content, listing_path)
 	_hand_backbone_to_auth()
-	DotLog.info(CHANNEL, "the site's credential is in use; parties start with the next restart")
+	GSLog.info(CHANNEL, "the site's credential is in use; parties start with the next restart")
 
 
 ## The addon refs this checkout installs. See setup.sh's "The addon lock".
@@ -791,7 +791,7 @@ func _register_web_build() -> void:
 	var wanted := _release_label(config.web_build)
 
 	if wanted == "" and config.web_build.strip_edges() != "":
-		DotLog.warn(CHANNEL, "sv_web_build is not a build id; players get the site's newest shell", {
+		GSLog.warn(CHANNEL, "sv_web_build is not a build id; players get the site's newest shell", {
 			"value": config.web_build,
 			"expected": "one path segment: letters, digits, dot, dash, underscore",
 		})
@@ -799,16 +799,16 @@ func _register_web_build() -> void:
 	server.console.cvar(
 		"sv_web_build", wanted,
 		"Pins the web client shell build this server's players load. Empty is the site's newest compatible shell.",
-		DotConVar.FLAG_NOTIFY
+		GSConVar.FLAG_NOTIFY
 	)
 	server.console.cvar(
 		"sv_web_requires", "",
 		"JSON of the addon API levels the loaded game's pack needs, so the site can pick a compatible shell. Set by the host.",
-		DotConVar.FLAG_NOTIFY
+		GSConVar.FLAG_NOTIFY
 	)
 
 	if wanted != "":
-		DotLog.info(CHANNEL, "this server pins a web shell build", {"build": wanted})
+		GSLog.info(CHANNEL, "this server pins a web shell build", {"build": wanted})
 
 
 ## Addon API levels each mounted pack asked for (`requires.json`), by content id.
@@ -816,13 +816,13 @@ var _pack_requires: Dictionary = {}
 
 
 ## Records what a mounted pack needs. Read here because the pack is mounted and nothing has to be fetched twice.
-func _record_requires(manifest: DotCloudManifest, mount_prefix: String) -> void:
-	var path := mount_prefix.trim_suffix("/") + "/" + DotAddonApi.REQUIREMENTS_FILE
+func _record_requires(manifest: GSCloudManifest, mount_prefix: String) -> void:
+	var path := mount_prefix.trim_suffix("/") + "/" + GSAddonApi.REQUIREMENTS_FILE
 
 	if not FileAccess.file_exists(path):
 		return
 
-	var parsed := DotAddonApi.parse(FileAccess.get_file_as_string(path))
+	var parsed := GSAddonApi.parse(FileAccess.get_file_as_string(path))
 
 	if parsed.ok:
 		_pack_requires[manifest.content_id] = parsed.value
@@ -871,7 +871,7 @@ func _register_pack_pins() -> void:
 	server.console.cvar(
 		"sv_pack_pins", "",
 		"JSON of the pack versions this server is pinned to, by content id. Set by the host; the site keeps these versions from its retention sweep.",
-		DotConVar.FLAG_NOTIFY
+		GSConVar.FLAG_NOTIFY
 	)
 	_publish_pack_pins()
 
@@ -922,7 +922,7 @@ func _register_web_loader() -> void:
 	var wanted := _web_loader_value()
 
 	if wanted == "" and config.web_loader.strip_edges() != "":
-		DotLog.warn(CHANNEL, "sv_web_loader is not a version label; players get the site's default", {
+		GSLog.warn(CHANNEL, "sv_web_loader is not a version label; players get the site's default", {
 			"value": config.web_loader,
 			"expected": "one path segment: letters, digits, dot, dash, underscore",
 		})
@@ -930,24 +930,24 @@ func _register_web_loader() -> void:
 	server.console.cvar(
 		"sv_web_loader", wanted,
 		"The site web game loader version this server's players get. Empty is the site's default.",
-		DotConVar.FLAG_NOTIFY
+		GSConVar.FLAG_NOTIFY
 	)
 
 	if wanted != "":
-		DotLog.info(CHANNEL, "this server asks the site for a web loader version", {"version": wanted})
+		GSLog.info(CHANNEL, "this server asks the site for a web loader version", {"version": wanted})
 
 
 ## Puts `log` on the console. GameSpice Log's console object could only plug into a CLIENT console until GameSpice Server grew `add_source`, so the one process with a log worth tailing could not reach it;
-## `DotConsole.add_source` wraps each name in a real `DotConCommand`, so `log` gets the permission check, RCON gate and audit line.
+## `GSConsole.add_source` wraps each name in a real `GSConCommand`, so `log` gets the permission check, RCON gate and audit line.
 ## GENERIC, not root: reading back what the server has said is what being staff is for, and `log test` is the only thing here that writes.
 func _register_log_commands() -> void:
 	if server == null or server.console == null:
 		return
 
-	var source := DotLogCommands.new(log_router)
-	var registered := server.console.add_source(source, DotAdminFlags.GENERIC)
+	var source := GSLogCommands.new(log_router)
+	var registered := server.console.add_source(source, GSAdminFlags.GENERIC)
 
-	DotLog.result(CHANNEL, "the log console commands", registered, DotLog.Level.WARN)
+	GSLog.result(CHANNEL, "the log console commands", registered, GSLog.Level.WARN)
 
 
 ## Builds the guard, its watchers and the detectors. It ships in dry run (every rule evaluates and is ledgered marked WOULD, nobody is punished),
@@ -958,41 +958,41 @@ func _build_security() -> void:
 		return
 
 	if not config.security.enabled:
-		DotLog.info(CHANNEL, "the security guard is off in cfg/security.yml")
+		GSLog.info(CHANNEL, "the security guard is off in cfg/security.yml")
 		return
 
-	guard = DotSecurityManager.new()
+	guard = GSSecurityManager.new()
 	guard.name = "Security"
 	guard.config = config.security
 	# The YAML is the layer. A second file under `user://cfg/` would be a second place a
 	# setting can come from with no order written down between them, which is exactly what
-	# `DotConfig`'s layering exists to avoid.
+	# `GSConfig`'s layering exists to avoid.
 	guard.config_file = ""
 	# `".."`, not `"../Server"`: the guard is a CHILD of the server, so `..` already IS the server, and `../Server` finds nothing and
 	# watches nothing for the life of the process. The two watchers below are siblings of the guard and correctly say `../Security`.
-	guard.server_ref = DotNodeRef.of_path(NodePath(".."))
+	guard.server_ref = GSNodeRef.of_path(NodePath(".."))
 	server.add_child(guard)
 
 	# One node rather than five. Every source it watches is optional and every one it
 	# cannot find simply does nothing, so a deployment without GameSpice Chat loses the router
 	# half and keeps GameSpice Server's own chat path.
-	var watch := DotSecurityWatch.new()
+	var watch := GSSecurityWatch.new()
 	watch.name = "SecurityWatch"
-	watch.guard_ref = DotNodeRef.of_path(NodePath("../Security"))
+	watch.guard_ref = GSNodeRef.of_path(NodePath("../Security"))
 	server.add_child(watch)
 
 	if config.anticheat.enabled:
-		anticheat = DotAntiCheat.new()
+		anticheat = GSAntiCheat.new()
 		anticheat.name = "AntiCheat"
 		anticheat.config = config.anticheat
 		anticheat.config_file = ""
-		anticheat.guard_ref = DotNodeRef.of_path(NodePath("../Security"))
+		anticheat.guard_ref = GSNodeRef.of_path(NodePath("../Security"))
 		server.add_child(anticheat)
 
-	# The console commands are NOT registered here: `DotSecurityManager.attach()` does it itself, and a second `DotSecurityCommands.register`
+	# The console commands are NOT registered here: `GSSecurityManager.attach()` does it itself, and a second `GSSecurityCommands.register`
 	# produces "command registered twice" warnings (the console correctly keeping the first).
 
-	DotLog.info(
+	GSLog.info(
 		CHANNEL,
 		"the security guard is watching",
 		{
@@ -1015,20 +1015,20 @@ func _build_auth() -> bool:
 
 	if node != null:
 		server.add_child(node)
-		auth = node as DotAuthServer
+		auth = node as GSAuthServer
 
 	return true
 
 
 ## Creates the content client a delivered game is fetched through. Config comes from a file, not YAML: `trusted_keys` is refused from the environment and
-## command line on purpose (`DotCloudConfig.sensitive_keys`), or anything able to set a variable here would become a content publisher.
+## command line on purpose (`GSCloudConfig.sensitive_keys`), or anything able to set a variable here would become a content publisher.
 func _build_cloud() -> void:
-	var cloud := DotCloudClient.new()
+	var cloud := GSCloudClient.new()
 	cloud.name = "Cloud"
 	# Who a pack's requires.json refusal names: "This game needs GameSpice Net API level 3 or
 	# newer; this SERVER has level 2" -- the operator's to fix, not the player's.
 	cloud.host_role = "server"
-	cloud.config = DotCloudConfig.new()
+	cloud.config = GSCloudConfig.new()
 	cloud.config.cache_dir = "%s/content_cache" % _data_dir
 	# A pack's client-only files (a game's baked light, GameSpice Cloud API 8) are never fetched
 	# here: this process never draws. Said outright rather than left to `auto`, which reads
@@ -1073,7 +1073,7 @@ func _build_cloud() -> void:
 	cloud.http_base_urls = config.content_urls
 
 	if config.content_urls.is_empty():
-		DotLog.info(CHANNEL, "no content urls; this server can only use content it already has", {
+		GSLog.info(CHANNEL, "no content urls; this server can only use content it already has", {
 			"searched": searched,
 			"hint": "set content_urls in cfg/server.yml to fetch maps and packs",
 		})
@@ -1111,19 +1111,19 @@ func _on_content_progress(progress: Dictionary) -> void:
 
 	_progress_said_ms = now
 
-	DotLog.info(CHANNEL, "downloading content", {
+	GSLog.info(CHANNEL, "downloading content", {
 		"percent": "%d%%" % int(round(fraction * 100.0)),
 		"files": "%d/%d" % [
 			int(progress.get("done_files", 0)), int(progress.get("total_files", 0))
 		],
 		"bytes": "%s / %s" % [
-			DotPaths.format_bytes(int(progress.get("done_bytes", 0))),
-			DotPaths.format_bytes(int(progress.get("total_bytes", 0))),
+			GSPaths.format_bytes(int(progress.get("done_bytes", 0))),
+			GSPaths.format_bytes(int(progress.get("total_bytes", 0))),
 		],
 	})
 
 
-func _on_content_ready(manifest: DotCloudManifest, mount_prefix: String) -> void:
+func _on_content_ready(manifest: GSCloudManifest, mount_prefix: String) -> void:
 	if manifest == null:
 		return
 
@@ -1135,7 +1135,7 @@ func _on_content_ready(manifest: DotCloudManifest, mount_prefix: String) -> void
 		addons.announce_change()
 	_publish_pack_pins()
 
-	DotLog.info(CHANNEL, "content ready", {
+	GSLog.info(CHANNEL, "content ready", {
 		"content": manifest.key(),
 		"at": mount_prefix,
 	})
@@ -1162,7 +1162,7 @@ func _report_behind_game(content_id: String) -> void:
 	if entry.is_empty():
 		return
 
-	DotLog.error(CHANNEL, "this game is OLDER than the server list asks for", {
+	GSLog.error(CHANNEL, "this game is OLDER than the server list asks for", {
 		"game": content_id,
 		"running": str(_mounted_versions.get(content_id, "unknown")),
 		"wanted": str(entry.get("wanted", "latest")),
@@ -1190,7 +1190,7 @@ static func behind_entry(path: String, content_id: String) -> Dictionary:
 	return entry if entry is Dictionary else {"wanted": "latest", "why": str(entry)}
 
 
-## Starts the extra packs that run on the server, as children of the DotServer node: the game's own root is private to DotGameManager,
+## Starts the extra packs that run on the server, as children of the GSServer node: the game's own root is private to GSGameManager,
 ## which frees whatever sits under the server node when the game changes, so they go with the game. After the module, because an entry may look for the game's services.
 func _attach_addon_entries() -> void:
 	var current := server.games.current()
@@ -1199,7 +1199,7 @@ func _attach_addon_entries() -> void:
 		return
 
 	var descriptor := content.find(current.game_id)
-	var cloud := DotRegistry.get_service(&"dot_cloud_client")
+	var cloud := GSRegistry.get_service(&"dot_cloud_client")
 
 	if descriptor == null or cloud == null:
 		return
@@ -1210,8 +1210,8 @@ func _attach_addon_entries() -> void:
 
 
 ## Keeps the right module loaded as the game changes: GameSpice Server does not load modules, so without this `changelevel` leaves the previous game's module driving the new world, or none at all.
-## Paths are compared, not ids: a different module is unloaded first (two [DotNetManager]s would tick one world), the same module under another game id rebinds itself
-## through [method DotModule._module_game_changed] (reloading would drop every player), and no module is legitimate.
+## Paths are compared, not ids: a different module is unloaded first (two [GSNetManager]s would tick one world), the same module under another game id rebinds itself
+## through [method GSModule._module_game_changed] (reloading would drop every player), and no module is legitimate.
 func _load_game_module() -> void:
 	if server == null or server.games == null:
 		return
@@ -1232,7 +1232,7 @@ func _load_game_module() -> void:
 		var unloaded := server.modules.unload_module(_module_name)
 
 		if not unloaded.ok:
-			DotLog.warn(CHANNEL, "could not unload the previous game's module", {
+			GSLog.warn(CHANNEL, "could not unload the previous game's module", {
 				"module": _module_name, "error": str(unloaded.error),
 			})
 
@@ -1244,13 +1244,13 @@ func _load_game_module() -> void:
 
 	# Awaited, because a game module's `_module_load` is a coroutine (an identity layer reaching a content host and a profile store);
 	# un-awaited, this returned at the first suspension and the check below read `.ok` off null.
-	var loaded: DotResult = await server.modules.load_module(wanted)
+	var loaded: GSResult = await server.modules.load_module(wanted)
 
 	if not loaded.ok:
 		# Loud, and not fatal. The server is already running and players may already be on
 		# it; refusing to continue would drop them because one game is broken, and the
 		# operator can change back.
-		DotLog.error(CHANNEL, "the game's module would not load", {
+		GSLog.error(CHANNEL, "the game's module would not load", {
 			"module": wanted, "error": str(loaded.error),
 		})
 		_module_failed = true
@@ -1258,14 +1258,14 @@ func _load_game_module() -> void:
 
 	_module_failed = false
 	_module_path = wanted
-	_module_name = String((loaded.value as DotModule)._module_name())
+	_module_name = String((loaded.value as GSModule)._module_name())
 
-	DotLog.info(CHANNEL, "module loaded for the current game", {
+	GSLog.info(CHANNEL, "module loaded for the current game", {
 		"module": _module_name,
 		"game": current.game_id if current != null else "",
 	})
 
-	# The game's own cvars, now that the module owning them exists: `DotGameManager` applies a descriptor's `cvars:` while the scene is up and the module is not
+	# The game's own cvars, now that the module owning them exists: `GSGameManager` applies a descriptor's `cvars:` while the scene is up and the module is not
 	# (tying one module to one game is THIS host's policy), so a game.yml naming a module cvar was refused as unknown on the first pass.
 	# Only when the module actually changed: otherwise the first pass already found every cvar registered.
 	server.games.reapply_descriptor_cvars()
@@ -1281,25 +1281,25 @@ func _apply_initial_map() -> void:
 	var session := TmcMapGame.session_in(TmcMapGame.roots_of(server))
 
 	if session == null:
-		# A game with its own map path (no DotMapSession) answers `start_on_map(id) -> DotResult`, the same change its `map` command makes.
+		# A game with its own map path (no GSMapSession) answers `start_on_map(id) -> GSResult`, the same change its `map` command makes.
 		var starter := TmcMapGame.starter_in(TmcMapGame.roots_of(server))
 
 		if starter != null:
 			await _ensure_map_content(StringName(config.initial_map), TmcMapGame.roots_of(server))
 			var started: Variant = await starter.call("start_on_map", StringName(config.initial_map))
 
-			if started is DotResult and not (started as DotResult).ok:
-				DotLog.error(CHANNEL, "could not start on the map that was asked for", {
+			if started is GSResult and not (started as GSResult).ok:
+				GSLog.error(CHANNEL, "could not start on the map that was asked for", {
 					"map": config.initial_map,
-					"why": (started as DotResult).error.message,
+					"why": (started as GSResult).error.message,
 				})
 				return
 
-			DotLog.info(CHANNEL, "starting on the map that was asked for", {"map": config.initial_map})
+			GSLog.info(CHANNEL, "starting on the map that was asked for", {"map": config.initial_map})
 			return
 
 		# An ERROR, not a warning: the operator asked for a map and is not getting it, and on a game that has maps this means it is an old build.
-		DotLog.error(CHANNEL, "a map was asked for and this game has no way to change maps", {
+		GSLog.error(CHANNEL, "a map was asked for and this game has no way to change maps", {
 			"map": config.initial_map,
 			"game": server.games.current_content_id(),
 			"why": "the game has no map session and no start_on_map; a game of built geometry has no maps, otherwise this is an old version of it",
@@ -1313,14 +1313,14 @@ func _apply_initial_map() -> void:
 
 	var changed: Variant = await session.call("change_to", StringName(config.initial_map))
 
-	if changed is DotResult and not (changed as DotResult).ok:
-		DotLog.error(CHANNEL, "could not start on the map that was asked for", {
+	if changed is GSResult and not (changed as GSResult).ok:
+		GSLog.error(CHANNEL, "could not start on the map that was asked for", {
 			"map": config.initial_map,
-			"why": (changed as DotResult).error.message,
+			"why": (changed as GSResult).error.message,
 		})
 		return
 
-	DotLog.info(CHANNEL, "starting on the map that was asked for", {
+	GSLog.info(CHANNEL, "starting on the map that was asked for", {
 		"map": config.initial_map,
 	})
 
@@ -1339,30 +1339,30 @@ func _ensure_map_content(id: StringName, root: Variant = null) -> void:
 	if fetcher != null:
 		var registered: Variant = await fetcher.call("ensure_map_content", id)
 
-		if registered is DotResult and not (registered as DotResult).ok:
+		if registered is GSResult and not (registered as GSResult).ok:
 			# Info for the same reason the cloud path below is: `change_to` is about to
 			# refuse the id with a message that names the map, and that is the better
 			# line to read.
-			DotLog.info(CHANNEL, "the game could not fetch this map; using what is here", {
+			GSLog.info(CHANNEL, "the game could not fetch this map; using what is here", {
 				"map": String(id),
-				"why": (registered as DotResult).error.message,
+				"why": (registered as GSResult).error.message,
 			})
 
 		return
 
-	var cloud := DotRegistry.get_service(&"dot_cloud_client")
+	var cloud := GSRegistry.get_service(&"dot_cloud_client")
 
 	if cloud == null or not cloud.has_method("ensure"):
 		return
 
 	var got: Variant = await cloud.call("ensure", id)
 
-	if got is DotResult and not (got as DotResult).ok:
+	if got is GSResult and not (got as GSResult).ok:
 		# Info, not a warning: a map that ships in the build is not in GameSpice Cloud and
 		# never will be, so this is the ordinary answer for most servers.
-		DotLog.info(CHANNEL, "no delivered content for this map; using what is here", {
+		GSLog.info(CHANNEL, "no delivered content for this map; using what is here", {
 			"map": String(id),
-			"why": (got as DotResult).error.message,
+			"why": (got as GSResult).error.message,
 		})
 
 
@@ -1444,13 +1444,13 @@ func _has_content_games_list() -> bool:
 
 ## Zero-config game order: the operator's games.yml order over the installed games, when there are several.
 ## Null (keep what is there) for one game or an unreadable list; an unknown game in it is an ERROR and every game plays.
-func _order_from_content_list(p_server: DotServer) -> TmcGameRotation:
+func _order_from_content_list(p_server: GSServer) -> TmcGameRotation:
 	var listed := TmcContentLists.load_list("games", _config_dir)
 	if not listed.ok:
-		DotLog.error(CHANNEL, "cfg/content/games.yml could not be read; every installed game plays", {"why": str(listed.error)})
+		GSLog.error(CHANNEL, "cfg/content/games.yml could not be read; every installed game plays", {"why": str(listed.error)})
 		return null
 	var installed := PackedStringArray()
-	for d: DotGameDescriptor in p_server.games.games:
+	for d: GSGameDescriptor in p_server.games.games:
 		var key := TmcGameRotation.key_of(d)
 		var short := key.get_slice("/", key.get_slice_count("/") - 1)
 		if not installed.has(short):
@@ -1459,6 +1459,6 @@ func _order_from_content_list(p_server: DotServer) -> TmcGameRotation:
 		return null
 	var order := TmcContentLists.game_order(listed.value, installed)
 	if not order.ok:
-		DotLog.error(CHANNEL, "games.yml game order not applied; every installed game plays", {"why": str(order.error)})
+		GSLog.error(CHANNEL, "games.yml game order not applied; every installed game plays", {"why": str(order.error)})
 		return null
 	return TmcGameRotation.from_order(order.value)

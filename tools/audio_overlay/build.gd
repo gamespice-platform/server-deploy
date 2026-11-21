@@ -6,7 +6,7 @@ const CONTENT_CONFIG := "res://content.json"
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.DEBUG if OS.get_environment("AO_DEBUG") != "" else DotLog.Level.WARN)
+	GSLog.set_level(GSLog.Level.DEBUG if OS.get_environment("AO_DEBUG") != "" else GSLog.Level.WARN)
 	_run.call_deferred()
 
 
@@ -14,9 +14,9 @@ func _run() -> void:
 	var args := OS.get_cmdline_user_args()
 	var base := args[0]
 	var version := args[1]
-	var cloud := DotCloudClient.new()
+	var cloud := GSCloudClient.new()
 	cloud.name = "Cloud"
-	cloud.config = DotCloudConfig.new()
+	cloud.config = GSCloudConfig.new()
 	cloud.config.cache_dir = "user://audio_overlay_cache"
 	cloud.config.parallel_downloads = 3
 	cloud.config_file = CONTENT_CONFIG
@@ -26,7 +26,7 @@ func _run() -> void:
 	cloud.manifest_url_fallbacks = PackedStringArray(["{base}/{id}/manifest.json"])
 	add_child(cloud)
 
-	var set := DotCloudAddonSet.new(cloud)
+	var set := GSCloudAddonSet.new(cloud)
 	set.namespaces = PackedStringArray(["modcommunity/"])
 	var decided := set.plan_for([{"dir": "dot_audio", "repo": "dot-audio", "id": "modcommunity/dot-audio", "version": version}])
 	var wanted: Dictionary = decided["wanted"]

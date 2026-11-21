@@ -6,7 +6,7 @@ extends RefCounted
 const CHANNEL := "tmc.games_rotation"
 ## Beside the download list of the same name: this reads `games:`, `rotations:` and the rest, that reads `entries:`.
 const FILE := "content/games.yml"
-## Before the cfg/ move; read through DotCfgLegacy until its cutoff.
+## Before the cfg/ move; read through GSCfgLegacy until its cutoff.
 const LEGACY_FILE := "games.yml"
 
 var spec: Dictionary = {}
@@ -17,15 +17,15 @@ var _warned: Dictionary = {}
 
 
 ## A missing file is not an error: no file means every game plays. An unreadable one is.
-static func load_file(path: String) -> DotResult:
+static func load_file(path: String) -> GSResult:
 	if not FileAccess.file_exists(path):
-		return DotResult.success(from_tree({}))
-	var parsed := DotYaml.parse_file(path)
+		return GSResult.success(from_tree({}))
+	var parsed := GSYaml.parse_file(path)
 	if not parsed.ok:
 		return parsed.wrap("reading %s" % path)
 	var rotation := from_tree(parsed.value as Dictionary)
 	rotation.source_path = path
-	return DotResult.success(rotation)
+	return GSResult.success(rotation)
 
 
 ## No games.yml rotation, but the operator's cfg/content/games.yml gives an order: those games, in that order,
@@ -36,14 +36,14 @@ static func from_order(order: PackedStringArray) -> TmcGameRotation:
 
 static func from_tree(tree: Dictionary) -> TmcGameRotation:
 	var rotation := TmcGameRotation.new()
-	rotation.spec = DotRotationSpec.normalize(tree, "games", rotation.warnings, FILE)
+	rotation.spec = GSRotationSpec.normalize(tree, "games", rotation.warnings, FILE)
 	for w in rotation.warnings:
-		DotLog.warn(CHANNEL, w)
+		GSLog.warn(CHANNEL, w)
 	return rotation
 
 
 ## The merged `commands:` block (`prefix`, `names`): what the vote commands are called. See
-## [DotRotationSpec]; the commands classes take it through their `spec_fn`.
+## [GSRotationSpec]; the commands classes take it through their `spec_fn`.
 func commands() -> Dictionary:
 	return spec.get("commands", {"names": {}})
 
@@ -60,27 +60,27 @@ func rotation_names() -> PackedStringArray:
 
 
 func active_name() -> String:
-	return DotRotationSpec.active_name(spec, requested)
+	return GSRotationSpec.active_name(spec, requested)
 
 
-func switch(name: String) -> DotResult:
+func switch(name: String) -> GSResult:
 	if not (spec.get("rotations", {}) as Dictionary).has(name):
-		return DotResult.fail(DotError.CODE_INVALID, "No game rotation called '%s'." % name,
+		return GSResult.fail(GSError.CODE_INVALID, "No game rotation called '%s'." % name,
 			"rotations: %s" % ", ".join(rotation_names()))
 	requested = name
-	return DotResult.success(name)
+	return GSResult.success(name)
 
 
 func is_cycle() -> bool:
-	return has_rotations() and DotRotationSpec.mode_of(spec, active_name()) == "cycle"
+	return has_rotations() and GSRotationSpec.mode_of(spec, active_name()) == "cycle"
 
 
 func cooldown(fallback: int) -> int:
-	return DotRotationSpec.cooldown_of(spec, active_name(), fallback) if has_rotations() else fallback
+	return GSRotationSpec.cooldown_of(spec, active_name(), fallback) if has_rotations() else fallback
 
 
 ## The content key a descriptor is matched by: its content id, else its game id.
-static func key_of(descriptor: DotGameDescriptor) -> String:
+static func key_of(descriptor: GSGameDescriptor) -> String:
 	return descriptor.content_id if descriptor.content_id != "" else descriptor.game_id
 
 
@@ -93,21 +93,21 @@ func plays(games: Array) -> PackedStringArray:
 		return PackedStringArray()
 	var candidates: Array = []
 	var seen := {}
-	for d: DotGameDescriptor in games:
+	for d: GSGameDescriptor in games:
 		var key := key_of(d)
 		if seen.has(key):
 			continue
 		seen[key] = true
 		candidates.append({"id": key.get_slice("/", key.get_slice_count("/") - 1), "ref": key if key.contains("/") else ""})
 	var unmatched := PackedStringArray()
-	var names := DotRotationSpec.expand((rots[use] as Dictionary)["entries"], candidates, {}, unmatched)
+	var names := GSRotationSpec.expand((rots[use] as Dictionary)["entries"], candidates, {}, unmatched)
 	for entry in unmatched:
 		var k := "%s|%s" % [use, entry]
 		if not _warned.has(k):
 			_warned[k] = true
-			DotLog.warn(CHANNEL, "a game rotation entry matches no installed game", {"rotation": use, "entry": entry})
+			GSLog.warn(CHANNEL, "a game rotation entry matches no installed game", {"rotation": use, "entry": entry})
 	var found: Array[String] = []
-	for d: DotGameDescriptor in games:
+	for d: GSGameDescriptor in games:
 		var key := key_of(d)
 		if names.has(key.get_slice("/", key.get_slice_count("/") - 1)) and not found.has(key):
 			found.append(key)
@@ -128,15 +128,15 @@ func resolve(games: Array) -> Dictionary:
 		var k := "empty|%s" % active_name()
 		if not _warned.has(k):
 			_warned[k] = true
-			DotLog.warn(CHANNEL, "the game rotation is empty; every installed game plays", {"rotation": active_name()})
+			GSLog.warn(CHANNEL, "the game rotation is empty; every installed game plays", {"rotation": active_name()})
 		return {"excluded": excluded, "order": order, "fell_back": true}
 	if not has_rotations():
 		return {"excluded": excluded, "order": order, "fell_back": false}
 	for key in keys:
-		for d: DotGameDescriptor in games:
+		for d: GSGameDescriptor in games:
 			if key_of(d) == key:
 				order.append(StringName(d.game_id))
-	for d: DotGameDescriptor in games:
+	for d: GSGameDescriptor in games:
 		if not keys.has(key_of(d)):
 			excluded.append(StringName(d.game_id))
 	return {"excluded": excluded, "order": order, "fell_back": false}
@@ -147,5 +147,5 @@ func describe_lines() -> PackedStringArray:
 	for n in rotation_names():
 		var entries: PackedStringArray = (spec["rotations"] as Dictionary)[n]["entries"]
 		lines.append("%s %s (%s, cooldown %d): %s" % ["*" if n == active_name() else " ", n,
-			DotRotationSpec.mode_of(spec, n), DotRotationSpec.cooldown_of(spec, n, 0), ", ".join(entries)])
+			GSRotationSpec.mode_of(spec, n), GSRotationSpec.cooldown_of(spec, n, 0), ", ".join(entries)])
 	return lines

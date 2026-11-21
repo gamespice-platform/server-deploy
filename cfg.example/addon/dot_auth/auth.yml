@@ -1,10 +1,10 @@
 # Authentication. Who a connecting player is, and whether the server can prove it.
 #
 # Absent or disabled, everybody arrives as a guest with a per-device id through
-# DotGuestIdentity, and the server works. That is the simplest deployment there is
+# GSGuestIdentity, and the server works. That is the simplest deployment there is
 # and it is deliberately a supported one.
 #
-# WORTH KNOWING: DotAdminManager refuses permissions to any unauthenticated
+# WORTH KNOWING: GSAdminManager refuses permissions to any unauthenticated
 # session -- a guest uid is a random per-device string, so granting anything to one
 # grants it to anyone. While this is off, cfg/permissions.yml has no effect and the
 # local console is the only administrator. That is correct, and it looks exactly

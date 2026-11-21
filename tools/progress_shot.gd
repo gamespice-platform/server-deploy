@@ -129,7 +129,7 @@ func _stage_friends(shell: Node) -> void:
 	var party_line: Label = shell.get("_party_line")
 	party_line.text = "Party: Tuesday crew (3 members)"
 	party_line.visible = true
-	var stand_in := TmcFriends.build(DotFriendsLocalHub.new().as_user("me", "Me"))
+	var stand_in := TmcFriends.build(GSFriendsLocalHub.new().as_user("me", "Me"))
 	shell.add_child(stand_in)   # in the tree, so it is freed with it
 	shell.set("_friends", stand_in)
 	var list: Array = []
@@ -142,11 +142,11 @@ func _stage_friends(shell: Node) -> void:
 		["Fin", "offline", "", 0, "", false],
 	]
 	for r in rows:
-		var p := DotPresence.from_dict({
+		var p := GSPresence.from_dict({
 			"status": r[1], "detail": r[2], "serverId": r[3] if r[3] > 0 else null,
 			"partyId": r[4] if r[4] != "" else null, "joinable": r[5],
 		})
-		list.append(DotFriend.of(str(r[0]).to_lower(), r[0], p))
+		list.append(GSFriend.of(str(r[0]).to_lower(), r[0], p))
 	shell.call("_render_friends", list)
 
 

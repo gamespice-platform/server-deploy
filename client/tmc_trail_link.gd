@@ -5,7 +5,7 @@ extends Node
 ## Every GameSpice Trail and GameSpice Game class is reached by name, so a shell built without GameSpice Trail parses and simply has no trails.
 
 const CHANNEL := "tmc.trail"
-const CLASSES := ["DotTrailRegistry", "DotTrailClient", "DotTrailEnvelope", "DotTrailMenu", "DotTrailBackendHttp", "DotTrailBackendStub"]
+const CLASSES := ["GSTrailRegistry", "GSTrailClient", "GSTrailEnvelope", "GSTrailMenu", "GSTrailBackendHttp", "GSTrailBackendStub"]
 const GAME_CLIENT := &"dot_game_client"
 const STUB_SAVE := "user://trail_store.json"
 
@@ -13,7 +13,7 @@ const STUB_SAVE := "user://trail_store.json"
 var site_fn: Callable = Callable()
 ## func() -> String: the signed-in player's site token.
 var token_fn: Callable = Callable()
-## func() -> Object: the shell's DotCloudClient, made on demand.
+## func() -> Object: the shell's GSCloudClient, made on demand.
 var cloud_fn: Callable = Callable()
 
 var registry: RefCounted = null
@@ -44,10 +44,10 @@ func _ready() -> void:
 	if not available():
 		set_process(false)
 		return
-	registry = _script_named("DotTrailRegistry").new()
-	client = _script_named("DotTrailClient").new()
+	registry = _script_named("GSTrailRegistry").new()
+	client = _script_named("GSTrailClient").new()
 	client.registry = registry
-	var avatars := _script_named("DotGameClientAvatars")
+	var avatars := _script_named("GSGameClientAvatars")
 	if avatars != null and _has_static(avatars, &"figure_of"):
 		_figure_fn = Callable(avatars, &"figure_of")
 	client.node_for = func(actor: int) -> Node: return _figure_fn.call(actor) if _figure_fn.is_valid() else null
@@ -62,17 +62,17 @@ func before_join(prejoin: Object) -> void:
 	if client == null or not (&"extra_steps" in prejoin):
 		return
 	var steps: Array = prejoin.get(&"extra_steps")
-	steps.append(func(rules: Dictionary) -> DotResult:
+	steps.append(func(rules: Dictionary) -> GSResult:
 		var cloud: Object = cloud_fn.call() if cloud_fn.is_valid() else null
 		if cloud == null:
-			return DotResult.success(0)
+			return GSResult.success(0)
 		return await client.fetch_pack(cloud, rules))
 
 
 ## Routes the trail kind through [param link]; call before the link is added (its credentials advertise the kind).
 func attach(link: Object) -> void:
 	if client != null:
-		DotLog.result(CHANNEL, "trail envelope", _script_named("DotTrailEnvelope").attach(link, client))
+		GSLog.result(CHANNEL, "trail envelope", _script_named("GSTrailEnvelope").attach(link, client))
 
 
 ## Back to no wearers and no page when the game is left.
@@ -89,16 +89,16 @@ func _process(delta: float) -> void:
 	_tick = 0.0
 	if client.worn.size() > 0:
 		client.apply_missing()
-	var game: Object = DotRegistry.get_service(GAME_CLIENT)
+	var game: Object = GSRegistry.get_service(GAME_CLIENT)
 	var menu: Object = game.get(&"menu") if game != null and is_instance_valid(game) else null
 	if menu != null and menu != _menu and is_instance_valid(menu):
 		_menu = menu
-		_script_named("DotTrailMenu").add_to(menu, _setup)
+		_script_named("GSTrailMenu").add_to(menu, _setup)
 
 
 func _setup(screen: Object) -> void:
 	screen.bind(registry, _backend())
-	screen.request_fn = func(id: String) -> DotResult: return client.request(id)
+	screen.request_fn = func(id: String) -> GSResult: return client.request(id)
 	screen.worn_fn = func() -> String: return str(client.worn.get(multiplayer.get_unique_id(), "")) if multiplayer.has_multiplayer_peer() else ""
 	_screen = weakref(screen)
 	screen.refresh()
@@ -110,12 +110,12 @@ func _backend() -> RefCounted:
 		return backend
 	var site := str(site_fn.call()) if site_fn.is_valid() else ""
 	if not site.is_empty():
-		backend = _script_named("DotTrailBackendHttp").call(&"make", self, site, token_fn)
+		backend = _script_named("GSTrailBackendHttp").call(&"make", self, site, token_fn)
 	else:
-		backend = _script_named("DotTrailBackendStub").call(&"from_registry", registry, 1000, get_tree())
+		backend = _script_named("GSTrailBackendStub").call(&"from_registry", registry, 1000, get_tree())
 		backend.save_path = STUB_SAVE
 		backend.load_state()
-	DotLog.debug(CHANNEL, "trail store", {"site": site, "stub": site.is_empty()})
+	GSLog.debug(CHANNEL, "trail store", {"site": site, "stub": site.is_empty()})
 	return backend
 
 

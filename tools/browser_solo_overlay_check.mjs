@@ -89,7 +89,7 @@ const buildId = (new URL(url).pathname.match(/\/(\d{8}-\d{4})\//) || [])[1] || '
 const game = new URL(url).searchParams.get('solo') || '';
 
 // The export's addons.lock fingerprint: tools/server.in's shell_lock_begin keeps comments, blanks and dot-* rows, and
-// DotCloudAddonSet.build_fingerprint is the first 16 hex of its sha256.
+// GSCloudAddonSet.build_fingerprint is the first 16 hex of its sha256.
 let fp = opt('fp', '');
 const lock = opt('lock', '');
 if (!fp && lock) {

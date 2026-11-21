@@ -31,21 +31,21 @@ var _server: TCPServer = null
 var _clients: Array[Dictionary] = []
 
 
-## Binds and starts accepting. Returns a [DotResult] carrying the bound port.
-func start(requested_port: int = 0) -> DotResult:
+## Binds and starts accepting. Returns a [GSResult] carrying the bound port.
+func start(requested_port: int = 0) -> GSResult:
 	_server = TCPServer.new()
 
 	var err := _server.listen(requested_port, "127.0.0.1")
 	if err != OK:
-		return DotResult.fail(
-			DotError.CODE_NETWORK,
+		return GSResult.fail(
+			GSError.CODE_NETWORK,
 			"The test HTTP server could not listen.",
 			"port %d: %s" % [requested_port, error_string(err)]
 		)
 
 	port = _server.get_local_port()
 	set_process(true)
-	return DotResult.success(port)
+	return GSResult.success(port)
 
 
 ## The base URL a client should be pointed at.
@@ -149,7 +149,7 @@ func _respond(peer: StreamPeerTCP, request: String) -> void:
 		return
 
 	# The document root answers 200 with nothing in it, the way a content host with a directory root
-	# does. It matters because DotCloudSourceHttp.probe_base probes the bare base URL: a host that 404s
+	# does. It matters because GSCloudSourceHttp.probe_base probes the bare base URL: a host that 404s
 	# its root is reported unreachable even though every object under it is served fine.
 	if path == "/":
 		log.append("%s /" % method)

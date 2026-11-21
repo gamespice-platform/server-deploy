@@ -24,13 +24,13 @@ signal enrolled(token: String)
 ## True once a token is written. The host reads it after [method at_boot] returns.
 var done := false
 
-var _server: DotServer
+var _server: GSServer
 var _path := ""
 var _backbone_url := ""
-var _http: DotHttp
+var _http: GSHttp
 var _secret := ""
 var _expires_ms := 0
-var _cvar: DotConVar
+var _cvar: GSConVar
 
 
 ## Whether this boot should enroll: no token in the listing file, and not turned off.
@@ -45,13 +45,13 @@ static func wanted(listing_path: String) -> bool:
 ## nothing can be done; otherwise the node, which keeps trying after the wait if it has
 ## not finished ([member done] says which).
 static func at_boot(
-	host: Node, server: DotServer, listing_path: String, backbone_url: String, public_address: String
+	host: Node, server: GSServer, listing_path: String, backbone_url: String, public_address: String
 ) -> TmcEnroll:
 	if not wanted(listing_path):
 		return null
 
 	if server == null or server.config == null or not server.config.a2s_enabled:
-		DotLog.warn(CHANNEL, "cannot enroll with the site: A2S is off, and the site proves who this server is through it", {
+		GSLog.warn(CHANNEL, "cannot enroll with the site: A2S is off, and the site proves who this server is through it", {
 			"fix": "turn A2S on (a2s_enabled), or put an integration token in %s yourself" % listing_path,
 		})
 		return null
@@ -75,14 +75,14 @@ static func at_boot(
 			await host.get_tree().create_timer(POLL_SEC).timeout
 
 	if not node.done and node._secret != "":
-		DotLog.info(CHANNEL, "still waiting for the site; starting without the credential and asking in the background")
+		GSLog.info(CHANNEL, "still waiting for the site; starting without the credential and asking in the background")
 		node._keep_trying.call_deferred()
 
 	return node
 
 
 func _start(public_address: String) -> bool:
-	_http = DotHttp.new()
+	_http = GSHttp.new()
 	_http.name = "Http"
 	add_child(_http)
 
@@ -109,7 +109,7 @@ func _start(public_address: String) -> bool:
 	})
 
 	if not res.ok:
-		DotLog.warn(CHANNEL, "the site would not start an enrollment; signed-in players join as guests until this server has a credential", {
+		GSLog.warn(CHANNEL, "the site would not start an enrollment; signed-in players join as guests until this server has a credential", {
 			"why": str(res.error),
 			"fix": "add and claim this server on the site, then restart -- or put an integration token in %s" % _path,
 		})
@@ -120,13 +120,13 @@ func _start(public_address: String) -> bool:
 	var challenge := str(body.get("challenge", ""))
 
 	if _secret == "" or challenge == "":
-		DotLog.warn(CHANNEL, "the site's enrollment answer was missing its challenge", {"body": body.keys()})
+		GSLog.warn(CHANNEL, "the site's enrollment answer was missing its challenge", {"body": body.keys()})
 		return false
 
 	_expires_ms = Time.get_ticks_msec() + 9 * 60 * 1000
 	_publish(challenge)
 
-	DotLog.info(CHANNEL, "enrolling with the site", {
+	GSLog.info(CHANNEL, "enrolling with the site", {
 		"server_id": body.get("server_id", ""),
 		"checked_at": body.get("query_address", ""),
 	})
@@ -140,9 +140,9 @@ func _publish(value: String) -> void:
 	_cvar = console.find_cvar(RULE)
 
 	if _cvar == null:
-		_cvar = console.register_cvar(DotConVar.new(
+		_cvar = console.register_cvar(GSConVar.new(
 			RULE, "", "The site's enrollment challenge, while this server proves who it is.",
-			DotConVar.FLAG_NOTIFY
+			GSConVar.FLAG_NOTIFY
 		))
 
 	_cvar.force_set(value)
@@ -153,7 +153,7 @@ func _complete_once() -> void:
 
 	if not res.ok:
 		# 4xx other than "not seen yet" is final: expired, unclaimed, already used.
-		DotLog.warn(CHANNEL, "the site refused to finish the enrollment", {"why": str(res.error)})
+		GSLog.warn(CHANNEL, "the site refused to finish the enrollment", {"why": str(res.error)})
 		_finish()
 		return
 
@@ -161,18 +161,18 @@ func _complete_once() -> void:
 	var token := str(body.get("token", ""))
 
 	if token == "":
-		DotLog.debug(CHANNEL, "the site has not seen the challenge yet", {"why": body.get("code", "")})
+		GSLog.debug(CHANNEL, "the site has not seen the challenge yet", {"why": body.get("code", "")})
 		return
 
 	var wrote := _write_token(token)
 	_finish()
 
 	if not wrote.ok:
-		DotLog.error(CHANNEL, "enrolled, but the credential could not be saved", {"path": _path, "why": str(wrote.error)})
+		GSLog.error(CHANNEL, "enrolled, but the credential could not be saved", {"path": _path, "why": str(wrote.error)})
 		return
 
 	done = true
-	DotLog.info(CHANNEL, "enrolled with the site; this server has its own credential now", {
+	GSLog.info(CHANNEL, "enrolled with the site; this server has its own credential now", {
 		"path": _path, "scopes": body.get("scopes", []),
 	})
 	enrolled.emit(token)
@@ -195,7 +195,7 @@ func _finish() -> void:
 
 
 ## Adds the token to `listing.json`, keeping whatever else the operator wrote there.
-func _write_token(token: String) -> DotResult:
+func _write_token(token: String) -> GSResult:
 	var data := _read(_path)
 	data["integration_token"] = token
 	if not data.has("backbone_url"):
@@ -203,7 +203,7 @@ func _write_token(token: String) -> DotResult:
 
 	var f := FileAccess.open(_path, FileAccess.WRITE)
 	if f == null:
-		return DotResult.fail(DotError.CODE_IO, error_string(FileAccess.get_open_error()))
+		return GSResult.fail(GSError.CODE_IO, error_string(FileAccess.get_open_error()))
 
 	f.store_string(JSON.stringify(data, "\t") + "\n")
 	f.close()
@@ -213,7 +213,7 @@ func _write_token(token: String) -> DotResult:
 		ProjectSettings.globalize_path(_path),
 		FileAccess.UNIX_READ_OWNER | FileAccess.UNIX_WRITE_OWNER
 	)
-	return DotResult.success(true)
+	return GSResult.success(true)
 
 
 static func _read(path: String) -> Dictionary:

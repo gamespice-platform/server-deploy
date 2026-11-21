@@ -34,9 +34,9 @@ var _png := PackedByteArray()
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
-		else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
+		else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -44,8 +44,8 @@ func _ready() -> void:
 func _run() -> void:
 	print("dot-server-deploy: the admin menu and the loading screen, live")
 
-	DotPaths.remove_tree(DATA)
-	DotPaths.remove_tree(CONFIG)
+	GSPaths.remove_tree(DATA)
+	GSPaths.remove_tree(CONFIG)
 	_serve_media()
 	_write_config()
 
@@ -55,8 +55,8 @@ func _run() -> void:
 			await _test_change_under_the_player()
 
 	await _teardown()
-	DotPaths.remove_tree(DATA)
-	DotPaths.remove_tree(CONFIG)
+	GSPaths.remove_tree(DATA)
+	GSPaths.remove_tree(CONFIG)
 	if _media != null:
 		_media.stop()
 
@@ -101,10 +101,10 @@ func _check(condition: bool, what: String, detail: String = "") -> bool:
 	return condition
 
 
-func _server() -> DotServer:
+func _server() -> GSServer:
 	if _host == null or not is_instance_valid(_host):
 		return null
-	return _host.server as DotServer
+	return _host.server as GSServer
 
 
 func _until(condition: Callable, seconds: float = 20.0) -> bool:
@@ -191,7 +191,7 @@ func _boot() -> bool:
 	ServerWorld.add(self, _host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 	if not _check(started.ok, "the host boots", str(started.error) if not started.ok else ""):
 		_done()
 		return false
@@ -234,12 +234,12 @@ func _teardown() -> void:
 		await get_tree().physics_frame
 
 
-func _me() -> DotClientSession:
+func _me() -> GSClientSession:
 	var srv := _server()
 	if srv == null:
 		return null
 	for session in srv.sessions():
-		if session.state == DotClientSession.State.SPAWNED:
+		if session.state == GSClientSession.State.SPAWNED:
 			return session
 	return null
 
@@ -378,7 +378,7 @@ func _test_change_under_the_player() -> void:
 	_check(not _screen().is_showing(), "and it is gone once the game is on screen")
 
 	# The same menu in a game whose module installed GameSpice Moderation's live tools: what it
-	# supports is asked of its real DotModTools, through the command's own handler.
+	# supports is asked of its real GSModTools, through the command's own handler.
 	_shell.link.send_chat("/admin")
 	await _until(func() -> bool: return _panel().is_open() and not _row("Fun commands").is_empty(), 10.0)
 	_check(not _row("Fun commands").is_empty() and not _row("Powers").is_empty(),

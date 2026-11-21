@@ -16,7 +16,7 @@
 #   replay list                  the newest files in each directory
 #
 # A clip is an ordinary replay: complete, hash-chained, and readable by dot-replay's
-# DotReplayFile. Its FINAL HASH is what makes it evidence -- stored somewhere the file's
+# GSReplayFile. Its FINAL HASH is what makes it evidence -- stored somewhere the file's
 # holder cannot rewrite, it proves nobody edited the file since.
 replay_enabled: true
 
@@ -60,7 +60,7 @@ replay_directory: ""
 replay_keep_files: 50
 replay_keep_mib: 512
 
-# Every other setting of the addon's DotReplayConfig is accepted with a `replay_` prefix
+# Every other setting of the addon's GSReplayConfig is accepted with a `replay_` prefix
 # (replay_chunk_seconds, replay_keyframe_seconds, replay_compression, replay_chunk_kib,
 # replay_max_record_kib), and GS_REPLAY_* / --replay-* override them: `./server --
 # --replay-ring-seconds 300` for one tournament without editing this file.

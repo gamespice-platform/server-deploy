@@ -38,7 +38,7 @@ func operator_surface() -> bool:
 
 
 func _commands_present() -> bool:
-	var server: DotServer = host.server
+	var server: GSServer = host.server
 	var config: TmcConfig = host.config
 	var expected := PackedStringArray(["status", "sec_status", "sec_why", "party_status", "mm_status"])
 
@@ -67,12 +67,12 @@ func _commands_present() -> bool:
 
 ## `sv_web_build`, `sv_web_requires` and `sv_pack_pins`: NOTIFY cvars the query reports.
 func _web_cvars_present() -> bool:
-	var server: DotServer = host.server
+	var server: GSServer = host.server
 	var config: TmcConfig = host.config
 	# Registered ALWAYS, empty unless the operator pinned a shell, so rcon can set it and the query reports it (a cvar without NOTIFY is not in the rules).
 	var pinned := server.console.find_cvar("sv_web_build")
 
-	if pinned == null or not pinned.has_flag(DotConVar.FLAG_NOTIFY) \
+	if pinned == null or not pinned.has_flag(GSConVar.FLAG_NOTIFY) \
 			or pinned.get_string() != host._release_label(config.web_build):
 		printerr("selftest FAILED: sv_web_build is not a NOTIFY cvar reporting the configured pin (%s)" % config.web_build)
 		return false
@@ -81,13 +81,13 @@ func _web_cvars_present() -> bool:
 
 	var requires := server.console.find_cvar("sv_web_requires")
 
-	if requires == null or not requires.has_flag(DotConVar.FLAG_NOTIFY):
+	if requires == null or not requires.has_flag(GSConVar.FLAG_NOTIFY):
 		printerr("selftest FAILED: sv_web_requires is not a NOTIFY cvar the query reports")
 		return false
 
 	var pack_pins := server.console.find_cvar("sv_pack_pins")
 
-	if pack_pins == null or not pack_pins.has_flag(DotConVar.FLAG_NOTIFY):
+	if pack_pins == null or not pack_pins.has_flag(GSConVar.FLAG_NOTIFY):
 		printerr("selftest FAILED: sv_pack_pins is not a NOTIFY cvar the query reports")
 		return false
 
@@ -97,7 +97,7 @@ func _web_cvars_present() -> bool:
 ## The addon versions a joining client is told about. Empty on a box with a lock means every player keeps the addons their shell was exported with, however old.
 ## Through `get`, not the property: a box's GameSpice Server may predate it, and a typed access would stop this whole script compiling there.
 func _addons_advertised() -> bool:
-	var announced: Variant = (host.server as DotServer).get("addon_set")
+	var announced: Variant = (host.server as GSServer).get("addon_set")
 
 	if not (announced is Array) or OS.get_environment("TMC_ADDONS_LOCK") == "off" \
 			or not FileAccess.file_exists(host.ADDONS_LOCK):
@@ -121,9 +121,9 @@ func _addons_advertised() -> bool:
 ## A cvar that only exists when the config named a version is one `sv_web_loader x`
 ## answers "unknown command" to on every server that has not needed it yet.
 func _web_loader_present() -> bool:
-	var loader := (host.server as DotServer).console.find_cvar("sv_web_loader")
+	var loader := (host.server as GSServer).console.find_cvar("sv_web_loader")
 
-	if loader == null or not loader.has_flag(DotConVar.FLAG_NOTIFY):
+	if loader == null or not loader.has_flag(GSConVar.FLAG_NOTIFY):
 		printerr("selftest FAILED: sv_web_loader is not a NOTIFY cvar the query reports")
 		return false
 
@@ -139,11 +139,11 @@ func _web_loader_present() -> bool:
 
 ## Asked, not only looked up: a command that is registered and answers nothing is the same absent command one layer down.
 func _party_status_answers() -> bool:
-	var server: DotServer = host.server
+	var server: GSServer = host.server
 	var config: TmcConfig = host.config
 	# An Array rather than a PackedStringArray: a lambda captures by value, and only a container's contents survive the copy (docs/gdscript-hazards.md).
 	var answered: Array = []
-	var asking := DotCmdContext.internal("party_status", PackedStringArray())
+	var asking := GSCmdContext.internal("party_status", PackedStringArray())
 	asking.reply_sink = func(line: String) -> void: answered.append(line)
 
 	var said := server.console.execute("party_status", asking)

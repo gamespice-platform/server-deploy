@@ -35,7 +35,7 @@ const DESCRIPTOR := "game.yml"
 
 ## The descriptor lists that name published packs, all pinned at install the same way.
 ## `dependencies` (server and every client mount them at load), `server_dependencies` (the server
-## only), `maps` (the game fetches each when it changes to it). See DotGameDescriptor in GameSpice Server.
+## only), `maps` (the game fetches each when it changes to it). See GSGameDescriptor in GameSpice Server.
 const PACK_LISTS: PackedStringArray = ["dependencies", "server_dependencies", "maps"]
 
 ## The pointer a publish writes beside a pack's versions, naming the newest.
@@ -62,13 +62,13 @@ static func site_from_config(config_dir: String) -> String:
 
 
 func _init() -> void:
-	DotLog.timestamps = false
+	GSLog.timestamps = false
 
 	var opts := _options()
 	_refresh = opts.has("refresh")
 
-	DotLog.set_level(
-		DotLog.Level.DEBUG if opts.has("verbose") else DotLog.Level.INFO
+	GSLog.set_level(
+		GSLog.Level.DEBUG if opts.has("verbose") else GSLog.Level.INFO
 	)
 
 	var wanted := _list(str(opts.get("games", "")))
@@ -136,7 +136,7 @@ func _init() -> void:
 		# A retired id (game-final-contact, game-arena, ...) is installed as the id it is published as
 		# now, and said once here, so a panel still configured with the old name keeps working.
 		if str(one["retired"]) != "":
-			DotLog.warn(CHANNEL, "the config names a retired game id; installing the current one, change it", {
+			GSLog.warn(CHANNEL, "the config names a retired game id; installing the current one, change it", {
 				"retired": raw.strip_edges(), "installing": one["id"],
 			})
 
@@ -152,10 +152,10 @@ func _init() -> void:
 	# `ensure` start the client themselves; `fetch_manifest` and `verify_manifest` do not, and they are
 	# what a published pack's descriptor is read through.
 	if cloud != null:
-		var started: DotResult = await cloud.start()
+		var started: GSResult = await cloud.start()
 
 		if not started.ok:
-			DotLog.error(CHANNEL, "the content client could not start", {
+			GSLog.error(CHANNEL, "the content client could not start", {
 				"why": str(started.error),
 			})
 			cloud = null
@@ -193,7 +193,7 @@ func _init() -> void:
 			# Not fatal by itself: the games already on disk still work, and saying so is
 			# the difference between "your origin is unreachable" and a server that looks
 			# broken for a reason nobody can see.
-			DotLog.error(CHANNEL, "could not read the games index", {
+			GSLog.error(CHANNEL, "could not read the games index", {
 				"bases": bases,
 				"why": str(fetched.error),
 			})
@@ -226,9 +226,9 @@ func _init() -> void:
 			var due := await _pack_update_due(want, path, bases, cloud)
 
 			if not due.ok:
-				if due.error.code == DotError.CODE_STATE:
+				if due.error.code == GSError.CODE_STATE:
 					# Another owner's game is in that directory. Refused, not replaced.
-					DotLog.error(CHANNEL, "could not install a game", {
+					GSLog.error(CHANNEL, "could not install a game", {
 						"game": str(want["id"]),
 						"why": str(due.error),
 					})
@@ -236,7 +236,7 @@ func _init() -> void:
 				else:
 					# The origin could not say what is newest. What is installed still
 					# runs; a restart during an outage must not take a working game away.
-					DotLog.warn(CHANNEL, "kept the installed version; could not check for a newer one", {
+					GSLog.warn(CHANNEL, "kept the installed version; could not check for a newer one", {
 						"game": str(want["id"]),
 						"why": str(due.error),
 					})
@@ -250,7 +250,7 @@ func _init() -> void:
 			# The descriptor is the file an operator edits, so the one being replaced is
 			# kept beside it rather than thrown away on a restart nobody watched.
 			DirAccess.copy_absolute(path, path + ".prev")
-			DotLog.info(CHANNEL, "updating a game to the version the list asks for", {
+			GSLog.info(CHANNEL, "updating a game to the version the list asks for", {
 				"game": str(want["dir"]),
 				"content": str(want["id"]),
 				"to": target,
@@ -265,12 +265,12 @@ func _init() -> void:
 			if not got.ok:
 				# [b]Addons too old is not "could not install".[/b] Nothing is wrong with the pack or the
 				# origin; this box is one addon release behind it.
-				if got.error.code == DotError.CODE_VERSION:
+				if got.error.code == GSError.CODE_VERSION:
 					# "Kept the installed version" is only a fallback if that version mounts. One
 					# signed before the site declared runs_code is refused at mount, so the game
 					# is gone, not kept: say so here, where the reason is, not at the mount.
 					var dead := (await _kept_refused(path, cloud)) if have else ""
-					DotLog.error(CHANNEL, "a game needs newer addons than this server has", {
+					GSLog.error(CHANNEL, "a game needs newer addons than this server has", {
 						"game": str(want["id"]),
 						"version": str(want["version"]) if str(want["version"]) != "" else "latest",
 						"why": got.error.message,
@@ -282,7 +282,7 @@ func _init() -> void:
 					behind_ids[str(want["id"])] = {"wanted": str(want["version"]) if str(want["version"]) != "" else "latest",
 						"why": got.error.message}
 					if dead != "":
-						DotLog.error(CHANNEL, "the installed version of a game cannot run either", {
+						GSLog.error(CHANNEL, "the installed version of a game cannot run either", {
 							"game": str(want["id"]),
 							"why": dead,
 							"fix": "update this server's addons (Reinstall on Pterodactyl), or republish that version",
@@ -290,7 +290,7 @@ func _init() -> void:
 						unusable.append("%s: %s" % [str(want["raw"]), dead])
 					continue
 
-				DotLog.error(CHANNEL, "could not install a game", {
+				GSLog.error(CHANNEL, "could not install a game", {
 					"game": str(want["id"]),
 					"why": str(got.error),
 				})
@@ -320,7 +320,7 @@ func _init() -> void:
 			# A builtin game's code is compiled into a particular build of the shell, so its descriptor on a
 			# server running any other build names a scene that is not there. Refused with the reason, rather
 			# than left out of the catalogue: an id that is simply absent reads as a publishing mistake.
-			DotLog.warn(CHANNEL, "that game is not delivered and cannot be installed", {
+			GSLog.warn(CHANNEL, "that game is not delivered and cannot be installed", {
 				"game": id,
 				"hint": "its code ships inside a client build, not as a pack",
 			})
@@ -331,7 +331,7 @@ func _init() -> void:
 		var written := await _install_descriptor(id, row, content_dir, origin)
 
 		if not written.ok:
-			DotLog.error(CHANNEL, "could not install a game", {
+			GSLog.error(CHANNEL, "could not install a game", {
 				"game": id,
 				"why": str(written.error),
 			})
@@ -406,25 +406,25 @@ func _init() -> void:
 
 
 ## Reads `games.json` from the first origin that answers with one.
-func _fetch_index(bases: PackedStringArray) -> DotResult:
+func _fetch_index(bases: PackedStringArray) -> GSResult:
 	if bases.is_empty():
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"No content origin to install from.",
 			"set content_urls in cfg/server.yml, or TMC_CONTENT_URL"
 		)
 
-	var http := DotHttp.new()
+	var http := GSHttp.new()
 	http.name = "InstallHttp"
 	root.add_child(http)
 
-	var last: DotError = null
+	var last: GSError = null
 
 	for base in bases:
 		var url := "%s/%s" % [base.rstrip("/"), INDEX_FILE]
-		DotLog.debug(CHANNEL, "reading the games index", {"url": url})
+		GSLog.debug(CHANNEL, "reading the games index", {"url": url})
 
-		var res: DotResult = await http.get_json(url)
+		var res: GSResult = await http.get_json(url)
 
 		if not res.ok:
 			last = res.error
@@ -433,12 +433,12 @@ func _fetch_index(bases: PackedStringArray) -> DotResult:
 		var body: Variant = res.value
 
 		if not body is Dictionary or not (body as Dictionary).has("games"):
-			last = DotError.make(
-				DotError.CODE_INVALID, "%s is not a games index" % url
+			last = GSError.make(
+				GSError.CODE_INVALID, "%s is not a games index" % url
 			)
 			continue
 
-		DotLog.info(CHANNEL, "games index read", {
+		GSLog.info(CHANNEL, "games index read", {
 			"url": url,
 			"games": ((body as Dictionary)["games"] as Dictionary).size(),
 		})
@@ -449,13 +449,13 @@ func _fetch_index(bases: PackedStringArray) -> DotResult:
 		index["base"] = base.rstrip("/")
 
 		http.queue_free()
-		return DotResult.success(index)
+		return GSResult.success(index)
 
 	http.queue_free()
 
-	return DotResult.failure(
-		last if last != null else DotError.make(
-			DotError.CODE_IO, "No origin answered."
+	return GSResult.failure(
+		last if last != null else GSError.make(
+			GSError.CODE_IO, "No origin answered."
 		)
 	)
 
@@ -463,21 +463,21 @@ func _fetch_index(bases: PackedStringArray) -> DotResult:
 ## Downloads one descriptor and writes it into the content directory.
 func _install_descriptor(
 	id: String, row: Dictionary, content_dir: String, origin: String
-) -> DotResult:
+) -> GSResult:
 	var relative := str(row.get("descriptor", ""))
 
 	if relative == "":
-		return DotResult.fail(
-			DotError.CODE_INVALID, "%s has no descriptor in the index" % id
+		return GSResult.fail(
+			GSError.CODE_INVALID, "%s has no descriptor in the index" % id
 		)
 
 	var url := relative if relative.contains("://") else "%s/%s" % [origin, relative]
 
-	var http := DotHttp.new()
+	var http := GSHttp.new()
 	http.name = "DescriptorHttp"
 	root.add_child(http)
 
-	var res: DotResult = await http.get_bytes(url)
+	var res: GSResult = await http.get_bytes(url)
 	http.queue_free()
 
 	if not res.ok:
@@ -486,34 +486,34 @@ func _install_descriptor(
 	var bytes := res.value as PackedByteArray
 
 	if bytes.is_empty():
-		return DotResult.fail(DotError.CODE_IO, "%s is empty" % url)
+		return GSResult.fail(GSError.CODE_IO, "%s is empty" % url)
 
 	var written := _write_descriptor(content_dir, id, bytes)
 
 	if not written.ok:
 		return written
 
-	DotLog.info(CHANNEL, "game installed", {"game": id, "from": url})
+	GSLog.info(CHANNEL, "game installed", {"game": id, "from": url})
 
-	return DotResult.success(url)
+	return GSResult.success(url)
 
 
 ## Puts one descriptor under `content/<dir>/`, whole or not at all.
 func _write_descriptor(
 	content_dir: String, dir_name: String, bytes: PackedByteArray
-) -> DotResult:
+) -> GSResult:
 	var dir := content_dir.path_join(dir_name)
 	var made := DirAccess.make_dir_recursive_absolute(dir)
 
 	if made != OK and made != ERR_ALREADY_EXISTS:
-		return DotResult.fail(DotError.CODE_IO, "could not create %s" % dir)
+		return GSResult.fail(GSError.CODE_IO, "could not create %s" % dir)
 
 	var staging := dir.path_join("%s.part" % DESCRIPTOR)
 	var file := FileAccess.open(staging, FileAccess.WRITE)
 
 	if file == null:
-		return DotResult.fail(
-			DotError.CODE_IO,
+		return GSResult.fail(
+			GSError.CODE_IO,
 			"could not write %s" % staging,
 			error_string(FileAccess.get_open_error())
 		)
@@ -529,11 +529,11 @@ func _write_descriptor(
 
 	if renamed != OK:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(staging))
-		return DotResult.fail(
-			DotError.CODE_IO, "could not put %s in place" % target
+		return GSResult.fail(
+			GSError.CODE_IO, "could not put %s in place" % target
 		)
 
-	return DotResult.success(target)
+	return GSResult.success(target)
 
 
 
@@ -547,7 +547,7 @@ func _prefetch(
 	data_dir: String,
 	bases: PackedStringArray,
 	index: Dictionary,
-	cloud: DotCloudClient
+	cloud: GSCloudClient
 ) -> void:
 	var targets := {}
 
@@ -566,7 +566,7 @@ func _prefetch(
 			var parsed := TmcYaml.parse_file(_descriptor_path(content_dir, id))
 
 			if not parsed.ok:
-				DotLog.warn(CHANNEL, "could not read a descriptor", {
+				GSLog.warn(CHANNEL, "could not read a descriptor", {
 					"game": id, "why": str(parsed.error),
 				})
 				continue
@@ -609,20 +609,20 @@ func _prefetch(
 		print("  fetching %s@%s" % [content_id, version])
 
 		# "*" is every download group (GameSpice Cloud 22): a server may switch to any map. Older builds fetch the ungrouped set.
-		var res: DotResult = await cloud.ensure(StringName(content_id), version, PackedStringArray(["*"]))
+		var res: GSResult = await cloud.ensure(StringName(content_id), version, PackedStringArray(["*"]))
 
 		if not res.ok:
 			# [b]Not fatal.[/b] A pack that could not be fetched now is fetched on first use, exactly as it
 			# was before this tool existed — so an origin that is down costs a slow first join rather than a
 			# server that will not start. The operator gets the reason at the top of the log either way.
-			DotLog.warn(CHANNEL, "could not prefetch content", {
+			GSLog.warn(CHANNEL, "could not prefetch content", {
 				"content": content_id,
 				"version": version,
 				"why": str(res.error),
 			})
 			continue
 
-		DotLog.info(CHANNEL, "content ready", {
+		GSLog.info(CHANNEL, "content ready", {
 			"content": content_id, "version": version,
 		})
 
@@ -652,7 +652,7 @@ func _adopt_flat_install(want: Dictionary, content_dir: String, installed: Dicti
 	DirAccess.make_dir_recursive_absolute(new_dir.get_base_dir())
 
 	if DirAccess.rename_absolute(old_dir, new_dir) != OK:
-		DotLog.warn(CHANNEL, "could not move a game to its owner's directory", {
+		GSLog.warn(CHANNEL, "could not move a game to its owner's directory", {
 			"from": old_dir, "to": new_dir,
 		})
 		return
@@ -661,7 +661,7 @@ func _adopt_flat_install(want: Dictionary, content_dir: String, installed: Dicti
 		installed[id] = installed[flat]
 		installed.erase(flat)
 
-	DotLog.info(CHANNEL, "moved a game to its owner's directory", {
+	GSLog.info(CHANNEL, "moved a game to its owner's directory", {
 		"game": id, "from": "content/%s" % flat,
 	})
 
@@ -671,8 +671,8 @@ func _pack_update_due(
 	want: Dictionary,
 	path: String,
 	bases: PackedStringArray,
-	cloud: DotCloudClient
-) -> DotResult:
+	cloud: GSCloudClient
+) -> GSResult:
 	var parsed := TmcYaml.parse_file(path)
 
 	if not parsed.ok:
@@ -683,8 +683,8 @@ func _pack_update_due(
 	var have_version := str(TmcYaml.at(tree, "version", ""))
 
 	if have_id != "" and have_id != str(want["id"]):
-		return DotResult.fail(
-			DotError.CODE_STATE,
+		return GSResult.fail(
+			GSError.CODE_STATE,
 			"content/%s is already %s." % [want["dir"], have_id],
 			"%s wants the same directory; list only one of them" % want["id"]
 		)
@@ -693,7 +693,7 @@ func _pack_update_due(
 
 	if target == "":
 		if cloud == null:
-			return DotResult.fail(DotError.CODE_INVALID, "no content origin to ask")
+			return GSResult.fail(GSError.CODE_INVALID, "no content origin to ask")
 
 		var latest := await _resolve_latest(str(want["id"]), bases)
 
@@ -702,12 +702,12 @@ func _pack_update_due(
 
 		target = str(latest.value)
 
-	return DotResult.success("" if target == have_version else target)
+	return GSResult.success("" if target == have_version else target)
 
 
 ## Why the installed version under [param path] will not mount, or "" when it will (or nobody can
 ## say: an unreadable descriptor or an unreachable origin is not a verdict).
-func _kept_refused(path: String, cloud: DotCloudClient) -> String:
+func _kept_refused(path: String, cloud: GSCloudClient) -> String:
 	if cloud == null:
 		return ""
 
@@ -723,27 +723,27 @@ func _kept_refused(path: String, cloud: DotCloudClient) -> String:
 	if id == "" or version == "":
 		return ""
 
-	var got: DotResult = await cloud.resolve_manifest(StringName(id), version)
+	var got: GSResult = await cloud.resolve_manifest(StringName(id), version)
 
 	if not got.ok:
 		return ""
 
-	var why := refused_at_mount(got.value as DotCloudManifest)
+	var why := refused_at_mount(got.value as GSCloudManifest)
 	return "" if why == "" else "%s@%s %s" % [id, version, why]
 
 
-## Why GameSpice Cloud's mount will refuse [param manifest], or "". The same rule as DotCloudClient._rescan_for_code, by path alone: a manifest with `provides` that does not declare `runs_code` and lists a code file. Packs signed before the site stamped `runs_code` are exactly that, so they are no fallback.
-static func refused_at_mount(manifest: DotCloudManifest) -> String:
+## Why GameSpice Cloud's mount will refuse [param manifest], or "". The same rule as GSCloudClient._rescan_for_code, by path alone: a manifest with `provides` that does not declare `runs_code` and lists a code file. Packs signed before the site stamped `runs_code` are exactly that, so they are no fallback.
+static func refused_at_mount(manifest: GSCloudManifest) -> String:
 	if manifest == null or manifest.provides.is_empty() or bool(manifest.provides.get("runs_code", false)):
 		return ""
 
-	if DotCloudProvides.has_code_kind(manifest.provides):
+	if GSCloudProvides.has_code_kind(manifest.provides):
 		return "provides entries of kind entity, tool or script but its signed manifest does not declare runs_code; republish it"
 
 	var code := PackedStringArray()
 
 	for f in manifest.wanted_files():
-		if DotCloudScriptScan.CODE_EXTENSIONS.has(str(f.path).get_extension().to_lower()):
+		if GSCloudScriptScan.CODE_EXTENSIONS.has(str(f.path).get_extension().to_lower()):
 			code.append(f.path)
 
 	if code.is_empty():
@@ -760,15 +760,15 @@ func _install_from_pack(
 	want: Dictionary,
 	content_dir: String,
 	bases: PackedStringArray,
-	cloud: DotCloudClient
-) -> DotResult:
+	cloud: GSCloudClient
+) -> GSResult:
 	var content_id := str(want["id"])
 	var version := str(want["version"])
 	var dir_name := str(want["dir"])
 
 	if cloud == null:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"No content origin to install %s from." % content_id,
 			"set content_urls in cfg/server.yml, or TMC_CONTENT_URL"
 		)
@@ -785,21 +785,21 @@ func _install_from_pack(
 	# candidate URLs and the same trusted keys the server itself will use -- an installer
 	# that verified content its own way would be a second opinion nobody asked for.
 	var urls := cloud.manifest_urls_for(StringName(content_id), version)
-	var manifest: DotCloudManifest = null
-	var last: DotResult = null
+	var manifest: GSCloudManifest = null
+	var last: GSResult = null
 
 	for url in urls:
-		var fetched: DotResult = await cloud.fetch_manifest(url)
+		var fetched: GSResult = await cloud.fetch_manifest(url)
 
 		if fetched.ok:
-			manifest = fetched.value as DotCloudManifest
+			manifest = fetched.value as GSCloudManifest
 			break
 
 		last = fetched
 
 	if manifest == null:
-		return (last if last != null else DotResult.fail(
-			DotError.CODE_IO, "No origin has %s@%s." % [content_id, version]
+		return (last if last != null else GSResult.fail(
+			GSError.CODE_IO, "No origin has %s@%s." % [content_id, version]
 		)).wrap("could not read the manifest for %s@%s" % [content_id, version])
 
 	var verified := cloud.verify_manifest(manifest)
@@ -809,7 +809,7 @@ func _install_from_pack(
 			content_id, version
 		])
 
-	var descriptor: DotCloudFile = null
+	var descriptor: GSCloudFile = null
 
 	for file in manifest.files:
 		if file.path == DESCRIPTOR:
@@ -817,8 +817,8 @@ func _install_from_pack(
 			break
 
 	if descriptor == null:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"%s@%s carries no %s." % [content_id, version, DESCRIPTOR],
 			"that pack is content rather than a game: it can be mounted, "
 			+ "but nothing in it says which scene a server should run"
@@ -833,8 +833,8 @@ func _install_from_pack(
 			var have := str(TmcYaml.at(parsed.value as Dictionary, "content_id", ""))
 
 			if have != "" and have != content_id:
-				return DotResult.fail(
-					DotError.CODE_STATE,
+				return GSResult.fail(
+					GSError.CODE_STATE,
 					"content/%s is already %s." % [dir_name, have],
 					"%s wants the same directory; rename one of them" % content_id
 				)
@@ -846,7 +846,7 @@ func _install_from_pack(
 
 	# [b]Can this server run it, asked before anything is written.[/b] The pack's requires.json names
 	# the addon API levels it was built against; the same rule the cloud client applies at mount
-	# (DotAddonApi.check) is applied here.
+	# (GSAddonApi.check) is applied here.
 	var able := await _check_requirements(manifest, prefix, bases)
 
 	# Not wrapped: the check's own sentence ("This game needs GameSpice Platform API level 3 or
@@ -854,11 +854,11 @@ func _install_from_pack(
 	# into the detail behind a content id the log already carries.
 	if not able.ok:
 		return able
-	var http := DotHttp.new()
+	var http := GSHttp.new()
 	http.name = "DescriptorHttp"
 	root.add_child(http)
 
-	var got: DotResult = null
+	var got: GSResult = null
 
 	for base in bases:
 		var url := "%s/%s/objects/%s" % [
@@ -872,8 +872,8 @@ func _install_from_pack(
 	http.queue_free()
 
 	if got == null or not got.ok:
-		return (got if got != null else DotResult.fail(
-			DotError.CODE_IO, "nowhere to fetch the descriptor from"
+		return (got if got != null else GSResult.fail(
+			GSError.CODE_IO, "nowhere to fetch the descriptor from"
 		)).wrap("could not download %s out of %s@%s" % [DESCRIPTOR, content_id, version])
 
 	var bytes := got.value as PackedByteArray
@@ -884,8 +884,8 @@ func _install_from_pack(
 	var digest := _sha256_hex(bytes)
 
 	if digest != descriptor.sha256:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"the %s served for %s@%s is not the one the manifest names" % [
 				DESCRIPTOR, content_id, version
 			],
@@ -918,17 +918,17 @@ func _install_from_pack(
 	if not written.ok:
 		return written
 
-	DotLog.info(CHANNEL, "game installed from a published pack", {
+	GSLog.info(CHANNEL, "game installed from a published pack", {
 		"game": dir_name, "content": content_id, "version": version,
 	})
 
-	return DotResult.success({"content_id": content_id, "version": version})
+	return GSResult.success({"content_id": content_id, "version": version})
 
 
 ## A pack's own descriptor, told which pack it is. The file cannot know its id or version when
 ## written, and a mismatch mounts a path that is not there; so `content_id`, `version` and `kind`
 ## are set to what this installer just verified, then parsed back.
-static func stamp_identity(text: String, content_id: String, version: String) -> DotResult:
+static func stamp_identity(text: String, content_id: String, version: String) -> GSResult:
 	var want := {"content_id": content_id, "version": version, "kind": "pack"}
 	var seen := {}
 	var lines := text.split("\n")
@@ -956,19 +956,19 @@ static func stamp_identity(text: String, content_id: String, version: String) ->
 
 	for key in want:
 		if str(TmcYaml.at(parsed.value as Dictionary, key, "")) != want[key]:
-			return DotResult.fail(
-				DotError.CODE_INVALID,
+			return GSResult.fail(
+				GSError.CODE_INVALID,
 				"could not set %s in the descriptor" % key,
 				"it may be written in a form this reader does not recognise"
 			)
 
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
 ## The `dependencies:` of a descriptor, each as a concrete `<id>@<version>`.
 func _resolve_dependencies(
 	text: String, bases: PackedStringArray, field: String = "dependencies"
-) -> DotResult:
+) -> GSResult:
 	var parsed := TmcYaml.parse(text, DESCRIPTOR)
 
 	if not parsed.ok:
@@ -978,16 +978,16 @@ func _resolve_dependencies(
 	var out := PackedStringArray()
 
 	if not (listed is Array):
-		return DotResult.fail(
-			DotError.CODE_INVALID, "%s: must be a list of <owner>/<name>@<version>" % field
+		return GSResult.fail(
+			GSError.CODE_INVALID, "%s: must be a list of <owner>/<name>@<version>" % field
 		)
 
 	for entry in listed:
 		var ref := TmcGameRef.parse(str(entry))
 
 		if not ref["from_origin"]:
-			return DotResult.fail(
-				DotError.CODE_INVALID,
+			return GSResult.fail(
+				GSError.CODE_INVALID,
 				"the %s entry '%s' is not <owner>/<name>" % [field, str(entry)],
 				"it names a published pack, never a directory on this box"
 			)
@@ -1007,7 +1007,7 @@ func _resolve_dependencies(
 
 		out.append("%s@%s" % [ref["id"], version])
 
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
 ## Rewrites a descriptor's top-level `dependencies:` list to exactly [param keys]. Text, like
@@ -1015,7 +1015,7 @@ func _resolve_dependencies(
 ## its comments and order are worth keeping.
 static func stamp_dependencies(
 	text: String, keys: PackedStringArray, field: String = "dependencies"
-) -> DotResult:
+) -> GSResult:
 	var lines := text.split("\n")
 	var out := PackedStringArray()
 	var i := 0
@@ -1065,13 +1065,13 @@ static func stamp_dependencies(
 	var back: Variant = TmcYaml.at(parsed.value as Dictionary, field, [])
 
 	if not keys.is_empty() and (not (back is Array) or PackedStringArray(back) != keys):
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"could not write the resolved dependencies into the descriptor",
 			"it may be written in a form this reader does not recognise"
 		)
 
-	return DotResult.success(result)
+	return GSResult.success(result)
 
 
 ## Resolves every unpinned map in `cfg/server/content/overrides.yml` to the origin's newest version, writing `data/content-maps.json` for TmcGameConfig.
@@ -1084,7 +1084,7 @@ func _resolve_owner_maps(
 	var loaded := TmcGameConfig.load_from(config_dir, data_dir)
 
 	if not loaded.ok:
-		DotLog.error(CHANNEL, "could not read the server's map list", {"why": str(loaded.error)})
+		GSLog.error(CHANNEL, "could not read the server's map list", {"why": str(loaded.error)})
 		return
 
 	var owner_maps := loaded.value as TmcGameConfig
@@ -1096,7 +1096,7 @@ func _resolve_owner_maps(
 	var entries := owner_maps.all_map_entries(scanned.value if scanned.ok else null)
 
 	for line in owner_maps.errors:
-		DotLog.error(CHANNEL, "a map in the server's map list cannot be used", {"entry": line})
+		GSLog.error(CHANNEL, "a map in the server's map list cannot be used", {"entry": line})
 		print("  BAD MAP  : %s" % line)
 
 	if entries.is_empty() and owner_maps.resolved.is_empty() and owner_maps.collections.is_empty():
@@ -1118,7 +1118,7 @@ func _resolve_owner_maps(
 	var collections := expanded["collections"] as Dictionary
 
 	for line in (expanded["failed"] as PackedStringArray):
-		DotLog.error(CHANNEL, "a collection in the server's map list cannot be expanded", {"why": line})
+		GSLog.error(CHANNEL, "a collection in the server's map list cannot be expanded", {"why": line})
 		print("  NO COLLECTION: %s" % line)
 
 	# An id the file also names on its own (a pin, or a plain add) is looked up as that
@@ -1178,7 +1178,7 @@ func _resolve_owner_maps(
 	var file := FileAccess.open(cache_path, FileAccess.WRITE)
 
 	if file == null:
-		DotLog.error(CHANNEL, "could not write the resolved map versions", {
+		GSLog.error(CHANNEL, "could not write the resolved map versions", {
 			"why": error_string(FileAccess.get_open_error()),
 		})
 		return
@@ -1207,12 +1207,12 @@ func _resolve_owner_maps(
 ## Pinned so two players never get two packs. Vetted here: a pack whose `requires.json` this build cannot run is left out with a message, instead of abandoning the game change that needs it.
 func _resolve_addon_packs(
 	config_dir: String, data_dir: String, bases: PackedStringArray, content_dir: String,
-	allow_dirs: PackedStringArray, cloud: DotCloudClient
+	allow_dirs: PackedStringArray, cloud: GSCloudClient
 ) -> void:
 	var loaded := TmcAddonsConfig.load_from(config_dir, data_dir)
 
 	if not loaded.ok:
-		DotLog.error(CHANNEL, "could not read the server's extra packs", {"why": str(loaded.error)})
+		GSLog.error(CHANNEL, "could not read the server's extra packs", {"why": str(loaded.error)})
 		print("  BAD ADDONS: %s" % str(loaded.error))
 		return
 
@@ -1247,12 +1247,12 @@ func _resolve_addon_packs(
 
 		if cloud != null:
 			print("  fetching %s@%s" % [id, version])
-			var res: DotResult = await cloud.ensure(StringName(id), version, PackedStringArray(["*"]))  # every group
+			var res: GSResult = await cloud.ensure(StringName(id), version, PackedStringArray(["*"]))  # every group
 
-			if not res.ok and res.error.code == DotError.CODE_VERSION:
+			if not res.ok and res.error.code == GSError.CODE_VERSION:
 				# This build's addons cannot run it: leave it out so no game depends on it.
 				refused.append("%s@%s (%s)" % [id, version, res.error.message])
-				DotLog.error(CHANNEL, "an extra pack needs more than this server has", {
+				GSLog.error(CHANNEL, "an extra pack needs more than this server has", {
 					"pack": id, "version": version, "why": str(res.error),
 				})
 				continue
@@ -1260,7 +1260,7 @@ func _resolve_addon_packs(
 			if not res.ok:
 				# Not fatal, as a prefetch never is: the pin stands and the pack is fetched
 				# when the game is next changed to.
-				DotLog.warn(CHANNEL, "could not prefetch an extra pack", {
+				GSLog.warn(CHANNEL, "could not prefetch an extra pack", {
 					"pack": id, "version": version, "why": str(res.error),
 				})
 			else:
@@ -1272,7 +1272,7 @@ func _resolve_addon_packs(
 	var file := FileAccess.open("%s/%s" % [data_dir.rstrip("/"), TmcAddonsConfig.RESOLVED_FILE], FileAccess.WRITE)
 
 	if file == null:
-		DotLog.error(CHANNEL, "could not write the resolved extra pack versions", {
+		GSLog.error(CHANNEL, "could not write the resolved extra pack versions", {
 			"why": error_string(FileAccess.get_open_error()),
 		})
 		return
@@ -1297,14 +1297,14 @@ func _resolve_addon_packs(
 
 
 ## Expands each collection id in [param wanted] (`owner/collection`) with [param fetch], a Callable
-## `(collection) -> DotResult` of its `owner/map` ids ([method _fetch_collection]; a suite passes a
+## `(collection) -> GSResult` of its `owner/map` ids ([method _fetch_collection]; a suite passes a
 ## fake origin). Returns `{"collections": {id: [ids]}, "failed": [lines]}`.
 static func resolve_collections(wanted: PackedStringArray, fetch: Callable, cached: Dictionary) -> Dictionary:
 	var out := {}
 	var failed := PackedStringArray()
 
 	for collection in wanted:
-		var got: DotResult = await fetch.call(collection)
+		var got: GSResult = await fetch.call(collection)
 
 		if got.ok:
 			out[collection] = Array(got.value as PackedStringArray)
@@ -1318,8 +1318,8 @@ static func resolve_collections(wanted: PackedStringArray, fetch: Callable, cach
 
 
 ## Reads one collection's `collection.json` from the first base that answers.
-func _fetch_collection(collection: String, bases: PackedStringArray) -> DotResult:
-	var http := DotHttp.new()
+func _fetch_collection(collection: String, bases: PackedStringArray) -> GSResult:
+	var http := GSHttp.new()
 	http.name = "CollectionHttp"
 	root.add_child(http)
 
@@ -1327,7 +1327,7 @@ func _fetch_collection(collection: String, bases: PackedStringArray) -> DotResul
 
 	for base in bases:
 		var url := "%s/%s/%s" % [base.rstrip("/"), collection, COLLECTION_FILE]
-		var res: DotResult = await http.get_json(url)
+		var res: GSResult = await http.get_json(url)
 
 		if not res.ok:
 			last = str(res.error)
@@ -1340,8 +1340,8 @@ func _fetch_collection(collection: String, bases: PackedStringArray) -> DotResul
 
 	http.queue_free()
 
-	return DotResult.fail(
-		DotError.CODE_IO, "Could not read the collection %s." % collection,
+	return GSResult.fail(
+		GSError.CODE_IO, "Could not read the collection %s." % collection,
 		"publish %s/%s beside its maps. %s" % [collection, COLLECTION_FILE, last]
 	)
 
@@ -1349,17 +1349,17 @@ func _fetch_collection(collection: String, bases: PackedStringArray) -> DotResul
 ## The newest published version of a pack, from the `latest.json` beside its versions.
 ##
 ## A static origin cannot list directories, and guessing by name sorts `0.10.0` before `0.9.0`.
-func _resolve_latest(content_id: String, bases: PackedStringArray) -> DotResult:
+func _resolve_latest(content_id: String, bases: PackedStringArray) -> GSResult:
 	var pointer := await _resolve_pointer(content_id, bases)
 
 	if not pointer.ok:
 		return pointer
 
-	return DotResult.success(str((pointer.value as Dictionary)["version"]))
+	return GSResult.success(str((pointer.value as Dictionary)["version"]))
 
 
 ## [method _resolve_latest] plus the id the answer belongs to: `{id, version, moved_from}`.
-func _resolve_pointer(content_id: String, bases: PackedStringArray) -> DotResult:
+func _resolve_pointer(content_id: String, bases: PackedStringArray) -> GSResult:
 	if _pointers.has(content_id):
 		return _pointers[content_id]
 
@@ -1393,7 +1393,7 @@ static func _checked_times(path: String) -> Dictionary:
 	return {}
 
 
-func _resolve_pointer_uncached(content_id: String, bases: PackedStringArray) -> DotResult:
+func _resolve_pointer_uncached(content_id: String, bases: PackedStringArray) -> GSResult:
 	var first := await _fetch_pointer(content_id, bases, 0)
 
 	if not first.ok:
@@ -1402,10 +1402,10 @@ func _resolve_pointer_uncached(content_id: String, bases: PackedStringArray) -> 
 	var got := first.value as Dictionary
 
 	if str(got["moved_to"]) == "":
-		return DotResult.success({"id": content_id, "version": got["version"], "moved_from": ""})
+		return GSResult.success({"id": content_id, "version": got["version"], "moved_from": ""})
 
 	var new_id := str(got["moved_to"])
-	DotLog.warn(CHANNEL, "the config names a retired content id; change it", {
+	GSLog.warn(CHANNEL, "the config names a retired content id; change it", {
 		"retired": content_id, "change_to": new_id,
 	})
 	var second := await _fetch_pointer(new_id, bases, 1)
@@ -1413,48 +1413,48 @@ func _resolve_pointer_uncached(content_id: String, bases: PackedStringArray) -> 
 	if not second.ok:
 		return second.wrap("could not follow %s to %s:" % [content_id, new_id])
 
-	return DotResult.success({
+	return GSResult.success({
 		"id": new_id, "version": (second.value as Dictionary)["version"], "moved_from": content_id,
 	})
 
 
 ## Reads one id's newest version: the site's pack API first when a site is set, then `latest.json`.
-func _fetch_pointer(content_id: String, bases: PackedStringArray, hop: int) -> DotResult:
-	var http := DotHttp.new()
+func _fetch_pointer(content_id: String, bases: PackedStringArray, hop: int) -> GSResult:
+	var http := GSHttp.new()
 	http.name = "LatestHttp"
 	root.add_child(http)
 
-	var res := await pointer_from(content_id, _site, bases, hop, func(url: String) -> DotResult:
+	var res := await pointer_from(content_id, _site, bases, hop, func(url: String) -> GSResult:
 		return await http.get_json(url))
 	http.queue_free()
 	return res
 
 
-## The newest-version lookup behind [method _fetch_pointer], with the transport as [param get_json] (`url -> DotResult` of the parsed body) so a selftest needs no network.
+## The newest-version lookup behind [method _fetch_pointer], with the transport as [param get_json] (`url -> GSResult` of the parsed body) so a selftest needs no network.
 ## The pack API answers only `{version}` and a 404 for an unknown id, so a retired id still falls through to `latest.json`, which carries `moved_to`.
 static func pointer_from(
 	content_id: String, site: String, bases: PackedStringArray, hop: int, get_json: Callable
-) -> DotResult:
+) -> GSResult:
 	var last := ""
 
 	if site != "":
 		var api_url := "%s/api/packs/latest?id=%s" % [site.rstrip("/"), content_id.uri_encode()]
-		var api: DotResult = await get_json.call(api_url)
+		var api: GSResult = await get_json.call(api_url)
 
 		if api.ok and api.value is Dictionary and str((api.value as Dictionary).get("version", "")) != "":
 			var from_api := follow_pointer(content_id, {"version": str((api.value as Dictionary)["version"])}, hop)
 
 			if from_api.ok:
-				DotLog.debug(CHANNEL, "resolved the newest version", {
+				GSLog.debug(CHANNEL, "resolved the newest version", {
 					"content": content_id, "version": from_api.value["version"], "from": api_url,
 				})
 				return from_api
 
-		DotLog.debug(CHANNEL, "the pack API had no answer; asking latest.json", {"content": content_id})
+		GSLog.debug(CHANNEL, "the pack API had no answer; asking latest.json", {"content": content_id})
 
 	for base in bases:
 		var url := "%s/%s/%s" % [base.rstrip("/"), content_id, LATEST_FILE]
-		var res: DotResult = await get_json.call(url)
+		var res: GSResult = await get_json.call(url)
 
 		if not res.ok:
 			last = str(res.error)
@@ -1464,9 +1464,9 @@ static func pointer_from(
 
 		# A refusal is the document's answer, not an origin outage: another base
 		# carries the same document, so asking it would only repeat the refusal.
-		if followed.ok or followed.error.code != DotError.CODE_IO:
+		if followed.ok or followed.error.code != GSError.CODE_IO:
 			if followed.ok:
-				DotLog.debug(CHANNEL, "resolved the newest version", {
+				GSLog.debug(CHANNEL, "resolved the newest version", {
 					"content": content_id, "version": followed.value["version"], "from": url,
 				})
 
@@ -1474,8 +1474,8 @@ static func pointer_from(
 
 		last = "%s: %s" % [url, followed.error.message]
 
-	return DotResult.fail(
-		DotError.CODE_IO,
+	return GSResult.fail(
+		GSError.CODE_IO,
 		"Could not find out which version of %s is newest." % content_id,
 		("%s name one explicitly -- %s@1.0.0 -- or publish %s beside its versions. %s"
 			% [pointer_hint(content_id, last), content_id, LATEST_FILE, last]).strip_edges()
@@ -1498,7 +1498,7 @@ static func pointer_hint(content_id: String, last: String) -> String:
 
 ## Reads one `latest.json` body; the logic lives in [TmcSolo] because the client build
 ## (which has no `tools/`) follows `moved_to` too.
-static func follow_pointer(content_id: String, body: Variant, hop: int) -> DotResult:
+static func follow_pointer(content_id: String, body: Variant, hop: int) -> GSResult:
 	return TmcSolo.follow_pointer(content_id, body, hop)
 
 
@@ -1506,7 +1506,7 @@ static func follow_pointer(content_id: String, body: Variant, hop: int) -> DotRe
 ## consulted: that is where content lands inside the client, and this is where it sits on the
 ## origin. They are the same two segments by convention and are not the same decision.
 static func _version_prefix(
-	content_id: String, version: String, manifest: DotCloudManifest
+	content_id: String, version: String, manifest: GSCloudManifest
 ) -> String:
 	var v := version if version != "" else manifest.version
 	return "%s/%s" % [content_id, v]
@@ -1515,23 +1515,23 @@ static func _version_prefix(
 ## SHA-256 of a buffer, as lowercase hex. Fetch the pack's requires.json, if it has one, and check
 ## it against this build's addons.
 func _check_requirements(
-	manifest: DotCloudManifest, prefix: String, bases: PackedStringArray
-) -> DotResult:
-	var wanted: DotCloudFile = null
+	manifest: GSCloudManifest, prefix: String, bases: PackedStringArray
+) -> GSResult:
+	var wanted: GSCloudFile = null
 
 	for file in manifest.files:
-		if file.path == DotAddonApi.REQUIREMENTS_FILE:
+		if file.path == GSAddonApi.REQUIREMENTS_FILE:
 			wanted = file
 			break
 
 	if wanted == null:
-		return DotResult.success({})
+		return GSResult.success({})
 
-	var http := DotHttp.new()
+	var http := GSHttp.new()
 	http.name = "RequirementsHttp"
 	root.add_child(http)
 
-	var got: DotResult = null
+	var got: GSResult = null
 
 	for base in bases:
 		got = await http.get_bytes("%s/%s/objects/%s" % [
@@ -1544,19 +1544,19 @@ func _check_requirements(
 	http.queue_free()
 
 	if got == null or not got.ok:
-		return (got if got != null else DotResult.fail(
-			DotError.CODE_IO, "nowhere to fetch the requirements from"
-		)).wrap("could not download %s" % DotAddonApi.REQUIREMENTS_FILE)
+		return (got if got != null else GSResult.fail(
+			GSError.CODE_IO, "nowhere to fetch the requirements from"
+		)).wrap("could not download %s" % GSAddonApi.REQUIREMENTS_FILE)
 
 	var bytes := got.value as PackedByteArray
 
 	if _sha256_hex(bytes) != wanted.sha256:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
-			"the %s served is not the one the manifest names" % DotAddonApi.REQUIREMENTS_FILE
+		return GSResult.fail(
+			GSError.CODE_INVALID,
+			"the %s served is not the one the manifest names" % GSAddonApi.REQUIREMENTS_FILE
 		)
 
-	return DotAddonApi.new().check_text(bytes.get_string_from_utf8(), "server")
+	return GSAddonApi.new().check_text(bytes.get_string_from_utf8(), "server")
 
 
 static func _sha256_hex(bytes: PackedByteArray) -> String:
@@ -1568,7 +1568,7 @@ static func _sha256_hex(bytes: PackedByteArray) -> String:
 
 ## Keeps a copy of a pack's manifest where an offline boot can find it.
 ##
-## dot-cloud resolves the manifest from the network before looking at its cache, so a fully cached pack still fails to start when the origin is down. [DotCloudClient] searches `local_search_dirs` first and verifies against the trusted keys on every load, so this caches bytes, not trust. Versions are namespaced, so a stale copy cannot shadow a release.
+## dot-cloud resolves the manifest from the network before looking at its cache, so a fully cached pack still fails to start when the origin is down. [GSCloudClient] searches `local_search_dirs` first and verifies against the trusted keys on every load, so this caches bytes, not trust. Versions are namespaced, so a stale copy cannot shadow a release.
 func _cache_manifest(
 	content_id: String,
 	version: String,
@@ -1584,18 +1584,18 @@ func _cache_manifest(
 	var made := DirAccess.make_dir_recursive_absolute(dir)
 
 	if made != OK and made != ERR_ALREADY_EXISTS:
-		DotLog.warn(CHANNEL, "could not keep a manifest for offline starts", {
+		GSLog.warn(CHANNEL, "could not keep a manifest for offline starts", {
 			"dir": dir,
 		})
 		return
 
-	var http := DotHttp.new()
+	var http := GSHttp.new()
 	http.name = "ManifestHttp"
 	root.add_child(http)
 
 	for base in bases:
 		var url := "%s/%s/manifest.json" % [base.rstrip("/"), content_id]
-		var res: DotResult = await http.get_bytes(url)
+		var res: GSResult = await http.get_bytes(url)
 
 		if not res.ok:
 			continue
@@ -1608,7 +1608,7 @@ func _cache_manifest(
 		file.store_buffer(res.value as PackedByteArray)
 		file.close()
 
-		DotLog.debug(CHANNEL, "manifest kept for offline starts", {
+		GSLog.debug(CHANNEL, "manifest kept for offline starts", {
 			"content": content_id, "path": target,
 		})
 		break
@@ -1621,13 +1621,13 @@ func _build_cloud(
 	content_dir: String,
 	data_dir: String,
 	bases: PackedStringArray
-) -> DotCloudClient:
+) -> GSCloudClient:
 	if bases.is_empty():
 		return null
 
-	var cloud := DotCloudClient.new()
+	var cloud := GSCloudClient.new()
 	cloud.name = "Cloud"
-	cloud.config = DotCloudConfig.new()
+	cloud.config = GSCloudConfig.new()
 	cloud.config.cache_dir = "%s/content_cache" % data_dir
 	# The side TmcHost._build_cloud fetches as, so a prefetch does not cache a game's
 	# client-only files (GameSpice Cloud API 8) that the server would then never mount.
@@ -1682,16 +1682,16 @@ func _prune(
 			continue
 
 		var dir := content_dir.path_join(str(id))
-		var removed := DotPaths.remove_tree(dir)
+		var removed := GSPaths.remove_tree(dir)
 
 		if not removed.ok:
-			DotLog.warn(CHANNEL, "could not remove a game", {
+			GSLog.warn(CHANNEL, "could not remove a game", {
 				"game": id, "why": str(removed.error),
 			})
 			continue
 
 		installed.erase(id)
-		DotLog.info(CHANNEL, "game removed", {"game": id})
+		GSLog.info(CHANNEL, "game removed", {"game": id})
 
 	# [b]The cached PACK is deliberately left alone.[/b] GameSpice Cloud's store is content-addressed and
 	# objects are shared between packs, so deleting the objects of one game can take files another game
@@ -1712,7 +1712,7 @@ func _read_state(data_dir: String) -> Dictionary:
 		# Unreadable state is treated as no state: the consequence is that `--prune`
 		# forgets what was its to remove and therefore removes nothing, which is the
 		# safe direction to fail in.
-		DotLog.warn(CHANNEL, "unreadable install state; starting fresh", {"path": path})
+		GSLog.warn(CHANNEL, "unreadable install state; starting fresh", {"path": path})
 		return empty
 
 	return parsed as Dictionary
@@ -1725,7 +1725,7 @@ func _write_state(data_dir: String, state: Dictionary) -> void:
 	var file := FileAccess.open(path, FileAccess.WRITE)
 
 	if file == null:
-		DotLog.warn(CHANNEL, "could not record what was installed", {"path": path})
+		GSLog.warn(CHANNEL, "could not record what was installed", {"path": path})
 		return
 
 	# Stamped fresh rather than carried through from the parse. [JSON] has no integers -- every number

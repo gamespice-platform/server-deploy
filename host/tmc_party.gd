@@ -19,16 +19,16 @@ const PARTY_CHANNEL := &"party"
 ## on the server's credential, and a chat command is something anybody can type.
 const CLAIM_EVERY_MS := 10000
 
-var server: DotServer = null
+var server: GSServer = null
 
 ## Reports parties to the backbone. Null without a backbone client.
-var tracker: DotPartyServer = null
+var tracker: GSPartyServer = null
 
 ## Keeps a booking. Null only when `party_enabled` is off.
-var reservations: DotPartyReservations = null
+var reservations: GSPartyReservations = null
 
 ## The queue. Null unless `mm_enabled`.
-var matchmaker: DotMatchmaker = null
+var matchmaker: GSMatchmaker = null
 
 var _config: TmcConfig = null
 
@@ -46,7 +46,7 @@ var _warned_fetch: bool = false
 ## `get_integration` — GameSpice Auth's backbone client — or null.
 static func install(
 	host: Node,
-	p_server: DotServer,
+	p_server: GSServer,
 	config: TmcConfig,
 	backbone: Object,
 	data_dir: String
@@ -61,7 +61,7 @@ static func install(
 		node._build_reservations(backbone)
 		node._build_tracker(backbone)
 	else:
-		DotLog.info(CHANNEL, "parties are off in cfg/party.yml")
+		GSLog.info(CHANNEL, "parties are off in cfg/party.yml")
 
 	if config.mm_enabled:
 		node._build_matchmaker(data_dir)
@@ -74,11 +74,11 @@ static func install(
 	# A game's module builds its chat router and its moderation manager when it loads,
 	# which is after this on a `changelevel` and before it at boot. Watching the registry
 	# catches both orders without this node having to know when a module finished loading.
-	DotRegistry.signals().service_registered.connect(node._on_service_registered)
-	DotRegistry.signals().service_unregistered.connect(node._on_service_unregistered)
+	GSRegistry.signals().service_registered.connect(node._on_service_registered)
+	GSRegistry.signals().service_unregistered.connect(node._on_service_unregistered)
 	node._wire_chat_routers.call_deferred()
 
-	DotLog.info(CHANNEL, "parties are up", {
+	GSLog.info(CHANNEL, "parties are up", {
 		"tracking": node.tracker != null,
 		"bookings": "backbone and console" if backbone != null else "console only",
 		"chat": config.party_chat,
@@ -89,7 +89,7 @@ static func install(
 
 
 func _exit_tree() -> void:
-	var bus := DotRegistry.signals()
+	var bus := GSRegistry.signals()
 
 	if bus.service_registered.is_connected(_on_service_registered):
 		bus.service_registered.disconnect(_on_service_registered)
@@ -100,7 +100,7 @@ func _exit_tree() -> void:
 
 
 func _build_reservations(backbone: Object) -> void:
-	reservations = DotPartyReservations.new()
+	reservations = GSPartyReservations.new()
 	reservations.name = "PartyReservations"
 	reservations.config = _config.party
 	reservations.policy = _config.party_policy
@@ -113,8 +113,8 @@ func _build_reservations(backbone: Object) -> void:
 
 		for session in server.sessions():
 			if session.is_active() and not (session.state in [
-				DotClientSession.State.CONNECTING,
-				DotClientSession.State.AUTHENTICATING,
+				GSClientSession.State.CONNECTING,
+				GSClientSession.State.AUTHENTICATING,
 			]):
 				occupied += 1
 
@@ -124,7 +124,7 @@ func _build_reservations(backbone: Object) -> void:
 	# resolved before GameSpice Server asks the ban seam, so the flag is already on the session.
 	reservations.bypass_fn = func(uid: String) -> bool:
 		for session in server.sessions():
-			if session.uid() == uid and session.has_permission(DotAdminFlags.RESERVATION):
+			if session.uid() == uid and session.has_permission(GSAdminFlags.RESERVATION):
 				return true
 		return false
 
@@ -146,12 +146,12 @@ func _build_reservations(backbone: Object) -> void:
 func _quiet_first_fetch_failure() -> void:
 	var fetch := reservations.fetch_fn
 
-	reservations.fetch_fn = func() -> DotResult:
-		var res: DotResult = await fetch.call()
+	reservations.fetch_fn = func() -> GSResult:
+		var res: GSResult = await fetch.call()
 
 		if not res.ok and not _warned_fetch:
 			_warned_fetch = true
-			DotLog.warn(CHANNEL, "the backbone would not say whether this server is booked", {
+			GSLog.warn(CHANNEL, "the backbone would not say whether this server is booked", {
 				"why": str(res.error),
 				"meaning": "bookings come from party_reserve at the console until it does",
 			})
@@ -161,37 +161,37 @@ func _quiet_first_fetch_failure() -> void:
 
 func _build_tracker(backbone: Object) -> void:
 	if backbone == null:
-		DotLog.info(CHANNEL, "no backbone client; parties are not reported to the site", {
+		GSLog.info(CHANNEL, "no backbone client; parties are not reported to the site", {
 			"hint": "an integration token in data/listing.json turns it on",
 		})
 		return
 
-	tracker = DotPartyServer.new()
+	tracker = GSPartyServer.new()
 	tracker.name = "PartyTracker"
 	tracker.config = _config.party
 	tracker.client = backbone
 	tracker.players_fn = _players
-	tracker.report_failed.connect(func(what: String, error: DotError) -> void:
-		DotLog.debug(CHANNEL, "a party report was refused", {"what": what, "why": str(error)})
+	tracker.report_failed.connect(func(what: String, error: GSError) -> void:
+		GSLog.debug(CHANNEL, "a party report was refused", {"what": what, "why": str(error)})
 	)
 	add_child(tracker)
 
 
 func _build_matchmaker(data_dir: String) -> void:
-	matchmaker = DotMatchmaker.new()
+	matchmaker = GSMatchmaker.new()
 	matchmaker.name = "Matchmaker"
 	matchmaker.config = _config.matchmaking
 
 	# Under `data/`, beside the bans and the audit log, unless the operator named a file.
 	# `user://` is the addon's default and is a directory no operator of this tool looks in.
-	if matchmaker.config.ratings_file == DotMatchmakingConfig.new().ratings_file:
+	if matchmaker.config.ratings_file == GSMatchmakingConfig.new().ratings_file:
 		matchmaker.config.ratings_file = _absolute(data_dir).path_join("matchmaking/ratings.json")
 
 	for pl in _config.mm_playlists:
 		matchmaker.playlists.append(pl)
 
 	if not _config.mm_servers.is_empty():
-		var list := DotMmAllocatorList.new()
+		var list := GSMmAllocatorList.new()
 
 		for id in _config.mm_servers.keys():
 			var row: Variant = _config.mm_servers[id]
@@ -206,7 +206,7 @@ func _build_matchmaker(data_dir: String) -> void:
 	var started := matchmaker.setup()
 
 	if not started.ok:
-		DotLog.error(CHANNEL, "the matchmaker would not start; matchmaking is off", {
+		GSLog.error(CHANNEL, "the matchmaker would not start; matchmaking is off", {
 			"why": str(started.error),
 		})
 		matchmaker = null
@@ -248,7 +248,7 @@ func _rechain() -> void:
 	if reservations == null or not is_instance_valid(reservations):
 		return
 
-	var holder := DotRegistry.get_service(BAN_SOURCE)
+	var holder := GSRegistry.get_service(BAN_SOURCE)
 
 	if holder == reservations:
 		return
@@ -264,8 +264,8 @@ func _rechain() -> void:
 	elif reservations.previous_source != null and not is_instance_valid(reservations.previous_source):
 		reservations.previous_source = null
 
-	DotRegistry.register(BAN_SOURCE, reservations)
-	DotLog.debug(CHANNEL, "party bookings chained onto the ban seam", {
+	GSRegistry.register(BAN_SOURCE, reservations)
+	GSLog.debug(CHANNEL, "party bookings chained onto the ban seam", {
 		"previous": reservations.previous_source.get_class() if reservations.previous_source != null else "none",
 	})
 
@@ -292,11 +292,11 @@ func _wire_chat_routers() -> void:
 	if not _config.party_chat or reservations == null:
 		return
 
-	for service in DotRegistry.names():
+	for service in GSRegistry.names():
 		if not service.begins_with(CHAT_SERVICE):
 			continue
 
-		var router := DotRegistry.get_service(StringName(service))
+		var router := GSRegistry.get_service(StringName(service))
 
 		if router == null or not is_instance_valid(router) or not router.has_method("add_channel"):
 			continue
@@ -309,11 +309,11 @@ func _wire_chat_routers() -> void:
 		_wired_routers[key] = true
 
 		if not router.call("has_channel", PARTY_CHANNEL):
-			var added: Variant = router.call("add_channel", DotChatChannel.group(PARTY_CHANNEL, "Party"))
+			var added: Variant = router.call("add_channel", GSChatChannel.group(PARTY_CHANNEL, "Party"))
 
-			if added is DotResult and not (added as DotResult).ok:
-				DotLog.warn(CHANNEL, "the game's chat would not take a party channel", {
-					"router": service, "why": str((added as DotResult).error),
+			if added is GSResult and not (added as GSResult).ok:
+				GSLog.warn(CHANNEL, "the game's chat would not take a party channel", {
+					"router": service, "why": str((added as GSResult).error),
 				})
 				continue
 
@@ -327,7 +327,7 @@ func _wire_chat_routers() -> void:
 			return StringName(party_id_of(session.uid())) if session != null else &""
 		)
 
-		DotLog.debug(CHANNEL, "party chat is on in the game's chat", {"router": service})
+		GSLog.debug(CHANNEL, "party chat is on in the game's chat", {"router": service})
 
 
 ## Which party [param uid] is in on this server, or "". The tracker's answer when there is a tracker
@@ -349,9 +349,9 @@ func party_id_of(uid: String) -> String:
 
 
 func _chat_router() -> Object:
-	for service in DotRegistry.names():
+	for service in GSRegistry.names():
 		if service.begins_with(CHAT_SERVICE):
-			var router := DotRegistry.get_service(StringName(service))
+			var router := GSRegistry.get_service(StringName(service))
 			if router != null and is_instance_valid(router) and router.has_method("submit"):
 				return router
 	return null
@@ -372,7 +372,7 @@ func _players() -> Array:
 	return out
 
 
-func _on_spawned(session: DotClientSession) -> void:
+func _on_spawned(session: GSClientSession) -> void:
 	var uid := session.uid()
 
 	if reservations != null:
@@ -382,7 +382,7 @@ func _on_spawned(session: DotClientSession) -> void:
 		tracker.player_joined({"name": session.display_name, "uid": uid})
 
 
-func _on_left(session: DotClientSession, _reason: String) -> void:
+func _on_left(session: GSClientSession, _reason: String) -> void:
 	var uid := session.uid()
 	_claims.erase(session.userid)
 
@@ -408,14 +408,14 @@ func _on_left(session: DotClientSession, _reason: String) -> void:
 		matchmaker.cancel(_ticket_id(session))
 
 
-func _anyone_here_from(pid: String, leaving: DotClientSession) -> bool:
+func _anyone_here_from(pid: String, leaving: GSClientSession) -> bool:
 	for other in server.sessions():
 		if other != leaving and other.is_active() and tracker.party_of(other.uid()) == pid:
 			return true
 	return false
 
 
-func _on_booking_started(r: DotPartyReservation, p: DotParty) -> void:
+func _on_booking_started(r: GSPartyReservation, p: GSParty) -> void:
 	if tracker != null and p != null:
 		tracker.track(p)
 
@@ -426,16 +426,16 @@ func _on_booking_started(r: DotPartyReservation, p: DotParty) -> void:
 	])
 
 
-func _on_booking_ending(_r: DotPartyReservation, seconds_left: int) -> void:
+func _on_booking_ending(_r: GSPartyReservation, seconds_left: int) -> void:
 	_announce("The party booking ends in %d minutes." % ceili(seconds_left / 60.0))
 
 
-func _on_booking_ended(_r: DotPartyReservation, reason: String) -> void:
+func _on_booking_ended(_r: GSPartyReservation, reason: String) -> void:
 	_announce("The party booking is over (%s)." % reason)
 
 
 func _announce(line: String) -> void:
-	DotLog.info(CHANNEL, line)
+	GSLog.info(CHANNEL, line)
 
 	if server.chat != null:
 		server.chat.broadcast_system(line)
@@ -450,7 +450,7 @@ func _register_commands() -> void:
 
 	console.command(
 		"party_status", _cmd_status, "Parties on this server, the booking, and the queue",
-		DotAdminFlags.GENERIC
+		GSAdminFlags.GENERIC
 	).with_chat()
 
 	# Everybody: this is how the client shell says which party it is in. The roster
@@ -468,15 +468,15 @@ func _register_commands() -> void:
 	console.command(
 		"party_reserve", _cmd_reserve,
 		"Book this server for a party: party_reserve <partyId> <minutes> [private]",
-		DotAdminFlags.CONFIG
+		GSAdminFlags.CONFIG
 	).with_args(2, 3)
 
 	console.command(
-		"party_release", _cmd_release, "End the party booking now", DotAdminFlags.CONFIG
+		"party_release", _cmd_release, "End the party booking now", GSAdminFlags.CONFIG
 	)
 
 	console.command(
-		"mm_status", _cmd_mm_status, "The matchmaking queues", DotAdminFlags.GENERIC
+		"mm_status", _cmd_mm_status, "The matchmaking queues", GSAdminFlags.GENERIC
 	).with_chat()
 
 	if matchmaker != null:
@@ -517,11 +517,11 @@ func describe_lines() -> PackedStringArray:
 	return out
 
 
-func _cmd_status(ctx: DotCmdContext) -> void:
+func _cmd_status(ctx: GSCmdContext) -> void:
 	ctx.reply_lines(describe_lines())
 
 
-func _cmd_claim(ctx: DotCmdContext) -> void:
+func _cmd_claim(ctx: GSCmdContext) -> void:
 	var session := ctx.session
 
 	if session == null:
@@ -542,20 +542,20 @@ func _cmd_claim(ctx: DotCmdContext) -> void:
 
 	_claims[session.userid] = now
 
-	var res: DotResult = await tracker.claim(session.uid(), ctx.arg(0))
+	var res: GSResult = await tracker.claim(session.uid(), ctx.arg(0))
 
 	if not res.ok:
-		DotLog.info(CHANNEL, "a party claim was refused", {
+		GSLog.info(CHANNEL, "a party claim was refused", {
 			"user": session.label(), "party": ctx.arg(0), "why": res.error.message,
 		})
 		ctx.reply(res.error.message)
 		return
 
-	var p: DotParty = res.value
+	var p: GSParty = res.value
 	ctx.reply("You are playing with your party%s." % ((" %s" % p.name) if p.name != "" else ""))
 
 
-func _cmd_say(ctx: DotCmdContext) -> void:
+func _cmd_say(ctx: GSCmdContext) -> void:
 	var session := ctx.session
 
 	if session == null:
@@ -574,8 +574,8 @@ func _cmd_say(ctx: DotCmdContext) -> void:
 	if router != null and bool(router.call("has_channel", PARTY_CHANNEL)):
 		var sent: Variant = router.call("submit", session.peer_id, PARTY_CHANNEL, text)
 
-		if sent is DotResult and not (sent as DotResult).ok:
-			ctx.reply((sent as DotResult).error.message)
+		if sent is GSResult and not (sent as GSResult).ok:
+			ctx.reply((sent as GSResult).error.message)
 		return
 
 	# A game with no GameSpice Chat router. GameSpice Server's own chat has no channels, so the line
@@ -584,14 +584,14 @@ func _cmd_say(ctx: DotCmdContext) -> void:
 		ctx.reply("This game has no chat.")
 		return
 
-	var line := "(PARTY) %s: %s" % [session.display_name, DotChatManager.sanitise(text, 200)]
+	var line := "(PARTY) %s: %s" % [session.display_name, GSChatManager.sanitise(text, 200)]
 
 	for other in server.playing_sessions():
 		if party_id_of(other.uid()) == pid:
 			server.chat.send_system_to(other, line)
 
 
-func _cmd_reserve(ctx: DotCmdContext) -> void:
+func _cmd_reserve(ctx: GSCmdContext) -> void:
 	if reservations == null:
 		ctx.reply("Parties are off in cfg/party.yml.")
 		return
@@ -600,14 +600,14 @@ func _cmd_reserve(ctx: DotCmdContext) -> void:
 	var minutes := ctx.arg_int(1)
 	var want_private := ctx.arg(2).to_lower() in ["private", "1", "true", "yes"]
 
-	if not DotParty.is_id(party_id):
+	if not GSParty.is_id(party_id):
 		ctx.reply("That is not a party id (a number, as the site shows it).")
 		return
 
-	var p: DotParty = null
+	var p: GSParty = null
 
 	if tracker != null:
-		var fetched: DotResult = await tracker.refresh(party_id)
+		var fetched: GSResult = await tracker.refresh(party_id)
 
 		if not fetched.ok:
 			ctx.reply("Could not read that party from the site: %s" % fetched.error.message)
@@ -625,9 +625,9 @@ func _cmd_reserve(ctx: DotCmdContext) -> void:
 	# is what a party booking on the site may ask for; an owner at their own console booking their own
 	# server is a different act.
 	var terms := reservations.policy
-	var owner := terms.duplicate() as DotPartyReservePolicy
+	var owner := terms.duplicate() as GSPartyReservePolicy
 	owner.enabled = true
-	owner.lobbies = DotPartyReservePolicy.Lobbies.PUBLIC_AND_PRIVATE
+	owner.lobbies = GSPartyReservePolicy.Lobbies.PUBLIC_AND_PRIVATE
 	owner.empty_only = false
 	owner.cooldown_minutes = 0
 	owner.days = []
@@ -641,28 +641,28 @@ func _cmd_reserve(ctx: DotCmdContext) -> void:
 		ctx.reply("Not booked: %s" % booked.error.message)
 		return
 
-	var r: DotPartyReservation = booked.value
+	var r: GSPartyReservation = booked.value
 	ctx.reply("Booked for party %s, %s, until %s UTC." % [
 		p.id, "private" if r.is_private else "public",
 		Time.get_datetime_string_from_unix_time(r.ends_at, true).substr(11, 5),
 	])
 
 
-func _party_of_everybody_here(party_id: String) -> DotParty:
-	var p := DotParty.new()
+func _party_of_everybody_here(party_id: String) -> GSParty:
+	var p := GSParty.new()
 	p.id = party_id
 	p.name = "party %s" % party_id
 
 	for session in server.sessions():
 		var uid := session.uid()
 		if session.is_active() and uid.begins_with("backbone:"):
-			p.roster.append(DotPartyMember.of(uid.trim_prefix("backbone:"), session.display_name))
+			p.roster.append(GSPartyMember.of(uid.trim_prefix("backbone:"), session.display_name))
 
 	p.max_users = maxi(p.roster.size(), 2)
 	return p
 
 
-func _cmd_release(ctx: DotCmdContext) -> void:
+func _cmd_release(ctx: GSCmdContext) -> void:
 	if reservations == null or reservations.current == null:
 		ctx.reply("There is no party booking.")
 		return
@@ -672,7 +672,7 @@ func _cmd_release(ctx: DotCmdContext) -> void:
 
 
 
-func _cmd_mm_status(ctx: DotCmdContext) -> void:
+func _cmd_mm_status(ctx: GSCmdContext) -> void:
 	if matchmaker == null:
 		ctx.reply("Matchmaking is off (mm_enabled in cfg/matchmaking.yml).")
 		return
@@ -682,24 +682,24 @@ func _cmd_mm_status(ctx: DotCmdContext) -> void:
 
 ## A session's id in the queue. The account uid when there is one, because a rating
 ## belongs to a person; `u<userid>` for a guest, whose rating belongs to nobody.
-func _player_id(session: DotClientSession) -> String:
+func _player_id(session: GSClientSession) -> String:
 	var uid := session.uid()
 	return uid if uid.begins_with("backbone:") else "u%d" % session.userid
 
 
-func _ticket_id(session: DotClientSession) -> String:
+func _ticket_id(session: GSClientSession) -> String:
 	var pid := party_id_of(session.uid())
 	return "party-%s" % pid if pid != "" else "solo-%d" % session.userid
 
 
-func _session_for(player_id: String) -> DotClientSession:
+func _session_for(player_id: String) -> GSClientSession:
 	for session in server.sessions():
 		if _player_id(session) == player_id:
 			return session
 	return null
 
 
-func _cmd_mm_queue(ctx: DotCmdContext) -> void:
+func _cmd_mm_queue(ctx: GSCmdContext) -> void:
 	var session := ctx.session
 
 	if session == null:
@@ -728,14 +728,14 @@ func _cmd_mm_queue(ctx: DotCmdContext) -> void:
 	ctx.reply("Queued for %s%s." % [ctx.arg(0), " with your party" if ids.size() > 1 else ""])
 
 
-func _cmd_mm_leave(ctx: DotCmdContext) -> void:
+func _cmd_mm_leave(ctx: GSCmdContext) -> void:
 	if ctx.session == null:
 		return
 
 	ctx.reply("Left the queue." if matchmaker.cancel(_ticket_id(ctx.session)) else "You are not queued.")
 
 
-func _cmd_mm_accept(ctx: DotCmdContext) -> void:
+func _cmd_mm_accept(ctx: GSCmdContext) -> void:
 	if ctx.session == null:
 		return
 
@@ -743,7 +743,7 @@ func _cmd_mm_accept(ctx: DotCmdContext) -> void:
 	ctx.reply("Accepted." if res.ok else res.error.message)
 
 
-func _cmd_mm_decline(ctx: DotCmdContext) -> void:
+func _cmd_mm_decline(ctx: GSCmdContext) -> void:
 	if ctx.session == null:
 		return
 
@@ -761,14 +761,14 @@ func _tell(player_ids: PackedStringArray, line: String) -> void:
 			server.chat.send_system_to(session, line)
 
 
-func _on_match_found(m: DotMmMatch, _deadline: float) -> void:
+func _on_match_found(m: GSMmMatch, _deadline: float) -> void:
 	_tell(m.player_ids(), "A match was found. Type /mm_accept %s to play." % m.id)
 
 
-func _on_match_ready(m: DotMmMatch) -> void:
+func _on_match_ready(m: GSMmMatch) -> void:
 	var where := str(m.allocation.get("address", ""))
 	_tell(m.player_ids(), "Your match is ready%s." % ((" on %s" % where) if where != "" else ""))
 
 
-func _on_match_cancelled(m: DotMmMatch, reason: String, _requeued: PackedStringArray) -> void:
+func _on_match_cancelled(m: GSMmMatch, reason: String, _requeued: PackedStringArray) -> void:
 	_tell(m.player_ids(), "The match fell through (%s)." % reason)

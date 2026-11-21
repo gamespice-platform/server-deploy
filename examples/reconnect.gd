@@ -28,9 +28,9 @@ var _port := 0
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
-		else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
+		else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -38,7 +38,7 @@ func _ready() -> void:
 func _run() -> void:
 	print("dot-server-deploy: reconnecting after the server restarts")
 
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	if await _boot():
 		if await _test_first_connection():
@@ -49,7 +49,7 @@ func _run() -> void:
 	# a `_run` that walked straight past it printed its totals while the game scene was
 	# still being freed underneath — which is a suite that reports a pass and then hangs.
 	await _teardown()
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	print("")
 	_check(
@@ -93,10 +93,10 @@ func _check(condition: bool, what: String, detail: String = "") -> bool:
 	return condition
 
 
-func _server() -> DotServer:
+func _server() -> GSServer:
 	if _host == null or not is_instance_valid(_host):
 		return null
-	return _host.server as DotServer
+	return _host.server as GSServer
 
 
 ## Waiting on the server's session count is not enough: it counts a socket that has
@@ -104,7 +104,7 @@ func _server() -> DotServer:
 func _playing() -> bool:
 	return _shell != null and is_instance_valid(_shell) \
 		and _shell.link != null and is_instance_valid(_shell.link) \
-		and _shell.link.phase == DotClientLink.Phase.PLAYING
+		and _shell.link.phase == GSClientLink.Phase.PLAYING
 
 
 ## The server's half of "admitted": a session that reached SPAWNED.
@@ -115,7 +115,7 @@ func _spawned() -> bool:
 		return false
 
 	for session in srv.sessions():
-		if session.state == DotClientSession.State.SPAWNED:
+		if session.state == GSClientSession.State.SPAWNED:
 			return true
 
 	return false
@@ -127,7 +127,7 @@ func _session_states() -> String:
 
 	if srv != null:
 		for session in srv.sessions():
-			states.append(DotClientSession.State.keys()[session.state])
+			states.append(GSClientSession.State.keys()[session.state])
 
 	return str(states)
 
@@ -149,7 +149,7 @@ func _until(condition: Callable, seconds: float = 20.0) -> bool:
 	return bool(condition.call())
 
 
-## Every [DotClientLink] the shell is holding, however it is named. By type rather than by name,
+## Every [GSClientLink] the shell is holding, however it is named. By type rather than by name,
 ## because the failure renames the second one — counting children called "Server" finds exactly one
 ## in both the broken and the fixed shell.
 func _links() -> Array[Node]:
@@ -159,7 +159,7 @@ func _links() -> Array[Node]:
 		return out
 
 	for child in _shell.get_children():
-		if child is DotClientLink:
+		if child is GSClientLink:
 			out.append(child)
 
 	return out
@@ -183,7 +183,7 @@ func _start_host(node_name: String) -> bool:
 	ServerWorld.add(self, _host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 
 	if not started.ok:
 		_check(false, "the host boots", str(started.error))
@@ -231,7 +231,7 @@ func _boot() -> bool:
 	await get_tree().process_frame
 
 	# [b]Where this shell fetches the game from, because there is no web server here.[/b] A base that
-	# is not a URL is searched as a directory, and `res://dist` is where [DotCloudPublisher] writes --
+	# is not a URL is searched as a directory, and `res://dist` is where [GSCloudPublisher] writes --
 	# the same directory the host itself searches before it asks the network.
 	_shell._ensure_cloud()
 	_shell._cloud.http_base_urls = PackedStringArray([
@@ -317,7 +317,7 @@ func _test_server_goes_down() -> bool:
 		"with nothing left in the tree under that name (%s)" % _link_names()
 	)
 	_check(
-		DotRegistry.get_service(&"dot_client_link") == null,
+		GSRegistry.get_service(&"dot_client_link") == null,
 		"and nothing left in the registry for a game to find"
 	)
 	_done()
@@ -366,7 +366,7 @@ func _test_reconnect() -> void:
 		"the node the server's RPCs resolve to is the shell's live link"
 	)
 	_check(
-		DotRegistry.get_service(&"dot_client_link") == _shell.link,
+		GSRegistry.get_service(&"dot_client_link") == _shell.link,
 		"and it is the one the registry hands a delivered game",
 		"a game that parents its RPC node under any other link renders an empty world"
 	)

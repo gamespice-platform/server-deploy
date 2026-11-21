@@ -76,7 +76,7 @@ func _build_identity_fields(box: VBoxContainer) -> void:
 	box.add_child(title)
 
 	shell._blurb = Label.new()
-	shell._blurb.theme_type_variation = &"DotDim"
+	shell._blurb.theme_type_variation = &"GSDim"
 	shell._blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(shell._blurb)
 
@@ -103,7 +103,7 @@ func _build_identity_fields(box: VBoxContainer) -> void:
 	# The party, when there is one. A standing fact like the line above, so its own line.
 	shell._party_line = Label.new()
 	shell._party_line.visible = false
-	shell._party_line.theme_type_variation = &"DotDim"
+	shell._party_line.theme_type_variation = &"GSDim"
 	shell._party_line.add_theme_font_size_override("font_size", 13)
 	box.add_child(shell._party_line)
 
@@ -172,13 +172,13 @@ func _build_status_lines(box: VBoxContainer) -> void:
 	box.add_child(shell._progress)
 
 	shell._status = Label.new()
-	shell._status.theme_type_variation = &"DotDim"
+	shell._status.theme_type_variation = &"GSDim"
 	shell._status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(shell._status)
 
 	# The second line is the one a waiting player reads: file, bytes, rate and estimate answer "how much longer" and "of what"; empty rather than stale.
 	shell._detail = Label.new()
-	shell._detail.theme_type_variation = &"DotDim"
+	shell._detail.theme_type_variation = &"GSDim"
 	shell._detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	shell._detail.modulate = Color(1.0, 1.0, 1.0, 0.62)
 	shell._detail.visible = false
@@ -221,10 +221,10 @@ func _build_footer(stack: VBoxContainer) -> void:
 
 	# No Host button: a browser tab cannot listen, and offering a control that fails on
 	# the platform this shell exists for is worse than not offering it.
-	if DotPlatform.is_web():
+	if GSPlatform.is_web():
 		var note := Label.new()
 		note.text = "A browser tab cannot host. Follow a link to somebody's server."
-		note.theme_type_variation = &"DotDim"
+		note.theme_type_variation = &"GSDim"
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		note.add_theme_font_size_override("font_size", 12)
 		note.modulate = Color(1.0, 1.0, 1.0, 0.7)
@@ -270,7 +270,7 @@ func _wire_menu() -> void:
 func _caption(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
-	label.theme_type_variation = &"DotDim"
+	label.theme_type_variation = &"GSDim"
 	label.add_theme_font_size_override("font_size", 12)
 	return label
 

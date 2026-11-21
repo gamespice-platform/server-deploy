@@ -10,7 +10,7 @@ var _failures := PackedStringArray()
 var _entered := 0
 var _completed := 0
 
-var console: DotConsole = null
+var console: GSConsole = null
 
 ## Every stand-in command that ran: [name, args].
 var calls: Array = []
@@ -23,9 +23,9 @@ var replies := PackedStringArray()
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
-		else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
+		else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -98,7 +98,7 @@ func _check(condition: bool, what: String, detail: String = "") -> bool:
 
 
 func _build_console() -> void:
-	console = DotConsole.new()
+	console = GSConsole.new()
 	console.log_commands = false
 	add_child(console)
 	for spec in [
@@ -107,17 +107,17 @@ func _build_console() -> void:
 		["changelevel", "changemap"],
 	]:
 		var name: String = spec[0]
-		console.command(name, func(ctx: DotCmdContext) -> void:
+		console.command(name, func(ctx: GSCmdContext) -> void:
 			calls.append([name, Array(ctx.args)]), "", spec[1]
 		).with_chat()
 	# A map change a game refuses to take from chat: the menu must not offer it.
-	console.command("map", func(ctx: DotCmdContext) -> void:
+	console.command("map", func(ctx: GSCmdContext) -> void:
 		calls.append(["map", Array(ctx.args)]), "", "changemap"
 	).no_chat()
 
 
-func _session(userid: int, name: String, perms: Array, immunity: int = 0) -> DotClientSession:
-	var s := DotClientSession.new(userid, userid + 100)
+func _session(userid: int, name: String, perms: Array, immunity: int = 0) -> GSClientSession:
+	var s := GSClientSession.new(userid, userid + 100)
 	s.display_name = name
 	s.permissions = PackedStringArray(perms)
 	s.immunity = immunity
@@ -129,7 +129,7 @@ func _menu(tree: Dictionary, people: Array) -> TmcAdminMenu:
 	var menu := TmcAdminMenu.new().configure(tree)
 	menu.console = console
 	menu.sessions_fn = func() -> Array: return people
-	menu.send_fn = func(session: DotClientSession, page: Dictionary) -> bool:
+	menu.send_fn = func(session: GSClientSession, page: Dictionary) -> bool:
 		sent.append([session, page])
 		return true
 	menu.games_fn = func() -> Array: return [["fc", "Fatal Contact"], ["airdrift", "Surf"]]
@@ -138,8 +138,8 @@ func _menu(tree: Dictionary, people: Array) -> TmcAdminMenu:
 	return menu
 
 
-func _ctx(session: DotClientSession, args: Array = []) -> DotCmdContext:
-	return session.make_context("admin_menu", PackedStringArray(args), DotCmdContext.Source.CHAT,
+func _ctx(session: GSClientSession, args: Array = []) -> GSCmdContext:
+	return session.make_context("admin_menu", PackedStringArray(args), GSCmdContext.Source.CHAT,
 		func(line: String) -> void: replies.append(line))
 
 
@@ -161,8 +161,8 @@ func _go_of(page: Dictionary, label: String) -> String:
 	return ""
 
 
-func _nav(menu: TmcAdminMenu, who: DotClientSession, path: String) -> void:
-	menu.handle(_ctx(who), DotConsole.tokenize(path))
+func _nav(menu: TmcAdminMenu, who: GSClientSession, path: String) -> void:
+	menu.handle(_ctx(who), GSConsole.tokenize(path))
 
 
 
@@ -277,7 +277,7 @@ func _test_menu_visibility() -> void:
 	_check(sent.is_empty() and replies.size() == 1 and replies[0].contains("nothing"),
 		"a player with no flags is told so and sent no page", str(replies))
 
-	var console_ctx := DotCmdContext.console("admin", PackedStringArray())
+	var console_ctx := GSCmdContext.console("admin", PackedStringArray())
 	console_ctx.reply_sink = func(line: String) -> void: replies.append(line)
 	replies.clear()
 	menu._cmd_open(console_ctx)
@@ -407,7 +407,7 @@ func _test_menu_info_and_warn() -> void:
 	_check(str(page["path"]) == "i:info #2", "an info page has a path, so Back returns to it")
 
 	replies.clear()
-	var ctx := admin.make_context("warn", PackedStringArray(), DotCmdContext.Source.CHAT,
+	var ctx := admin.make_context("warn", PackedStringArray(), GSCmdContext.Source.CHAT,
 		func(line: String) -> void: replies.append(line))
 	console.execute("warn #2 stop spawn camping", ctx)
 	await get_tree().process_frame
@@ -418,7 +418,7 @@ func _test_menu_info_and_warn() -> void:
 
 	var plain := _session(4, "Plain", ["slay"], 5)
 	replies.clear()
-	console.execute("warn #2 x", plain.make_context("warn", PackedStringArray(), DotCmdContext.Source.CHAT,
+	console.execute("warn #2 x", plain.make_context("warn", PackedStringArray(), GSCmdContext.Source.CHAT,
 		func(line: String) -> void: replies.append(line)))
 	_check(issued.size() == 1 and replies.size() == 1 and replies[0].contains("permission"),
 		"warn needs its flag like any command", str(replies))
@@ -434,9 +434,9 @@ class MenuModerationStandIn:
 	func subject_for_peer(peer: int) -> String:
 		return "uid:%d" % peer
 
-	func issue(kind: int, subject: String, reason: String, _by: String, _secs: int, _imm: int) -> DotResult:
+	func issue(kind: int, subject: String, reason: String, _by: String, _secs: int, _imm: int) -> GSResult:
 		issued.append([kind, subject, reason])
-		return DotResult.success(null)
+		return GSResult.success(null)
 
 	func history_for(_subject: String) -> Array:
 		var p := MenuPunishmentStandIn.new()
@@ -464,15 +464,15 @@ func _test_menu_bounds() -> void:
 	_nav(menu, admin, "i:kick")
 	var page := _last_page()
 	var bytes := JSON.stringify({"menu": page}).length()
-	_check(bytes < DotNotice.MAX_DATA_BYTES, "two hundred players still make a page DotNotice will carry (%d bytes)" % bytes)
+	_check(bytes < GSNotice.MAX_DATA_BYTES, "two hundred players still make a page GSNotice will carry (%d bytes)" % bytes)
 	_check(str(page["rows"].back()["label"]).begins_with("…and"), "and the page says how many it left off")
-	_check(DotNotice.make(&"", "", -1.0, TmcAdminMenu.TOPIC, {"menu": page}).data.has("menu"),
+	_check(GSNotice.make(&"", "", -1.0, TmcAdminMenu.TOPIC, {"menu": page}).data.has("menu"),
 		"the notice keeps it rather than dropping the tree")
 	menu.free()
 	_done()
 
 
-## A live-tool command's handler object, as dot-moderation's DotModToolCommands is one:
+## A live-tool command's handler object, as dot-moderation's GSModToolCommands is one:
 ## something with `tools` that answer `supports`, and `items_fn` for give.
 class ToolHolder:
 	extends RefCounted
@@ -480,7 +480,7 @@ class ToolHolder:
 	var items_fn: Callable = Callable()
 	var calls: Array = []
 
-	func run(ctx: DotCmdContext) -> void:
+	func run(ctx: GSCmdContext) -> void:
 		calls.append([ctx.command, Array(ctx.args)])
 
 
@@ -633,7 +633,7 @@ func _test_menu_layers() -> void:
 	_check(calls.size() == 1 and calls[0] == ["say", ["blue"]], "and the chosen value reaches the command", str(calls))
 	_nav(menu, admin, "i:round =green")
 	_check(calls.size() == 1, "a value the game no longer offers is refused")
-	_check(DotRegistry.get_service(TmcAdminMenu.SERVICE) == null,
+	_check(GSRegistry.get_service(TmcAdminMenu.SERVICE) == null,
 		"(the suite's menus are not installed, so the registry is the host's alone)")
 
 	remove_child(module)
@@ -658,7 +658,7 @@ func _test_review_fixes() -> void:
 	_nav(menu, admin, "i:kick")
 	var page := _last_page()
 	_check(TmcAdminMenu.encoded_size(page) <= TmcAdminMenu.MAX_PAGE_BYTES
-			and DotNotice.make(&"", "", -1.0, TmcAdminMenu.TOPIC, {"menu": page}).data.has("menu"),
+			and GSNotice.make(&"", "", -1.0, TmcAdminMenu.TOPIC, {"menu": page}).data.has("menu"),
 		"sixty players with CJK names still make a page the notice keeps (%d bytes)" % TmcAdminMenu.encoded_size(page))
 
 	var big := {"images": [], "tips": []}
@@ -747,7 +747,7 @@ func _test_review_fixes() -> void:
 	# 7. A category's flag holds for a typed path.
 	var owner_tree := {"categories": {"staff": {"title": "Staff", "flag": "ban", "items": ["kick", "info"]}}}
 	var gated := _menu(owner_tree, [_session(1, "Mod", ["kick"], 50), _session(2, "Bob", [], 0)])
-	var mod: DotClientSession = gated.sessions_fn.call()[0]
+	var mod: GSClientSession = gated.sessions_fn.call()[0]
 	sent.clear()
 	replies.clear()
 	_nav(gated, mod, "i:info #2")
@@ -858,7 +858,7 @@ loading_maps:
 		"the document carries the default and the games, not the maps", str(doc.keys()))
 
 	var out: Array = []
-	node.send_fn = func(_s: DotClientSession, data: Dictionary) -> bool:
+	node.send_fn = func(_s: GSClientSession, data: Dictionary) -> bool:
 		out.append(data)
 		return true
 	node.broadcast_fn = func(data: Dictionary) -> int:
@@ -1042,17 +1042,17 @@ func _test_slice_preload() -> void:
 	var deps: PackedStringArray = (load("res://client/tmc_shell_solo_packs.gd") as GDScript)._scene_dependency_paths("res://client/boot.tscn")
 	_check(not deps.is_empty(), "a scene's dependencies are listed", str(deps))
 
-	var loader := DotCloudSliceLoader.new()
-	var res: DotResult = await loader.load_all(get_tree(), deps, false)
+	var loader := GSCloudSliceLoader.new()
+	var res: GSResult = await loader.load_all(get_tree(), deps, false)
 	_check(res.ok, "the slice loader loads them without threads", "" if res.ok else str(res.error))
 	_check(ResourceLoader.has_cached(deps[0]) if not deps.is_empty() else false,
 		"the first is in the cache, so the plain load() is a hit")
 
 	# The solo path's warm: forced (this runner has threads), an unknown key warms nothing and
 	# still returns the loader the shell reads frames_yielded from.
-	var cloud := DotCloudClient.new()
+	var cloud := GSCloudClient.new()
 	_check(cloud.has_method("warm_content"), "the cloud client offers warm_content")
-	var warmed: DotCloudSliceLoader = await cloud.warm_content(get_tree(), PackedStringArray(["no/such@0"]), true)
+	var warmed: GSCloudSliceLoader = await cloud.warm_content(get_tree(), PackedStringArray(["no/such@0"]), true)
 	_check(warmed != null and warmed.frames_yielded >= 0, "warm_content returns its loader for a key it does not hold")
 	cloud.free()
 	_done()
@@ -1258,8 +1258,8 @@ func _test_loading_fetch() -> void:
 	var media: Dictionary = screen.describe()["media"]
 	_check(media["ready"] == 1 and media["failed"] == 1,
 		"prefetched one at a time: the picture arrived and the 404 was given up on (%d served)" % served, str(media))
-	_check(on_worker == DotPlatform.has_threads(),
-		"decoded on a worker thread where there are threads (%s), so a picture is not a dropped frame" % DotPlatform.has_threads())
+	_check(on_worker == GSPlatform.has_threads(),
+		"decoded on a worker thread where there are threads (%s), so a picture is not a dropped frame" % GSPlatform.has_threads())
 	screen.begin(TmcLoadingScreen.REASON_GAME, "x", "X")
 	_check(screen.describe()["image"], "and the screen that goes up shows the picture that arrived")
 

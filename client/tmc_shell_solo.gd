@@ -74,21 +74,21 @@ func _on_solo_pressed() -> void:
 func _forget_solo_retry() -> void:
 	if shell._solo_retry == "":
 		return
-	DotLog.info(shell.CHANNEL, "retrying this solo game's addons", {"attempt": shell._solo_retry})
+	GSLog.info(shell.CHANNEL, "retrying this solo game's addons", {"attempt": shell._solo_retry})
 	shell._forget_update_attempt(shell._solo_retry)
-	if DotValue.same(DotCloudAddonSet.read_plan().get("state", ""), DotCloudAddonSet.STATE_FAILED):
-		DotCloudAddonSet.forget()
+	if GSValue.same(GSCloudAddonSet.read_plan().get("state", ""), GSCloudAddonSet.STATE_FAILED):
+		GSCloudAddonSet.forget()
 	shell._solo_retry = ""
 
 
 ## Everything [method _start_solo] does that can fail, so it has one way out.
-func _load_solo(content_id: String, version: String) -> DotResult:
+func _load_solo(content_id: String, version: String) -> GSResult:
 	shell._cloud.begin_job("launch")
 	shell._launch_job = true
 	shell._solo_key_cache = {}
 	shell._solo_map_packs_memo = null
 	shell._deferred_workshop = false
-	var res: DotResult = await _load_solo_inner(content_id, version)
+	var res: GSResult = await _load_solo_inner(content_id, version)
 	shell._launch_job = false
 	shell._job = {}
 	shell._solo_pack_label = ""
@@ -98,11 +98,11 @@ func _load_solo(content_id: String, version: String) -> DotResult:
 
 ## The id and version a solo start uses: the newest when none was asked for, and the newest
 ## published when the pinned one has no manifest. Fails with the resolver's result.
-func _pin_solo_version(content_id: String, version: String) -> DotResult:
+func _pin_solo_version(content_id: String, version: String) -> GSResult:
 	var wanted := version
 
 	if wanted == "":
-		var latest: DotResult = await TmcSolo.resolve_latest(shell, content_id, shell._cloud.http_base_urls)
+		var latest: GSResult = await TmcSolo.resolve_latest(shell, content_id, shell._cloud.http_base_urls)
 		if not latest.ok:
 			return latest
 		# A retired id resolves to the one it moved to; use that from here on.
@@ -111,16 +111,16 @@ func _pin_solo_version(content_id: String, version: String) -> DotResult:
 
 	elif not (await shell._cloud.resolve_manifest(StringName(content_id), wanted)).ok:
 		# The site pins the newest READY upload; the CDN may only hold a later one.
-		var newest: DotResult = await TmcSolo.resolve_latest(shell, content_id, shell._cloud.http_base_urls)
+		var newest: GSResult = await TmcSolo.resolve_latest(shell, content_id, shell._cloud.http_base_urls)
 		if newest.ok and TmcSolo.falls_back(wanted, str(newest.value["version"])):
-			DotLog.warn(shell.CHANNEL, "pinned solo version has no manifest; using the newest published",
+			GSLog.warn(shell.CHANNEL, "pinned solo version has no manifest; using the newest published",
 				{"content": content_id, "pinned": wanted, "using": newest.value["version"]})
 			content_id = str(newest.value["id"])
 			wanted = str(newest.value["version"])
-	return DotResult.success({"id": content_id, "version": wanted})
+	return GSResult.success({"id": content_id, "version": wanted})
 
 
-func _load_solo_inner(content_id: String, version: String) -> DotResult:
+func _load_solo_inner(content_id: String, version: String) -> GSResult:
 	var pinned := await _pin_solo_version(content_id, version)
 	if not pinned.ok:
 		return pinned
@@ -129,24 +129,24 @@ func _load_solo_inner(content_id: String, version: String) -> DotResult:
 
 	shell._solo_id = content_id
 	shell._solo_version = wanted
-	DotLog.info(shell.CHANNEL, "starting solo", {"content": content_id, "version": wanted})
+	GSLog.info(shell.CHANNEL, "starting solo", {"content": content_id, "version": wanted})
 
 	# The game addons its pack requires (zee_weapons for Prop Hunt, fc_weapons for Fatal Contact; arena_weapons up to fc-weapons v1.4.51) are not in this shell: fetched as the overlay a server would announce, then a restart into it. Asked of the store before the pack is fetched, because the pack's own requirement check refuses it while one is missing. Returns only when nothing is missing or it cannot be had. Subscriptions are asked first (their downloads only registered): a game that accepts addon packs gets the subscribed ones in the same overlay, so one restart covers both.
 	var subscribed: Array = await shell._solo_packs._solo_workshop_plan(content_id, wanted)
 	var overlay: int = await _solo_overlay(content_id, await _solo_needs(content_id, wanted), subscribed)
 	if overlay == SoloOverlay.RESTARTING:
-		return DotResult.success(null)
+		return GSResult.success(null)
 	if overlay == SoloOverlay.BLOCKED:
-		return DotResult.fail(DotError.CODE_STATE, shell._text("shell.solo.addons_blocked", {},
+		return GSResult.fail(GSError.CODE_STATE, shell._text("shell.solo.addons_blocked", {},
 			"this game's addons did not start in this tab, so it was not started without them. Retry fetches them again."))
 	if overlay == SoloOverlay.UNPUBLISHED:
 		# Not the "needs a newer client" panel GameSpice Cloud's requirement check would show next: no shell build can carry a game
 		# addon (only gs-* addons), so the fix is a publish of that addon's pack, never a newer client.
 		var why := "; ".join(PackedStringArray(_unpublished.values()))
-		DotLog.error(shell.CHANNEL, "a game addon this solo game needs is not published in a pack that holds it", {
+		GSLog.error(shell.CHANNEL, "a game addon this solo game needs is not published in a pack that holds it", {
 			"content": content_id, "version": wanted, "unpublished": _unpublished,
 		})
-		return DotResult.fail(DotError.CODE_STATE, shell._text("shell.solo.addon_unpublished", {"why": why},
+		return GSResult.fail(GSError.CODE_STATE, shell._text("shell.solo.addon_unpublished", {"why": why},
 			"this game needs an addon that is not published yet ({why}). Nothing was downloaded.".format({"why": why})))
 
 	# Everything is registered and fetched first, so the total is fixed before a byte moves; mounting follows.
@@ -155,11 +155,11 @@ func _load_solo_inner(content_id: String, version: String) -> DotResult:
 
 	# "*" asks for every download group (GameSpice Cloud 22): a solo host serves any map. Older GameSpice Cloud reads it as
 	# a group no file has, which is what an empty list already fetched there.
-	var got: DotResult = await shell._cloud.ensure(StringName(content_id), wanted, PackedStringArray(["*"]))
+	var got: GSResult = await shell._cloud.ensure(StringName(content_id), wanted, PackedStringArray(["*"]))
 	if not got.ok:
 		return got
 
-	var mount := DotCloudClient.mount_prefix_for(StringName(content_id), wanted)
+	var mount := GSCloudClient.mount_prefix_for(StringName(content_id), wanted)
 	var read := TmcSolo.read_descriptor(mount)
 	if not read.ok:
 		return read
@@ -168,12 +168,12 @@ func _load_solo_inner(content_id: String, version: String) -> DotResult:
 	var scene_rel := str(desc.get("client_scene", ""))
 
 	if scene_rel == "":
-		return DotResult.fail(DotError.CODE_INVALID,
+		return GSResult.fail(GSError.CODE_INVALID,
 			"This game names no client scene, so it cannot be played here.", mount)
 
-	var safe := DotPaths.safe_relative(scene_rel)
+	var safe := GSPaths.safe_relative(scene_rel)
 	if not safe.ok:
-		return DotResult.fail(DotError.CODE_INVALID, "This game's client scene is not a safe path.", scene_rel)
+		return GSResult.fail(GSError.CODE_INVALID, "This game's client scene is not a safe path.", scene_rel)
 
 	var deps := await _fetch_solo_dependencies(desc)
 	if not deps.ok:
@@ -192,18 +192,18 @@ func _load_solo_inner(content_id: String, version: String) -> DotResult:
 	var packed: Variant = load(path)
 
 	if not (packed is PackedScene):
-		return DotResult.fail(DotError.CODE_IO, "The game's client scene would not load.", path)
+		return GSResult.fail(GSError.CODE_IO, "The game's client scene would not load.", path)
 
 	return _enter_solo_game(session, packed as PackedScene, desc, path)
 
 
 ## Puts the loaded solo session and its client scene into the tree and tells the shell the
 ## game is running.
-func _enter_solo_game(session: TmcSoloSession, packed: PackedScene, desc: Dictionary, path: String) -> DotResult:
+func _enter_solo_game(session: TmcSoloSession, packed: PackedScene, desc: Dictionary, path: String) -> GSResult:
 	var content_id := session.content_id
 	shell.add_child(session)
 	shell._solo_session = session
-	DotRegistry.register(TmcSolo.MAPS_SERVICE, session)
+	GSRegistry.register(TmcSolo.MAPS_SERVICE, session)
 
 	if not shell.get_tree().node_added.is_connected(shell._on_solo_node_added):
 		shell.get_tree().node_added.connect(shell._on_solo_node_added)
@@ -234,10 +234,10 @@ func _enter_solo_game(session: TmcSoloSession, packed: PackedScene, desc: Dictio
 	if shell._friends != null:
 		shell._friends.on_game_changed(shown, "")
 
-	DotLog.info(shell.CHANNEL, "solo game started", {
+	GSLog.info(shell.CHANNEL, "solo game started", {
 		"content": "%s@%s" % [content_id, session.version], "scene": path, "maps": session.map_keys.size(),
 	})
-	return DotResult.success(instance)
+	return GSResult.success(instance)
 
 
 ## The session node for a solo game whose pack is mounted at [param mount].
@@ -259,24 +259,24 @@ func _new_solo_session(content_id: String, wanted: String, mount: String, desc: 
 ## The packs the game needs beside its own, by the rule a join fetches them: a key with
 ## no version is not one a server would send, and here it is resolved to the newest
 ## rather than refused, because nobody pinned it. The value is the fetched keys.
-func _fetch_solo_dependencies(desc: Dictionary) -> DotResult:
+func _fetch_solo_dependencies(desc: Dictionary) -> GSResult:
 	var dep_keys := PackedStringArray()
 	for key in (desc["dependencies"] as PackedStringArray) + (desc["server_dependencies"] as PackedStringArray):
 		var dep = await shell._solo_packs._ensure_solo_pack(key)
 		if not dep.ok:
-			return DotResult.fail(dep.error.code,
+			return GSResult.fail(dep.error.code,
 				"This game needs %s, which could not be downloaded." % key, str(dep.error))
 		dep_keys.append(str(dep.value))
-	return DotResult.success(dep_keys)
+	return GSResult.success(dep_keys)
 
 
 ## The content keys the warm-up slices load: the game's own and each pinned dependency.
 func _solo_slice_keys(content_id: String, wanted: String, desc: Dictionary) -> Array[String]:
-	var slice_keys: Array[String] = [DotCloudClient.content_key_for(StringName(content_id), wanted)]
+	var slice_keys: Array[String] = [GSCloudClient.content_key_for(StringName(content_id), wanted)]
 	for key in (desc["dependencies"] as PackedStringArray) + (desc["server_dependencies"] as PackedStringArray):
 		var parts := TmcSolo.split_key(key)
 		if str(parts["version"]) != "":
-			slice_keys.append(DotCloudClient.content_key_for(StringName(parts["id"]), str(parts["version"])))
+			slice_keys.append(GSCloudClient.content_key_for(StringName(parts["id"]), str(parts["version"])))
 	return slice_keys
 
 
@@ -285,17 +285,17 @@ func _solo_slice_keys(content_id: String, wanted: String, desc: Dictionary) -> A
 func _add_solo_map_packs(session: TmcSoloSession, content_id: String) -> void:
 	var skip_maps := TmcSolo.skip_maps(content_id)
 	if skip_maps:
-		DotLog.info(shell.CHANNEL, "the player skips this game's maps pack", {"content": content_id})
+		GSLog.info(shell.CHANNEL, "the player skips this game's maps pack", {"content": content_id})
 	for key in (PackedStringArray() if skip_maps else await shell._solo_packs._solo_map_packs(content_id)):
-		var maps = await shell._solo_packs._ensure_solo_pack(key, true, TmcSolo.map_groups(DotPlatform.is_web(), shell._solo_map))
+		var maps = await shell._solo_packs._ensure_solo_pack(key, true, TmcSolo.map_groups(GSPlatform.is_web(), shell._solo_map))
 		if not maps.ok:
-			DotLog.warn(shell.CHANNEL, "a solo map pack could not be fetched", {
+			GSLog.warn(shell.CHANNEL, "a solo map pack could not be fetched", {
 				"pack": key, "why": str(maps.error),
 			})
 			continue
 		session.map_keys.append(str(maps.value))
 		var parts := TmcSolo.split_key(str(maps.value))
-		session.map_roots.append(DotCloudClient.mount_prefix_for(StringName(parts["id"]), parts["version"]))
+		session.map_roots.append(GSCloudClient.mount_prefix_for(StringName(parts["id"]), parts["version"]))
 
 
 ## Subscribed packs, after the game's own and before its scene exists, so the scene's
@@ -306,7 +306,7 @@ func _add_solo_subscriptions(session: TmcSoloSession, content_id: String, mount:
 	if not session.takes_subscriptions:
 		return
 	if shell._deferred_workshop:
-		var mounted: DotResult = await shell._ensure_workshop().mount_pending()
+		var mounted: GSResult = await shell._ensure_workshop().mount_pending()
 		session.workshop_summary = mounted.value as Dictionary if mounted.ok and mounted.value is Dictionary else {}
 	else:
 		# Subscribed content only: the suggested map packs are fetched after the scene is up.
@@ -316,26 +316,26 @@ func _add_solo_subscriptions(session: TmcSoloSession, content_id: String, mount:
 ## The server process a solo game started for itself ([method TmcSoloSession.sim_child_args]): the packs the shell that started it mounted, from the same cache, the session registered as that shell registers it, and the game's client scene, which hands over to its server. A failure quits with 1, and the game that started it plays in-process.
 func _start_sim_child() -> void:
 	# The overlay mounted at boot is the parent's: an unconfirmed boot would count against it.
-	DotCloudAddonSet.confirm_boot()
+	GSCloudAddonSet.confirm_boot()
 	var started := await _load_sim_child()
 	if not started.ok:
-		DotLog.error(shell.CHANNEL, "the solo server process could not start its game", {"why": str(started.error)})
+		GSLog.error(shell.CHANNEL, "the solo server process could not start its game", {"why": str(started.error)})
 		shell.get_tree().quit(1)
 
 
-func _load_sim_child() -> DotResult:
+func _load_sim_child() -> GSResult:
 	var asked := TmcSolo.requested()
 	var content_id := str(asked["id"])
 	var version := str(asked["version"])
 	if content_id == "" or version == "":
-		return DotResult.fail(DotError.CODE_INVALID, "A solo server process needs --solo and --solo-version.")
+		return GSResult.fail(GSError.CODE_INVALID, "A solo server process needs --solo and --solo-version.")
 
 	shell._cloud = shell._new_cloud()
 	shell._cloud.config.side = "both"
 	shell.add_child(shell._cloud)
 	shell._adopt_content_url_arg()
 
-	var got: DotResult = await shell._cloud.ensure(StringName(content_id), version, PackedStringArray(["*"]))
+	var got: GSResult = await shell._cloud.ensure(StringName(content_id), version, PackedStringArray(["*"]))
 	if not got.ok:
 		return got
 
@@ -343,7 +343,7 @@ func _load_sim_child() -> DotResult:
 	session.name = "Solo"
 	session.content_id = content_id
 	session.version = version
-	session.mount_root = DotCloudClient.mount_prefix_for(StringName(content_id), version)
+	session.mount_root = GSCloudClient.mount_prefix_for(StringName(content_id), version)
 	session.cache_dir = shell._cloud.config.cache_dir
 	session.start_map = StringName(str(asked.get("map", "")))
 
@@ -351,13 +351,13 @@ func _load_sim_child() -> DotResult:
 		for key in TmcSolo.child_keys(str(flag)):
 			var parts := TmcSolo.split_key(key)
 			if str(parts["version"]) == "" or not TmcSolo.valid_id(str(parts["id"])) or not TmcSolo.valid_version(str(parts["version"])):
-				return DotResult.fail(DotError.CODE_INVALID, "Not a pinned pack key.", key)
-			var pack: DotResult = await shell._cloud.ensure(StringName(parts["id"]), str(parts["version"]), PackedStringArray(["*"]))
+				return GSResult.fail(GSError.CODE_INVALID, "Not a pinned pack key.", key)
+			var pack: GSResult = await shell._cloud.ensure(StringName(parts["id"]), str(parts["version"]), PackedStringArray(["*"]))
 			if not pack.ok:
 				return pack
 			if str(flag) == TmcSolo.MAPS_FLAG:
 				session.map_keys.append(key)
-				session.map_roots.append(DotCloudClient.mount_prefix_for(StringName(parts["id"]), str(parts["version"])))
+				session.map_roots.append(GSCloudClient.mount_prefix_for(StringName(parts["id"]), str(parts["version"])))
 			else:
 				session.pack_keys.append(key)
 
@@ -366,33 +366,33 @@ func _load_sim_child() -> DotResult:
 		return read
 	var desc: Dictionary = read.value
 	session.display_name = str(desc.get("name", ""))
-	var safe := DotPaths.safe_relative(str(desc.get("client_scene", "")))
+	var safe := GSPaths.safe_relative(str(desc.get("client_scene", "")))
 	if not safe.ok:
-		return DotResult.fail(DotError.CODE_INVALID, "This game names no usable client scene.", session.mount_root)
+		return GSResult.fail(GSError.CODE_INVALID, "This game names no usable client scene.", session.mount_root)
 	var path := session.mount_root.path_join(safe.value)
 	var packed: Variant = load(path)
 	if not (packed is PackedScene):
-		return DotResult.fail(DotError.CODE_IO, "The game's client scene would not load.", path)
+		return GSResult.fail(GSError.CODE_IO, "The game's client scene would not load.", path)
 
 	shell.add_child(session)
 	shell._solo_session = session
-	DotRegistry.register(TmcSolo.MAPS_SERVICE, session)
+	GSRegistry.register(TmcSolo.MAPS_SERVICE, session)
 	shell._game_root.add_child((packed as PackedScene).instantiate())
-	DotLog.info(shell.CHANNEL, "solo server process started its game", {
+	GSLog.info(shell.CHANNEL, "solo server process started its game", {
 		"content": "%s@%s" % [content_id, version], "packs": session.pack_keys.size(), "maps": session.map_keys.size(),
 	})
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## The addons a game's pack names (`addons` in its `requires.json` and `requires.floor.json`),
 ## read from the store before the pack is fetched: dir -> level. Empty when the pack has neither.
 func _solo_needs(content_id: String, version: String) -> Dictionary:
 	var needs := {}
-	var game: DotResult = await shell._cloud.resolve_manifest(StringName(content_id), version)
+	var game: GSResult = await shell._cloud.resolve_manifest(StringName(content_id), version)
 	if not game.ok:
 		return needs
 	for file in SOLO_REQUIRE_FILES:
-		var read: DotResult = await shell._cloud.read_pack_file(game.value as DotCloudManifest, file)
+		var read: GSResult = await shell._cloud.read_pack_file(game.value as GSCloudManifest, file)
 		if read.ok:
 			needs.merge(solo_addons_in((read.value as PackedByteArray).get_string_from_utf8()))
 	return needs
@@ -434,23 +434,23 @@ func _collect_solo_announce(content_id: String, needs: Dictionary, subscribed: A
 		if DirAccess.dir_exists_absolute("res://addons/%s" % dir):
 			continue
 		var pack := TmcAddonNamespaces.pack_for(dir)
-		var latest: DotResult = await TmcSolo.resolve_latest(shell, str(pack["id"]), shell._cloud.http_base_urls)
+		var latest: GSResult = await TmcSolo.resolve_latest(shell, str(pack["id"]), shell._cloud.http_base_urls)
 		if not latest.ok and str(pack["old_id"]) != "":
 			# Before the site renamed the organisation's packs only the old id is published.
 			latest = await TmcSolo.resolve_latest(shell, str(pack["old_id"]), shell._cloud.http_base_urls)
 		if not latest.ok:
-			DotLog.warn(shell.CHANNEL, "a game addon this solo game needs is not published", {
+			GSLog.warn(shell.CHANNEL, "a game addon this solo game needs is not published", {
 				"content": content_id, "dir": dir, "id": pack["id"], "why": str(latest.error),
 			})
 			continue
-		# A retired id resolves to the one it moved to, whose name is the repo [DotCloudAddonSet] checks.
+		# A retired id resolves to the one it moved to, whose name is the repo [GSCloudAddonSet] checks.
 		var id := str(latest.value["id"])
 		var version := str(latest.value["version"])
 		# The newest published version must hold `addons/<dir>`: fc-weapons up to v1.4.51 holds the legacy arena_weapons, so
-		# Fatal Contact 0.1.70 (fc_weapons 32) fetched 1.4.50, which [DotCloudAddonSet] refused as "not an addon pack".
-		var manifest: DotResult = await shell._cloud.resolve_manifest(StringName(id), version)
+		# Fatal Contact 0.1.70 (fc_weapons 32) fetched 1.4.50, which [GSCloudAddonSet] refused as "not an addon pack".
+		var manifest: GSResult = await shell._cloud.resolve_manifest(StringName(id), version)
 		if manifest.ok:
-			var why := pack_holds_dir(dir, id, version, manifest_paths(manifest.value as DotCloudManifest))
+			var why := pack_holds_dir(dir, id, version, manifest_paths(manifest.value as GSCloudManifest))
 			if why != "":
 				unpublished[dir] = why
 				continue
@@ -460,7 +460,7 @@ func _collect_solo_announce(content_id: String, needs: Dictionary, subscribed: A
 
 
 ## Every path [param manifest] lists.
-static func manifest_paths(manifest: DotCloudManifest) -> PackedStringArray:
+static func manifest_paths(manifest: GSCloudManifest) -> PackedStringArray:
 	var out := PackedStringArray()
 	if manifest != null:
 		for f in manifest.files:
@@ -470,7 +470,7 @@ static func manifest_paths(manifest: DotCloudManifest) -> PackedStringArray:
 
 ## Why the pack [param id] at [param version], whose files are [param paths], cannot supply `addons/<dir>`; empty when it can.
 ## It can when it is the addon itself (a `plugin.cfg` at its root) or holds `addons/<dir>/plugin.cfg`, which is what
-## [DotCloudAddonSet] mounts; a pack that holds the addon under another directory (a renamed repository's older tags) cannot.
+## [GSCloudAddonSet] mounts; a pack that holds the addon under another directory (a renamed repository's older tags) cannot.
 static func pack_holds_dir(dir: String, id: String, version: String, paths: PackedStringArray) -> String:
 	if paths.has("plugin.cfg") or paths.has("addons/%s/plugin.cfg" % dir):
 		return ""
@@ -494,7 +494,7 @@ func _solo_overlay(content_id: String, needs: Dictionary, subscribed: Array = []
 	if announce.is_empty():
 		return SoloOverlay.NONE
 
-	var addons := DotCloudAddonSet.new(shell._cloud)
+	var addons := GSCloudAddonSet.new(shell._cloud)
 	addons.namespaces = TmcAddonNamespaces.load_shell()
 	for dir: String in from_subscription:
 		# The site approved this exact pack for this player; that, not a namespace, is why it is taken.
@@ -504,7 +504,7 @@ func _solo_overlay(content_id: String, needs: Dictionary, subscribed: Array = []
 	mark_subscribed(wanted, from_subscription)
 
 	if not (decided["refused"] as Dictionary).is_empty():
-		DotLog.warn(shell.CHANNEL, "solo game addons not taken", {"content": content_id, "refused": decided["refused"]})
+		GSLog.warn(shell.CHANNEL, "solo game addons not taken", {"content": content_id, "refused": decided["refused"]})
 
 	var target := "solo:%s" % content_id
 
@@ -514,24 +514,24 @@ func _solo_overlay(content_id: String, needs: Dictionary, subscribed: Array = []
 
 	var attempt = shell._attempt_key(target, wanted)
 	if shell._overlay_blocked(attempt, wanted):
-		DotLog.warn(shell.CHANNEL, "this solo game's addons did not start here; not starting it without them", {
+		GSLog.warn(shell.CHANNEL, "this solo game's addons did not start here; not starting it without them", {
 			"content": content_id, "addons": wanted.keys(), "failed": shell._overlay_failed_here(wanted),
 			"restarts": shell._update_attempts(attempt),
 		})
 		shell._solo_retry = attempt
 		return SoloOverlay.BLOCKED
 
-	DotLog.info(shell.CHANNEL, "this solo game needs addons the shell does not carry; fetching them", {
+	GSLog.info(shell.CHANNEL, "this solo game needs addons the shell does not carry; fetching them", {
 		"content": content_id, "addons": wanted.keys(),
 	})
 	shell._say(shell._text("shell.addons.updating_solo", {}, "Adding this game's addons…"))
 	shell.loading.set_progress(-1.0, shell._text("shell.addons.updating_solo", {}, "Adding this game's addons…"))
 
 	var resume := _solo_resume(content_id)
-	var built: DotResult = await addons.build(wanted, resume)
+	var built: GSResult = await addons.build(wanted, resume)
 	if not built.ok and plan_holds_subscription({"addons": wanted}):
 		# A subscription is optional: one broken pack must not stop solo play. Retry once with the game's own needs.
-		DotLog.warn(shell.CHANNEL, "a subscribed addon could not be fetched; playing without the subscribed addons", {
+		GSLog.warn(shell.CHANNEL, "a subscribed addon could not be fetched; playing without the subscribed addons", {
 			"content": content_id, "dropped": subscribed_ids(wanted), "why": str(built.error),
 		})
 		wanted = without_subscribed(wanted)
@@ -541,7 +541,7 @@ func _solo_overlay(content_id: String, needs: Dictionary, subscribed: Array = []
 		attempt = shell._attempt_key(target, wanted)
 		built = await addons.build(wanted, resume)
 	if not built.ok:
-		DotLog.error(shell.CHANNEL, "could not fetch this solo game's addons", {"content": content_id, "why": str(built.error)})
+		GSLog.error(shell.CHANNEL, "could not fetch this solo game's addons", {"content": content_id, "why": str(built.error)})
 		shell._solo_retry = attempt
 		return SoloOverlay.BLOCKED
 
@@ -571,7 +571,7 @@ func _solo_resume(content_id: String) -> Dictionary:
 
 ## Restarts into the overlay that carries a solo game's addons, keeping the files [param plan] names and the sign-in token.
 func _restart_for_solo_addons(plan: Dictionary, resume: Dictionary) -> SoloOverlay:
-	var keep := DotCloudAddonSet.plan_files(plan)
+	var keep := GSCloudAddonSet.plan_files(plan)
 	if resume.has("member"):
 		var tokens = shell._auth.config.token_store_path
 		for token in [tokens, tokens + ".salt"]:
@@ -587,8 +587,8 @@ func _restart_for_solo_addons(plan: Dictionary, resume: Dictionary) -> SoloOverl
 	return SoloOverlay.RESTARTING
 
 
-## Marks each entry of a [method DotCloudAddonSet.plan_for] `wanted` that came from a subscription ([param from_subscription]:
-## dir -> id) with `source: "subscription"`, which [method DotCloudAddonSet.build] keeps in the plan.
+## Marks each entry of a [method GSCloudAddonSet.plan_for] `wanted` that came from a subscription ([param from_subscription]:
+## dir -> id) with `source: "subscription"`, which [method GSCloudAddonSet.build] keeps in the plan.
 static func mark_subscribed(wanted: Dictionary, from_subscription: Dictionary) -> void:
 	for dir: Variant in wanted:
 		var entry: Variant = wanted[dir]

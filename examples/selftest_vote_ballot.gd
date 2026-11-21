@@ -99,17 +99,17 @@ func _test_vote_layers_reach_a_ballot() -> void:
 func _test_vote_limit_waits_for_a_change() -> void:
 	_section("the game vote's limit waits for a change under way")
 
-	var rules := DotVoteRules.new()
+	var rules := GSVoteRules.new()
 	rules.enabled = true
 	rules.duration_sec = 10.0
-	rules.empty_choice = DotVoteRules.EmptyChoice.RANDOM
+	rules.empty_choice = GSVoteRules.EmptyChoice.RANDOM
 
 	var votes := TmcVote.new()
 	votes.name = "LimitVotes"
-	votes.director = DotVoteDirector.new()
+	votes.director = GSVoteDirector.new()
 	votes.director.name = "Director"
 	votes.director.rules = rules
-	votes.director.source = DotVoteListSource.of_ids(["standin", "next"])
+	votes.director.source = GSVoteListSource.of_ids(["standin", "next"])
 	votes.director.register_service = false
 	votes.director.begin_on_apply = false
 	votes.director.auto_apply = false
@@ -126,7 +126,7 @@ func _test_vote_limit_waits_for_a_change() -> void:
 
 	var due: Array[StringName] = []
 	votes.director.change_due.connect(
-		func(id: StringName, _choice: DotVoteChoice) -> void: due.append(id)
+		func(id: StringName, _choice: GSVoteChoice) -> void: due.append(id)
 	)
 
 	votes.director.begin(&"standin")

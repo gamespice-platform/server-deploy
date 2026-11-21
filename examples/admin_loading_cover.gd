@@ -63,11 +63,11 @@ func _test_cover_gate() -> void:
 	var screen: TmcLoadingScreen = rig[0]
 	var cover: TmcGameCover = rig[1]
 	var root: Node = rig[2]
-	_check(TmcGameCover.HOST_META == DotLoadGate.HOST_META and TmcGameCover.GATE_META == DotLoadGate.META,
+	_check(TmcGameCover.HOST_META == GSLoadGate.HOST_META and TmcGameCover.GATE_META == GSLoadGate.META,
 		"the cover spells the gate's metadata as dot-core does")
 
 	var game := Node3D.new()
-	var gate := DotLoadGate.new()
+	var gate := GSLoadGate.new()
 	gate.require_camera = false
 	gate.register_service = false
 	gate.hold(&"map", "Loading the map")
@@ -113,7 +113,7 @@ func _test_cover_gate() -> void:
 	var root2 := Node.new()
 	add_child(root2)
 	var game2 := Node3D.new()
-	var gate2 := DotLoadGate.new()
+	var gate2 := GSLoadGate.new()
 	gate2.require_camera = false
 	gate2.register_service = false
 	gate2.hold(&"x")
@@ -142,8 +142,8 @@ func _test_cover_draw_budget() -> void:
 	cam.make_current()
 	var budgets: Array = []
 	cam.child_entered_tree.connect(func(n: Node) -> void:
-		if n is DotRenderWarmup:
-			budgets.append((n as DotRenderWarmup).budget_msec))
+		if n is GSRenderWarmup:
+			budgets.append((n as GSRenderWarmup).budget_msec))
 	var mats: Array = []
 	for i in 3:
 		mats.append(StandardMaterial3D.new())
@@ -160,7 +160,7 @@ func _test_cover_draw_budget() -> void:
 	var took := Time.get_ticks_msec() - t0
 	_check(took < 2000, "a time-out lifts the screen between frames", "%d ms" % took)
 	# What it did not reach is deferred, not skipped: the warm-up keeps drawing in play.
-	var left := cam.get_node_or_null("Warmup") as DotRenderWarmup
+	var left := cam.get_node_or_null("Warmup") as GSRenderWarmup
 	_check(left != null and not left.is_queued_for_deletion(), "and leaves the warm-up drawing the rest in play")
 	if left != null:
 		left.queue_free()

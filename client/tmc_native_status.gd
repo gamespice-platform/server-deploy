@@ -1,7 +1,7 @@
 class_name TmcNativeStatus
 extends RefCounted
 
-## One line saying which GameSpice Sim modules run native (the Rust GDExtension) and which run their GDScript twins, for the server's and the shell's startup log. Both give the same results; the twins are slower, which a 32-player server with bots pays for, and nothing else says which one a process got. The native classes are reached only through ClassDB by name, and DotSim itself is loaded by path, so this compiles in a build without GameSpice Sim (the line then says so) and in a web export, where the library is never shipped.
+## One line saying which GameSpice Sim modules run native (the Rust GDExtension) and which run their GDScript twins, for the server's and the shell's startup log. Both give the same results; the twins are slower, which a 32-player server with bots pays for, and nothing else says which one a process got. The native classes are reached only through ClassDB by name, and GSSim itself is loaded by path, so this compiles in a build without GameSpice Sim (the line then says so) and in a web export, where the library is never shipped.
 
 const DOT_SIM_SCRIPT := "res://addons/dot_sim/dot_sim.gd"
 
@@ -17,14 +17,14 @@ static func line() -> String:
 
 	var modules: Variant = script.get_script_constant_map().get("MODULES", {})
 	if not (modules is Dictionary) or (modules as Dictionary).is_empty():
-		return "GS sim native: unknown (DotSim names no MODULES)"
+		return "GS sim native: unknown (GSSim names no MODULES)"
 
 	return describe(modules as Dictionary)
 
 
 ## Pure part: `modules` maps a module name to its native class name.
 static func describe(modules: Dictionary) -> String:
-	# Sorted as Strings: DotSim's keys are StringNames, which Array.sort() orders by pointer.
+	# Sorted as Strings: GSSim's keys are StringNames, which Array.sort() orders by pointer.
 	var names := PackedStringArray()
 	for key in modules:
 		names.append(str(key))

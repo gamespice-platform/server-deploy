@@ -14,7 +14,7 @@
 # pack_boot_test.sh could not build: its exit 2) or when nothing was booted.
 #
 # [b]Why.[/b] Servers re-install their addons at the lock on every restart (TMC_AUTO_UPDATE), but a pack is only checked
-# against the lock of the day it was published. dot-net v0.1.36 (2026-11-17) typed DotNetBehaviour.identity as Node; the
+# against the lock of the day it was published. dot-net v0.1.36 (2026-11-17) typed GSNetBehaviour.identity as Node; the
 # lock took it the same day, and Hungario 0.1.19 (published 11-16 against v0.1.35, `var net_id := behaviour.identity.net_id`)
 # stopped compiling: "A game has to supply the bridge between itself and the netcode", the server hibernates. Nothing booted
 # the packs already out there against the new lock. This does, with dot-cloud's tools/pack_fetch.py (what the CDN serves,

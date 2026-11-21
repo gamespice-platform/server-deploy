@@ -29,9 +29,9 @@ var _host: Node = null
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
-		else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args()
+		else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -44,7 +44,7 @@ func _run() -> void:
 		get_tree().quit(0)
 		return
 
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	if await _boot():
 		await _test_registered()
@@ -56,7 +56,7 @@ func _run() -> void:
 		await _test_vote_changes_the_game()
 
 	_teardown()
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	print("")
 	_check(
@@ -100,12 +100,12 @@ func _check(condition: bool, what: String, detail: String = "") -> bool:
 	return condition
 
 
-func _server() -> DotServer:
-	return _host.server as DotServer
+func _server() -> GSServer:
+	return _host.server as GSServer
 
 
 ## Runs the console the way an admin does, and reports what it said.
-func _console(line: String) -> DotResult:
+func _console(line: String) -> GSResult:
 	return _server().console.execute(line)
 
 
@@ -127,7 +127,7 @@ func _until(condition: Callable, seconds: float = 10.0) -> bool:
 func _at_game(game_id: String) -> bool:
 	var current := _server().games.current()
 	return current != null and current.game_id == game_id \
-		and _server().games.phase == DotGameManager.Phase.IDLE
+		and _server().games.phase == GSGameManager.Phase.IDLE
 
 
 
@@ -143,13 +143,13 @@ func _boot() -> bool:
 	add_child(_host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 
 	if not _check(started.ok, "the host boots on a fixture config", str(started.error)):
 		return false
 
 	_check(
-		_server() != null and _server().state == DotServer.State.RUNNING,
+		_server() != null and _server().state == GSServer.State.RUNNING,
 		"and the server is running"
 	)
 	return true
@@ -175,14 +175,14 @@ func _test_finds_a_map_session() -> void:
 	# for something that answers `change_to` and `change_to_map`.
 	var probe := Node.new()
 	probe.name = "MapProbe"
-	var session := DotMapSession.new()
+	var session := GSMapSession.new()
 	session.name = "Session"
 	probe.add_child(session)
 	add_child(probe)
 
 	_check(
 		TmcMapGame.session_in(probe) == session,
-		"a real DotMapSession still answers the duck-typed predicate",
+		"a real GSMapSession still answers the duck-typed predicate",
 		"if this fails, dot-map renamed a method and `--map` now does nothing at all"
 	)
 
@@ -238,7 +238,7 @@ func _test_registered() -> void:
 
 	# Every game in `content/` is builtin, which is precisely why nothing noticed.
 	_check(
-		DotRegistry.get_service(&"dot_cloud_client") != null,
+		GSRegistry.get_service(&"dot_cloud_client") != null,
 		"a content client is registered, so a pack game could be fetched",
 		"without it dot-server refuses every game with a manifest_url"
 	)
@@ -251,7 +251,7 @@ func _test_switch_to_hungry() -> void:
 	# [b]With somebody in the game.[/b] Switching an EMPTY server exercises the module swap and nothing
 	# else — no entity is despawned, no peer is removed from the netcode, and the world that is about
 	# to be freed is holding nothing.
-	var buses: DotModule = _server().modules.get_module("buses")
+	var buses: GSModule = _server().modules.get_module("buses")
 	# Buses fills its empty driving seats with bots, so the count is taken against what was
 	# there before anybody joined.
 	var before: int = buses.game.players.size()
@@ -262,7 +262,7 @@ func _test_switch_to_hungry() -> void:
 	buses.bridge.add_player(2, 4242, "Left already")
 	buses.bridge.remove_peer(2)
 
-	var seated: DotResult = buses.bridge.add_player(3, 4243, "Occupant")
+	var seated: GSResult = buses.bridge.add_player(3, 4243, "Occupant")
 	_check(seated.ok, "somebody is in buses first", str(seated.error))
 	_check(
 		buses.game.players.size() == before + 1,
@@ -287,17 +287,17 @@ func _test_switch_to_hungry() -> void:
 	_check(
 		not _server().modules.has_module("buses"),
 		"and buses' is gone",
-		"two modules each holding a DotNetManager would both tick the same world"
+		"two modules each holding a GSNetManager would both tick the same world"
 	)
 
-	var world := DotRegistry.get_node_service(HUNGRY_WORLD)
+	var world := GSRegistry.get_node_service(HUNGRY_WORLD)
 	_check(world != null, "a hungry world is registered")
 	_check(
-		DotRegistry.get_node_service(BUSES_GAME) == null,
+		GSRegistry.get_node_service(BUSES_GAME) == null,
 		"and buses' world is not"
 	)
 
-	var module: DotModule = _server().modules.get_module("hungry")
+	var module: GSModule = _server().modules.get_module("hungry")
 	_check(
 		module != null and module.world == world,
 		"the module is bound to the world the scene created"
@@ -317,7 +317,7 @@ func _test_switch_to_hungry() -> void:
 	_check(
 		String(info.get("scene", "")) == "game/client/hungry_client.tscn",
 		"and names its client scene RELATIVELY (%s)" % info.get("scene", ""),
-		"DotClientLink refuses every absolute res:// path outside dot-cloud's mount, so "
+		"GSClientLink refuses every absolute res:// path outside dot-cloud's mount, so "
 		+ "a relative one is the only spelling a client will resolve"
 	)
 	_done()
@@ -327,7 +327,7 @@ func _test_switch_between_modes() -> void:
 	_section("hungry classic -> frenzy")
 
 	var before := _server().modules.get_module("hungry")
-	var world_before := DotRegistry.get_node_service(HUNGRY_WORLD)
+	var world_before := GSRegistry.get_node_service(HUNGRY_WORLD)
 
 	var result := _console("changelevel hungry_frenzy")
 	_check(result.ok, "the second mode can be reached", str(result.error))
@@ -341,15 +341,15 @@ func _test_switch_between_modes() -> void:
 	var after := _server().modules.get_module("hungry")
 
 	# [b]The reason the host compares module PATHS and not game ids.[/b] Two game ids, one module:
-	# reloading it between them would rebuild the DotNetManager, which resets the message ids, the peer
+	# reloading it between them would rebuild the GSNetManager, which resets the message ids, the peer
 	# records and the clock — a disconnect for everybody.
 	_check(
 		after == before,
 		"the module instance survives, because both modes share it",
-		"reloading it would rebuild the DotNetManager and disconnect everybody"
+		"reloading it would rebuild the GSNetManager and disconnect everybody"
 	)
 
-	var world_after := DotRegistry.get_node_service(HUNGRY_WORLD)
+	var world_after := GSRegistry.get_node_service(HUNGRY_WORLD)
 	_check(world_after != world_before, "the world is a new one")
 	_check(
 		after != null and after.world == world_after,
@@ -378,11 +378,11 @@ func _test_switch_back() -> void:
 	_check(_server().modules.has_module("buses"), "buses's module is back")
 	_check(not _server().modules.has_module("hungry"), "and hungry's is gone")
 	_check(
-		DotRegistry.get_node_service(BUSES_GAME) != null,
+		GSRegistry.get_node_service(BUSES_GAME) != null,
 		"buses' world is registered again"
 	)
 	_check(
-		DotRegistry.get_node_service(HUNGRY_WORLD) == null,
+		GSRegistry.get_node_service(HUNGRY_WORLD) == null,
 		"and hungry's world is not",
 		"a world left registered would be found by the next module to look for one"
 	)
@@ -393,7 +393,7 @@ func _test_unknown_game() -> void:
 	_section("a game that is not there")
 
 	# [b]Asserted on the outcome, not on what the console returned.[/b] `changelevel`'s handler is a
-	# coroutine — it `await`s `change_game` — so [method DotConsole.execute] reports that the command
+	# coroutine — it `await`s `change_game` — so [method GSConsole.execute] reports that the command
 	# was *dispatched*, not what it decided.
 	_console("changelevel no_such_game")
 
@@ -432,7 +432,7 @@ func _test_vote_changes_the_game() -> void:
 	# that game's own map vote is the only one. Every game but one excluded here.
 	var all_but_one := PackedStringArray(["buses"])
 	var kept := ""
-	for descriptor: DotGameDescriptor in _host.server.games.games:
+	for descriptor: GSGameDescriptor in _host.server.games.games:
 		if descriptor.game_id == "buses":
 			continue
 		if kept == "":
@@ -453,8 +453,8 @@ func _test_vote_changes_the_game() -> void:
 	# The same game twice: the built-in copy and a published `owner/<name>` beside it. Two
 	# content ids, one name on the ballot — which put "<that game> or Extend" to the players
 	# of a server that runs nothing else.
-	var original: DotGameDescriptor = _host.server.games.find_game(kept)
-	var twin := DotGameDescriptor.new()
+	var original: GSGameDescriptor = _host.server.games.find_game(kept)
+	var twin := GSGameDescriptor.new()
 	twin.game_id = "someone/%s" % kept
 	twin.content_id = "someone/%s" % kept
 	twin.display_name = original.display_name if original.display_name != "" else kept
@@ -470,7 +470,7 @@ func _test_vote_changes_the_game() -> void:
 	# hungario alone: five modes, one game, and its own map vote is already over the five.
 	var only_hungry := PackedStringArray(["buses"])
 	var modes := 0
-	for descriptor: DotGameDescriptor in _host.server.games.games:
+	for descriptor: GSGameDescriptor in _host.server.games.games:
 		if descriptor.content_id == "tmc/hungry":
 			modes += 1
 		elif descriptor.game_id != "buses":
@@ -530,8 +530,8 @@ func _test_vote_changes_the_game() -> void:
 	# [b]What the shells are told, heard at the server.[/b] Nobody is connected, so every notice
 	# reaches nobody -- and `notice_sent` fires anyway, which is what lets a suite with no client
 	# assert what a client would have been sent. The half with a client is `shell_notice`.
-	var notices: Array[DotNotice] = []
-	var on_notice := func(n: DotNotice, _count: int) -> void: notices.append(n)
+	var notices: Array[GSNotice] = []
+	var on_notice := func(n: GSNotice, _count: int) -> void: notices.append(n)
 	_server().notice_sent.connect(on_notice)
 
 	var opened := await _console(revote)
@@ -631,7 +631,7 @@ func _test_vote_changes_the_game() -> void:
 		],
 		"the director applying the change and the host announcing it are two "
 		+ "notifications of one play, and counting both halves every cooldown — "
-		+ "which is why DotVoteDirector.begin_on_apply exists and is off here"
+		+ "which is why GSVoteDirector.begin_on_apply exists and is off here"
 	)
 	_check(
 		director.clock.rtv_votes() == 0,
@@ -654,14 +654,14 @@ func _test_vote_changes_the_game() -> void:
 
 
 ## The last notice sent for [param topic], or null.
-func _notice_for(notices: Array[DotNotice], topic: StringName) -> DotNotice:
+func _notice_for(notices: Array[GSNotice], topic: StringName) -> GSNotice:
 	for i in range(notices.size() - 1, -1, -1):
 		if notices[i].topic == topic:
 			return notices[i]
 	return null
 
 
-func _notice_with_cue(notices: Array[DotNotice], cue: StringName) -> bool:
+func _notice_with_cue(notices: Array[GSNotice], cue: StringName) -> bool:
 	for n in notices:
 		if n.cue == cue:
 			return true

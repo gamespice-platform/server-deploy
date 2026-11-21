@@ -1209,7 +1209,7 @@ fi
 # [b]There is deliberately no equivalent for the ADDONS list.[/b] A game is CONTENT:
 # leaving one out costs a pack in dist/ and nothing else, and the server says so. An
 # addon is a compile dependency of whatever names its classes, so a missing one does not
-# produce a smaller build -- it produces `Identifier "DotX" not declared in the current
+# produce a smaller build -- it produces `Identifier "GSX" not declared in the current
 # scope` in dozens of files nobody touched, which reads as a broken project rather than
 # as a flag somebody passed. That list is what the games need; pruning it is a change to
 # the games.
@@ -1479,7 +1479,7 @@ fi
 # which holds for every one of them and is asserted rather than assumed below.
 
 # dot_stats is here because hungry's module declares its statistics through
-# DotStatsSchema. It was missing, and could not be noticed: the vendored copy of
+# GSStatsSchema. It was missing, and could not be noticed: the vendored copy of
 # hungry predated that code by nine days, and the guard against a stale copy --
 # tools/check.sh -- named the game repositories by their OLD names too, so it reported
 # "no game repositories beside this one" on a machine where all of them were and
@@ -1528,7 +1528,7 @@ done <<< "$_sa_out"
 
 # What THIS project's own scripts name, whatever games it carries.
 #
-# Every one of these was found the way you would check it: every `Dot*` identifier in
+# Every one of these was found the way you would check it: every `GS*` identifier in
 # this project's own .gd and .tscn files, mapped to the addon whose `class_name`
 # declares it. Eleven, of which nine are also declared by at least one game and two --
 # dot_log and dot_server_security -- are named by nothing but the server shell, which is
@@ -1544,7 +1544,7 @@ done <<< "$_sa_out"
 # dot_party, dot_matchmaking and dot_locale joined on 2026-09-23 and are the same case as
 # dot_log: named by host/tmc_party.gd and client/shell.gd and by no game, so a list
 # derived from the games would be short by all three. dot_chat is here for the same
-# reason -- every game declares it, but the host names DotChatChannel itself now.
+# reason -- every game declares it, but the host names GSChatChannel itself now.
 #
 # dot_replay and dot_friends joined on 2026-09-25, the same case again: host/tmc_replay.gd
 # builds the replay ring for every game and client/tmc_friends.gd the friends client, and
@@ -1678,7 +1678,7 @@ ADDONS_CLONE_DEST="${ADDONS_DIR:-$ADDONS_REPOS}"
 ## The addon name with its underscores turned into hyphens, for all fifty-three `dot_*`
 ## addons -- and `zee_weapons` -> `zee-dot-weapons` for the one that is not one of them: a
 ## third-party pack that sits on top of the family and took its own prefix so it could
-## never collide with a `Dot*` global.
+## never collide with a `GS*` global.
 ##
 ## [b]A function because this was derived in two places and they disagreed.[/b]
 ## `addon_source` knew about the exception and `resolve_addons` did not, so this machine
@@ -2103,7 +2103,7 @@ fi
 # pack cannot see. The host's own scripts are already cached, so the server boots, loads
 # the game, and looks healthy; what fails is the pack:
 #
-#     SCRIPT ERROR: Parse Error: Could not find type "DotTimerRun" in the current scope.
+#     SCRIPT ERROR: Parse Error: Could not find type "GSTimerRun" in the current scope.
 #     ERROR: Failed to load script "res://dot_cloud/airdrift/0.1.0/game/g2g_game.gd"
 #            with error "Parse error".
 #
@@ -2388,7 +2388,7 @@ while IFS= read -r template; do
     case "$rel" in addon/*|game/*) continue ;; esac
     [ -f "$target" ] && continue
     # A server set up before the move keeps its edits in the older files, which are still read
-    # (DotCfgLegacy); a fresh template beside one would win whole and hide them.
+    # (GSCfgLegacy); a fresh template beside one would win whole and hide them.
     base="$(basename "$rel")"
     case "$rel" in
         server/server.yml) [ -f cfg/server.yml ] && continue ;;
@@ -2427,7 +2427,7 @@ VOTE_YML=cfg/server/addon/dot_vote/vote.yml
 # going to serve it), mounts it, and fails to parse it against addons this build
 # deliberately does not have:
 #
-#     SCRIPT ERROR: Parse Error: Could not find type "DotLoadoutManager" in the
+#     SCRIPT ERROR: Parse Error: Could not find type "GSLoadoutManager" in the
 #     current scope.  at: res://dot_cloud/arena/0.1.0/game/arena_game.gd:144
 #
 # and that is the whole game, broken, with the boot check still exiting 0 -- a script
@@ -2490,7 +2490,7 @@ fi
 
 # [b]The server's own content trust, derived from the client's.[/b]
 #
-# `DotCloudClient` reads `data/content.json` and refuses every unsigned manifest --
+# `GSCloudClient` reads `data/content.json` and refuses every unsigned manifest --
 # correctly, since a pack can contain scripts. With no such file it starts with
 # `require_signed_manifests: true` and NO keys, so every fetch fails with "no
 # trusted_keys are configured" and a server that was told where to download its maps

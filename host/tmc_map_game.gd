@@ -1,7 +1,7 @@
 class_name TmcMapGame
 extends RefCounted
 
-## Finds the parts of the loaded game that handle maps. Duck-typed, like everything that crosses into a game: `has_method` and `call` rather than `is DotMapSession`,
+## Finds the parts of the loaded game that handle maps. Duck-typed, like everything that crosses into a game: `has_method` and `call` rather than `is GSMapSession`,
 ## because this host has no business requiring GameSpice Map (GameSpice Vote's map source uses the same contract). The game is a scene loaded from a pack, not a type this host may name.
 
 
@@ -10,7 +10,7 @@ static func session_in(root: Variant) -> Object:
 	return first_answering(root, ["change_to", "change_to_map"])
 
 
-## The node under [param root] that answers `start_on_map(id) -> DotResult`: a game whose map change is its own rather than a DotMapSession's.
+## The node under [param root] that answers `start_on_map(id) -> GSResult`: a game whose map change is its own rather than a GSMapSession's.
 static func starter_in(root: Variant) -> Object:
 	return first_answering(root, ["start_on_map"])
 

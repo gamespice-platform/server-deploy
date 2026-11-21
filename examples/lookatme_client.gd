@@ -37,7 +37,7 @@ var _completed := 0
 
 var _host: Node = null
 var _client_side: Node = null
-var _link: DotClientLink = null
+var _link: GSClientLink = null
 var _relay: SlowTcpRelay = null
 
 # Through Arrays: a GDScript lambda captures locals by value.
@@ -46,8 +46,8 @@ var _refused := [""]
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -55,7 +55,7 @@ func _ready() -> void:
 func _run() -> void:
 	print("dot-server-deploy: a real client in a delivered Look At Me")
 
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://dist/tmc/lookatme")):
 		print("skipped: dist/tmc/lookatme is not published here")
@@ -74,7 +74,7 @@ func _run() -> void:
 			await _test_the_same_guest_in_a_second_tab()
 
 	await _teardown()
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	print("")
 	_check(
@@ -123,8 +123,8 @@ func _check(condition: bool, what: String, detail: String = "") -> bool:
 	return condition
 
 
-func _server() -> DotServer:
-	return _host.server as DotServer
+func _server() -> GSServer:
+	return _host.server as GSServer
 
 
 func _until(condition: Callable, seconds: float = 20.0) -> bool:
@@ -141,7 +141,7 @@ func _until(condition: Callable, seconds: float = 20.0) -> bool:
 
 ## The server's world, through the module's `game` — GameSpice Game's own name for it.
 func _world() -> Node:
-	var module: DotModule = _server().modules.get_module(MODULE)
+	var module: GSModule = _server().modules.get_module(MODULE)
 	return module.get("game") as Node if module != null else null
 
 
@@ -154,7 +154,7 @@ func _says(world: Object) -> Dictionary:
 
 ## The CLIENT's world: the delivered client scene under the link's `GameRoot`, whose `game` property
 ## is the world it built.
-func _client_world(link: DotClientLink = null) -> Object:
+func _client_world(link: GSClientLink = null) -> Object:
 	if link == null:
 		link = _link
 
@@ -183,7 +183,7 @@ func _boot() -> bool:
 	ServerWorld.add(self, _host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 
 	if not _check(started.ok, "the host boots", str(started.error)):
 		return false
@@ -192,7 +192,7 @@ func _boot() -> bool:
 		func() -> bool:
 			var current := _server().games.current()
 			return current != null and current.game_id == GAME \
-				and _server().games.phase == DotGameManager.Phase.IDLE,
+				and _server().games.phase == GSGameManager.Phase.IDLE,
 		45.0
 	)
 
@@ -237,7 +237,7 @@ func _teardown() -> void:
 func _test_connect() -> bool:
 	_section("a client connects to a delivered game")
 
-	_link = DotClientLink.new()
+	_link = GSClientLink.new()
 	_link.name = "Server"
 	_link.player_name = "Driver"
 	_client_side.add_child(_link)
@@ -249,7 +249,7 @@ func _test_connect() -> bool:
 		if _refused[0] == "":
 			_refused[0] = reason)
 
-	var connecting: DotResult = await _link.connect_to_server("127.0.0.1:%d" % _host.config.server.port)
+	var connecting: GSResult = await _link.connect_to_server("127.0.0.1:%d" % _host.config.server.port)
 
 	if not _check(connecting.ok, "it starts connecting", str(connecting.error)):
 		_done()
@@ -271,7 +271,7 @@ func _test_the_pack_mounted() -> void:
 	var entry := _server().games.current()
 	_check(entry != null and String(entry.content_id) == CONTENT_ID, "the current game is the delivered one")
 
-	var module: DotModule = _server().modules.get_module(MODULE)
+	var module: GSModule = _server().modules.get_module(MODULE)
 	var script: Variant = module.get_script() if module != null else null
 	var path := String((script as Resource).resource_path) if script != null else ""
 	_check(path.begins_with("res://dot_cloud/tmc/lookatme/"), "its module is the mounted copy", path)
@@ -300,13 +300,13 @@ func _test_walking_across_the_socket() -> void:
 		return
 
 	var start := server_player.global_position
-	var go := DotFpsCommand.new()
+	var go := GSFpsCommand.new()
 	go.move = Vector2(0, 1)
 	go.yaw = 90.0
 	client.set("command_override", go)
 	var moved := await _until(func() -> bool: return server_player.global_position.distance_to(start) > 3.0, 15.0)
 	_check(moved, "the client's keys walk the server's player", "%.1f m" % server_player.global_position.distance_to(start))
-	client.set("command_override", DotFpsCommand.new())
+	client.set("command_override", GSFpsCommand.new())
 	await _until(func() -> bool: return false, 1.0)
 	var mine: Node3D = client.get("player")
 	var gap: float = (mine.get("controller").get("state").get("position") as Vector3).distance_to(server_player.get("controller").get("state").get("position"))
@@ -347,7 +347,7 @@ func _test_a_second_over_a_slow_websocket() -> void:
 	side.name = "SecondSide"
 	add_child(side)
 	get_tree().set_multiplayer(MultiplayerAPI.create_default_interface(), side.get_path())
-	var second := DotClientLink.new()
+	var second := GSClientLink.new()
 	second.name = "Server"
 	second.player_name = "Rider"
 	second.transport_preference = "ws"
@@ -370,7 +370,7 @@ func _test_a_second_over_a_slow_websocket() -> void:
 		var now := Time.get_ticks_usec()
 		longest_frame[0] = maxi(longest_frame[0], now - frame_at[0])
 		frame_at[0] = now
-		var go := DotFpsCommand.new()
+		var go := GSFpsCommand.new()
 		go.move = Vector2(0, 1)
 		go.yaw = 90.0 if (Time.get_ticks_msec() / 700) % 2 == 0 else 270.0
 		first.set("command_override", go)
@@ -384,11 +384,11 @@ func _test_a_second_over_a_slow_websocket() -> void:
 			sent_short[0] = sent_short[0] or (not progress.is_empty() and int(progress["sent"]) < int(progress["levels"]))
 
 	get_tree().physics_frame.connect(watch)
-	var connecting: DotResult = await second.connect_to_server("127.0.0.1:%d" % port)
+	var connecting: GSResult = await second.connect_to_server("127.0.0.1:%d" % port)
 	var built := connecting.ok and await _until(func() -> bool: return int(_says(_client_world(second)).get("levels", 0)) == 32, 60.0)
 	var built_at := Time.get_ticks_msec()
 	get_tree().physics_frame.disconnect(watch)
-	first.set("command_override", DotFpsCommand.new())
+	first.set("command_override", GSFpsCommand.new())
 	bridge.set("key_fn", key_fn)
 
 	print("  note  connect to signon %d ms, signon to 32 levels %d ms, %d bytes down at %d KB/s; longest frame %d ms" % [
@@ -431,12 +431,12 @@ func _test_the_same_guest_in_a_second_tab() -> void:
 	side.name = "SecondTab"
 	add_child(side)
 	get_tree().set_multiplayer(MultiplayerAPI.create_default_interface(), side.get_path())
-	var tab := DotClientLink.new()
+	var tab := GSClientLink.new()
 	tab.name = "Server"
 	tab.player_name = "Driver"
 	side.add_child(tab)
 	var first_key := StringName(str(_client_scene().get("bridge").get("local_key")))
-	var connecting: DotResult = await tab.connect_to_server("127.0.0.1:%d" % _host.config.server.port)
+	var connecting: GSResult = await tab.connect_to_server("127.0.0.1:%d" % _host.config.server.port)
 	var built := connecting.ok and await _until(func() -> bool: return int(_says(_client_world(tab)).get("levels", 0)) == 32, 60.0)
 	var told := await _until(func() -> bool: return _refused[0] != "", 10.0)
 	_check(String(first_key).begins_with("uid:"), "the house keys the first tab by its account", String(first_key))
@@ -459,7 +459,7 @@ func _test_still_serving() -> void:
 	_section("the game's own console still answers")
 
 	var captured: Array[String] = []
-	var context := DotCmdContext.console("", PackedStringArray())
+	var context := GSCmdContext.console("", PackedStringArray())
 	context.reply_sink = func(text: String) -> void: captured.append(text)
 	_server().console.execute("lm_status", context)
 	_check("\n".join(captured).contains("levels"), "lm_status describes the house")

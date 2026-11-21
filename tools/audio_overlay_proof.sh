@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Proves a site-published GameSpice Audio pack works as a shell overlay: a build with a GameSpice Audio older than the stock-sound
-# work (392f118~1, no DotAudioSinkGodot.stream_at) takes modcommunity/dot-audio from the content origin, restarts onto
+# work (392f118~1, no GSAudioSinkGodot.stream_at) takes modcommunity/dot-audio from the content origin, restarts onto
 # it, and plays a stock footstep and bed. The control start without the overlay must NOT have stream_at.
 #   heavy -- tools/audio_overlay_proof.sh [--content-url URL] [--version 0.1.14]
 set -euo pipefail

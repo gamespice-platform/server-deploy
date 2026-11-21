@@ -19,7 +19,7 @@
 # under a plain Node, and Playlot registers itself under `playground` (a registry key that
 # keeps the old Playlot name) in _ready() -- which is what playlot_module.gd looks it up by.
 # The operator's surface is the cvars below and the layered PlaylotConfig, like every
-# DotConfig in the family.
+# GSConfig in the family.
 #
 # The pack published before the rename carries the old paths and its own game.yml naming
 # them; game-playlot keeps shims at the old paths for it.
@@ -45,7 +45,7 @@ module: game/playlot_module.gd
 # `dependencies`, NOT `server_dependencies` like wipeout's and deathrun's courses: a
 # Playlot map is a document of boxes and props that the CLIENT builds too, so every
 # client fetches this pack in the same content sync as the game and adds `<mount>/maps`
-# from DotClientLink.content_extra (PlaylotClient), as the server does from the game
+# from GSClientLink.content_extra (PlaylotClient), as the server does from the game
 # manager's dependency keys (PlaylotModule._add_delivered_maps). The first game to use
 # client dependencies.
 dependencies:
@@ -63,7 +63,7 @@ cvars:
 # whether they may extend the one they are on. Its defaults are in the game's own
 # game/playlot_vote.gd; anything written here overrides them, and the server's own
 # user://cfg/playground_vote.json, DOT_VOTE_* and --vote-* override this. Keyed exactly as
-# dot-vote's DotVoteRules, enums by name.
+# dot-vote's GSVoteRules, enums by name.
 #
 # `vote:` beside it is a different thing: how the SERVER's vote for the next game
 # (cfg/vote.yml) treats this game — its time limit there, its weight, whether it is

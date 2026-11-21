@@ -58,7 +58,7 @@ timeout 240 "$G" --headless --path . --import >/dev/null 2>&1 || true
 echo "== export web"
 timeout 300 "$G" --headless --path . --export-release Web 2>&1 | grep -vE "^(Godot Engine|$)" | tail -8 || true
 [ -f "$W/out/index.wasm" ] || { echo "FAIL no web export"; exit 1; }
-# The same page edits ./server export-web makes: DotWeb's page side and the ceiling, ahead of the engine script.
+# The same page edits ./server export-web makes: GSWeb's page side and the ceiling, ahead of the engine script.
 # The pack is the OLD dot-audio's, so the ceiling file comes from the current checkout.
 cp "$FAM/dot-core/addons/dot_core/web/dot_web.js" "$FAM/dot-audio/addons/dot_audio/web/dot_audio_ceiling.js" "$W/out/"
 sed -i 's#<head>#<head>\n<script src="dot_web.js"></script>\n<script src="dot_audio_ceiling.js"></script>#' "$W/out/index.html"

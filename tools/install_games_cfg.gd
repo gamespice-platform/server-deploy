@@ -37,7 +37,7 @@ static func server_yml(config_dir: String) -> Dictionary:
 	var parsed := TmcYaml.parse_file(path)
 
 	if not parsed.ok:
-		DotLog.warn("tmc.install", "could not read the server configuration", {
+		GSLog.warn("tmc.install", "could not read the server configuration", {
 			"path": path, "why": str(parsed.error),
 		})
 		return {}

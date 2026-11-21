@@ -7,13 +7,13 @@ const CHANNEL := "tmc.radio"
 const SERVICE := &"dot_radio"
 ## The notice topic that tells a shell where the station is. See `client/tmc_radio_link.gd`.
 const TOPIC := "tmc.radio"
-const CLASSES := ["DotRadioLibrary", "DotRadioStation", "DotRadioApi", "DotRadioHttp"]
+const CLASSES := ["GSRadioLibrary", "GSRadioStation", "GSRadioApi", "GSRadioHttp"]
 
 var http: RefCounted = null
 var api: RefCounted = null
 var public_url := ""
 
-var _server: DotServer = null
+var _server: GSServer = null
 
 
 ## The script for a global `class_name`, or null when this build does not carry it.
@@ -31,37 +31,37 @@ static func available() -> bool:
 	return true
 
 
-static func install(host: Node, p_server: DotServer, config: TmcConfig, data_dir: String) -> TmcRadio:
+static func install(host: Node, p_server: GSServer, config: TmcConfig, data_dir: String) -> TmcRadio:
 	if not config.radio_enabled:
 		return null
 	if not available():
-		DotLog.warn(CHANNEL, "radio_enabled is on but dot-radio is not in this build; add `- repo: dot-radio` to cfg/content/addons.yml and run setup", {})
+		GSLog.warn(CHANNEL, "radio_enabled is on but dot-radio is not in this build; add `- repo: dot-radio` to cfg/content/addons.yml and run setup", {})
 		return null
 	var node := TmcRadio.new()
 	node.name = "Radio"
 	node._server = p_server
 	var started := node.start(config.radio, data_dir)
 	if not started.ok:
-		DotLog.error(CHANNEL, "the radio did not start", {"why": str(started.error)})
+		GSLog.error(CHANNEL, "the radio did not start", {"why": str(started.error)})
 		node.free()
 		return null
 	host.add_child(node)
 	if p_server != null:
 		p_server.client_spawned.connect(node._on_client_spawned)
-	DotRegistry.register(SERVICE, node.api)
-	DotLog.info(CHANNEL, "the radio is on", node.describe())
+	GSRegistry.register(SERVICE, node.api)
+	GSLog.info(CHANNEL, "the radio is on", node.describe())
 	return node
 
 
 ## Builds the station from the `radio_*` keys and starts the HTTP side.
-func start(cfg: Dictionary, data_dir: String) -> DotResult:
-	var library: RefCounted = script_named("DotRadioLibrary").new()
+func start(cfg: Dictionary, data_dir: String) -> GSResult:
+	var library: RefCounted = script_named("GSRadioLibrary").new()
 	var dir := str(cfg.get("radio_dir", ""))
 	library.root = dir if not dir.is_empty() else data_dir.path_join("radio")
 	DirAccess.make_dir_recursive_absolute(library.root)
-	var station: RefCounted = script_named("DotRadioStation").new(library)
-	api = script_named("DotRadioApi").new(library, station)
-	http = script_named("DotRadioHttp").new(api)
+	var station: RefCounted = script_named("GSRadioStation").new(library)
+	api = script_named("GSRadioApi").new(library, station)
+	http = script_named("GSRadioHttp").new(api)
 	public_url = str(cfg.get("radio_public_url", ""))
 	var block := {
 		"enabled": true,
@@ -89,10 +89,10 @@ func _exit_tree() -> void:
 
 
 ## Tells the new player's shell where the station is, once, when they spawn.
-func _on_client_spawned(session: DotClientSession) -> void:
+func _on_client_spawned(session: GSClientSession) -> void:
 	if public_url.is_empty() or _server == null:
 		return
-	_server.send_notice(session, DotNotice.make(&"", "", -1.0, TOPIC, {"url": public_url}))
+	_server.send_notice(session, GSNotice.make(&"", "", -1.0, TOPIC, {"url": public_url}))
 
 
 func describe() -> Dictionary:

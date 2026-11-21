@@ -22,9 +22,9 @@ var _key_pem := ""
 var _content: Node = null
 var _bb: Node = null
 var _shell: Node = null
-var _cloud: DotCloudClient = null
-var _ws: DotCloudWorkshop = null
-var _index: DotContentIndex = null
+var _cloud: GSCloudClient = null
+var _ws: GSCloudWorkshop = null
+var _index: GSContentIndex = null
 var _token := ""
 var _items: Array = []
 var _packs := {}
@@ -34,14 +34,14 @@ var _accepts: Dictionary = ACCEPTS
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.ERROR)
+	GSLog.set_level(GSLog.Level.ERROR)
 	_run.call_deferred()
 
 
 func _run() -> void:
 	print("dot-server-deploy: subscribed packs in solo play")
-	DotPaths.remove_tree(WORK)
-	DotCloudAddonSet.forget()
+	GSPaths.remove_tree(WORK)
+	GSCloudAddonSet.forget()
 
 	if await _boot():
 		await _test_guest()
@@ -55,8 +55,8 @@ func _run() -> void:
 		_test_subscription_marks()
 
 	await _teardown()
-	DotPaths.remove_tree(WORK)
-	DotCloudAddonSet.forget()
+	GSPaths.remove_tree(WORK)
+	GSCloudAddonSet.forget()
 
 	print("")
 	print("%d sections, %d completed" % [_entered, _completed])
@@ -78,7 +78,7 @@ func _run() -> void:
 func _boot() -> bool:
 	_section("a shell, a content host, a fake site and four packs")
 
-	var keys := DotCloudSignature.generate_keypair(2048)
+	var keys := GSCloudSignature.generate_keypair(2048)
 	_check(keys.ok, "a signing key pair is generated")
 	if not keys.ok:
 		return false
@@ -101,7 +101,7 @@ func _boot() -> bool:
 	_make_pack("ws_code", "script", true)
 	_make_pack("ws_quake", "addon", true)
 
-	_index = DotContentIndex.shared()
+	_index = GSContentIndex.shared()
 
 	# The shell is configured BEFORE it enters the tree, so the cloud client and the Workshop
 	# it places are not yet running when their folders and keys are set.
@@ -129,7 +129,7 @@ func _boot() -> bool:
 	_check(_shell.get("_workshop") == _ws and _ws.cloud == _cloud, "the shell placed one Workshop beside its content client")
 	_check(_ws.token_fn.is_valid() and _ws.ask_fn.is_valid(), "its bearer and its download question are the shell's")
 	_check(_shell.call("_workshop_token") == "", "the shell's bearer is empty for a build with no sign-in")
-	_check(_index.session() == DotContentIndex.SESSION_SOLO, "the index starts in the solo session")
+	_check(_index.session() == GSContentIndex.SESSION_SOLO, "the index starts in the solo session")
 
 	# The bearer the fake site knows, in place of a sign-in this process cannot perform.
 	_ws.token_fn = func() -> String: return _token
@@ -150,12 +150,12 @@ func _site(method: String, path: String, query: Dictionary, headers: Dictionary,
 
 func _make_game(id: String = GAME, extra: String = "", accepts: Dictionary = ACCEPTS) -> void:
 	var dir := WORK.path_join("src_" + id.replace("/", "_"))
-	DotPaths.write_text(dir.path_join("game.yml"),
+	GSPaths.write_text(dir.path_join("game.yml"),
 		"name: Workshop Game\ncontent_id: %s\nversion: 1.0.0\nclient_scene: game.tscn\n%s" % [id, extra])
-	DotPaths.write_text(dir.path_join("game.tscn"),
+	GSPaths.write_text(dir.path_join("game.tscn"),
 		"[gd_scene load_steps=2 format=3]\n\n[ext_resource type=\"Script\" path=\"res://examples/workshop_solo_game.gd\" id=\"1\"]\n\n"
 		+ "[node name=\"Game\" type=\"Node3D\"]\nscript = ExtResource(\"1\")\n")
-	DotPaths.write_text(dir.path_join("provides.json"), JSON.stringify({
+	GSPaths.write_text(dir.path_join("provides.json"), JSON.stringify({
 		"schema": 1, "title": "Workshop Game", "kinds": [], "accepts": accepts, "entries": []}))
 	_publish(dir, id, "tmc")
 
@@ -165,28 +165,28 @@ func _make_pack(id: String, kind: String, code: bool = false) -> void:
 	var entries: Array = []
 	match kind:
 		"map":
-			DotPaths.write_text(dir.path_join("maps/m.tscn"), "[gd_scene format=3]\n\n[node name=\"M\" type=\"Node3D\"]\n")
+			GSPaths.write_text(dir.path_join("maps/m.tscn"), "[gd_scene format=3]\n\n[node name=\"M\" type=\"Node3D\"]\n")
 			entries.append({"kind": "map", "id": "m", "name": id + " map", "scene": "maps/m.tscn", "map_kind": "sandbox"})
 		"prop":
-			DotPaths.write_text(dir.path_join("props/p.tscn"), "[gd_scene format=3]\n\n[node name=\"P\" type=\"Node3D\"]\n")
+			GSPaths.write_text(dir.path_join("props/p.tscn"), "[gd_scene format=3]\n\n[node name=\"P\" type=\"Node3D\"]\n")
 			entries.append({"kind": "prop", "id": "p", "name": id + " prop", "scene": "props/p.tscn"})
 		"addon":
 			# Laid out as a game addon released inside its project, as Zee's Natural Disasters is.
-			DotPaths.write_text(dir.path_join("addons/%s/plugin.cfg" % id),
+			GSPaths.write_text(dir.path_join("addons/%s/plugin.cfg" % id),
 				"[plugin]\n\nname=\"%s\"\ndescription=\"\"\nauthor=\"test\"\nversion=\"1.0.0\"\nscript=\"\"\n" % id)
-			DotPaths.write_text(dir.path_join("addons/%s/quake.gd" % id), "extends Node\n")
+			GSPaths.write_text(dir.path_join("addons/%s/quake.gd" % id), "extends Node\n")
 			entries.append({"kind": "addon", "id": id, "name": id, "dir": "addons/" + id})
 		"script":
-			DotPaths.write_text(dir.path_join("hooks/h.gd"), "extends Node\n")
+			GSPaths.write_text(dir.path_join("hooks/h.gd"), "extends Node\n")
 			entries.append({"kind": "script", "id": "h", "name": id + " hook", "script": "hooks/h.gd", "hook": "playground"})
-	DotPaths.write_text(dir.path_join("provides.json"), JSON.stringify({
+	GSPaths.write_text(dir.path_join("provides.json"), JSON.stringify({
 		"schema": 1, "title": id, "kinds": [kind], "games": "*", "entries": entries}))
 	_publish(dir, id, "tmc")
 	_packs[id] = {"kind": kind, "code": code}
 
 
 func _publish(dir: String, id: String, key_id: String) -> void:
-	var pub := DotCloudPublisher.new()
+	var pub := GSCloudPublisher.new()
 	pub.content_id = id
 	pub.version = "1.0.0"
 	pub.signing_key_pem = _key_pem
@@ -276,13 +276,13 @@ func _test_solo_with_subscription() -> void:
 	_check(mounted == ["ws_map"], "only the pack the game accepts mounted", str(mounted))
 	_check(_cloud.is_mounted(&"ws_map", "1.0.0"), "the map pack is mounted")
 	_check(not _cloud.is_mounted(&"ws_prop", "1.0.0"), "the pack of a kind the game does not take is not")
-	_check(_index.session() == DotContentIndex.SESSION_SOLO and _cloud.session_tag == DotContentIndex.SESSION_SOLO,
+	_check(_index.session() == GSContentIndex.SESSION_SOLO and _cloud.session_tag == GSContentIndex.SESSION_SOLO,
 		"the index and the content client are in the solo session")
 	var entry := _index.entry("ws_map@1.0.0:map/m")
 	_check(entry != null and entry.source == &"subscription", "the index holds the map, as a subscription")
 	var maps := _index.entries(&"map")
 	_check(maps.size() == 1, "and the solo session offers it", str(maps.size()))
-	var catalogue: DotMapCatalogue = _game_node().catalogue
+	var catalogue: GSMapCatalogue = _game_node().catalogue
 	_check(catalogue.has(&"m"), "the game's catalogue lists the subscribed map")
 	var def := catalogue.get_map(&"m")
 	_check(def != null and def.content_id == &"ws_map" and FileAccess.file_exists(def.scene_path),
@@ -323,7 +323,7 @@ func _test_the_panel() -> void:
 	_check(sg.find_child("SuggestedMode", true, false) == null, "a game that suggests nothing gets no suggested switch")
 	sg.queue_free()
 	var kept_suggested: Array[Dictionary] = _ws.suggested
-	_ws.suggested = DotCloudSuggested.from_ids("maps", PackedStringArray(["gamemann/x-maps"]))
+	_ws.suggested = GSCloudSuggested.from_ids("maps", PackedStringArray(["gamemann/x-maps"]))
 	var sp := TmcWorkshopPanel.new()
 	sp.workshop = _ws
 	sp.takes_subscriptions = true
@@ -398,7 +398,7 @@ func _test_suggested_after_start() -> void:
 		"and by default nothing is fetched in bulk and nothing is asked: the game fetches each map when picked",
 		str(_requests() - asked))
 
-	const NONE := DotCloudSuggested.MODE_NONE
+	const NONE := GSCloudSuggested.MODE_NONE
 	var shell_script: GDScript = _shell.get_script()
 	var groups := PackedStringArray(["maps"])
 	_check(shell_script.late_suggested_mode("", PackedStringArray(), groups) == NONE
@@ -436,27 +436,27 @@ func _test_online_never_syncs() -> void:
 	_shell.call("_connect_to", "127.0.0.1:1")
 	await get_tree().process_frame
 
-	_check(_index.session() == DotContentIndex.SESSION_ONLINE and _cloud.session_tag == DotContentIndex.SESSION_ONLINE,
+	_check(_index.session() == GSContentIndex.SESSION_ONLINE and _cloud.session_tag == GSContentIndex.SESSION_ONLINE,
 		"the index and the content client went to the online session")
 	_check(_requests() == asked, "and the site was not asked", str(_requests() - asked))
 	_check(_index.entries(&"map").is_empty(), "the index offers no map to the online session")
 
 	# What the server's game does next: mounts the same game pack, now tagged online.
-	var got: DotResult = await _cloud.ensure(StringName(GAME), "1.0.0")
+	var got: GSResult = await _cloud.ensure(StringName(GAME), "1.0.0")
 	_check(got.ok, "the game's pack is reused for the join")
 	var online_ids := PackedStringArray()
-	for p in _index.packs(DotContentIndex.SESSION_ONLINE):
+	for p in _index.packs(GSContentIndex.SESSION_ONLINE):
 		online_ids.append(str(p["content_id"]))
 	_check(online_ids.has(GAME) and not online_ids.has("ws_map"), "the game is online and the subscribed map pack is not", str(online_ids))
 
-	var online_catalogue := DotMapCatalogue.new()
+	var online_catalogue := GSMapCatalogue.new()
 	online_catalogue.follow_content(_index, PackedStringArray(["sandbox"]))
 	_check(not online_catalogue.has(&"m"), "a catalogue built for the online game does not list it")
-	_index.set_session(DotContentIndex.SESSION_SOLO)
+	_index.set_session(GSContentIndex.SESSION_SOLO)
 	online_catalogue.refresh_content()
 	_check(online_catalogue.has(&"m"), "armed: the same catalogue lists it in the solo session")
 	online_catalogue.unfollow_content()
-	_index.set_session(DotContentIndex.SESSION_ONLINE)
+	_index.set_session(GSContentIndex.SESSION_ONLINE)
 
 	# The same game, started online: its scene built now, in the online session.
 	if _shots_dir() != "":
@@ -490,11 +490,11 @@ func _test_code_pack_restarts_first() -> void:
 	_check(_restarts[0] == 1, "the shell restarted instead of joining", str(_restarts[0]))
 	_check(_shell.get("link") == null, "no link was made")
 	_check(_requests() == asked, "and nothing was synced")
-	var plan := DotCloudAddonSet.read_plan()
+	var plan := GSCloudAddonSet.read_plan()
 	var resume: Variant = plan.get("resume", {})
 	_check(resume is Dictionary and str((resume as Dictionary).get("server", "")) == "10.9.8.7:6064",
 		"the restart carries the join, for the next start to take", str(resume))
-	_check(_index.session() == DotContentIndex.SESSION_SOLO, "and no online session was entered with the code resident")
+	_check(_index.session() == GSContentIndex.SESSION_SOLO, "and no online session was entered with the code resident")
 
 	# The next start takes it, once.
 	var taken: Dictionary = _shell.call("_take_resume")
@@ -511,12 +511,12 @@ func _test_subscribed_addon() -> void:
 	_site_game = ADDON_GAME
 	_accepts = ADDON_ACCEPTS
 	_items = [_item("ws_quake")]
-	DotCloudAddonSet.forget()
+	GSCloudAddonSet.forget()
 	_restarts[0] = 0
 	await _shell._solo_flow.call("_start_solo", ADDON_GAME, "1.0.0")
 
 	_check(_restarts[0] == 1, "the solo start restarted into an overlay with the addon", str(_restarts[0]))
-	var plan := DotCloudAddonSet.read_plan()
+	var plan := GSCloudAddonSet.read_plan()
 	var held: Variant = (plan.get("addons", {}) as Dictionary).get("ws_quake")
 	_check(held is Dictionary and str((held as Dictionary).get("id", "")) == "ws_quake"
 		and str((held as Dictionary).get("source", "")) == "subscription",
@@ -536,7 +536,7 @@ func _test_subscribed_addon() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_check(_restarts[0] == 1 and _shell.get("link") == null, "the join restarted instead of joining", str(_restarts[0]))
-	plan = DotCloudAddonSet.read_plan()
+	plan = GSCloudAddonSet.read_plan()
 	_check(str(plan.get("state", "")) == "dropped" and not plan.has("addons") and not TmcShellSolo.plan_holds_subscription(plan),
 		"the plan is dropped: the next start boots on the build alone", str(plan))
 	resume = plan.get("resume", {})
@@ -554,7 +554,7 @@ func _test_addon_refused_without_opt_in() -> void:
 
 	_token = "tok-alice"
 	_items = [_item("ws_quake"), _item("ws_map")]
-	DotCloudAddonSet.forget()
+	GSCloudAddonSet.forget()
 	_restarts[0] = 0
 	await _shell._solo_flow.call("_start_solo", GAME, "1.0.0")
 
@@ -564,11 +564,11 @@ func _test_addon_refused_without_opt_in() -> void:
 	var refused := false
 	if session != null:
 		for f: Dictionary in session.workshop_summary.get("failed", []):
-			refused = refused or (str(f.get("content_id", "")) == "ws_quake" and str(f.get("code", "")) == DotError.CODE_FORBIDDEN)
+			refused = refused or (str(f.get("content_id", "")) == "ws_quake" and str(f.get("code", "")) == GSError.CODE_FORBIDDEN)
 	_check(refused, "the addon pack is refused as forbidden",
 		str(session.workshop_summary.get("failed", [])) if session != null else "")
 	var shell_script: Script = _shell.get_script()
-	_check(not TmcShellSolo.plan_holds_subscription(DotCloudAddonSet.read_plan()), "and no overlay holds it")
+	_check(not TmcShellSolo.plan_holds_subscription(GSCloudAddonSet.read_plan()), "and no overlay holds it")
 
 	_done()
 

@@ -12,7 +12,7 @@ var host = null
 var announced_set: Array = []
 var told_groups := {}
 ## `addons_announce: game` only: the game a change is going to, between `game_changing` and its `game_loaded` or `game_load_failed`; its addons are announced beside the current game's.
-var change_to: DotGameDescriptor = null
+var change_to: GSGameDescriptor = null
 ## `addons_announce: game` only: the addon set each peer was last told (at its challenge, or by [constant TmcAddonGroups.ANNOUNCE_KIND]), so a change tells only those who lack something.
 var told := {}
 
@@ -26,19 +26,19 @@ const ADDONS_LOCK := "res://addons.lock"
 
 
 ## Tells every joining client which addon versions this server runs, so an addon release can skip the client build: an older shell fetches the newer addons as packs
-## (`modcommunity/dot-<name>@<version>`, the alias of `gamespice-platform/<name>`; [method TmcAddonNamespaces.announced_pack_for] says why), lays them over its own and restarts into them (GameSpice Cloud's `DotCloudAddonSet`).
+## (`modcommunity/dot-<name>@<version>`, the alias of `gamespice-platform/<name>`; [method TmcAddonNamespaces.announced_pack_for] says why), lays them over its own and restarts into them (GameSpice Cloud's `GSCloudAddonSet`).
 ## The lock, not a guess at the checkout: setup.sh puts every clone at the locked ref. `TMC_ADDONS_LOCK=off` advertises nothing, because then the lock is not true.
 func advertise() -> void:
 	if OS.get_environment("TMC_ADDONS_LOCK") == "off":
-		DotLog.info(CHANNEL, "addons are not at the lock (TMC_ADDONS_LOCK=off); none advertised")
+		GSLog.info(CHANNEL, "addons are not at the lock (TMC_ADDONS_LOCK=off); none advertised")
 		return
 
 	# [b]A box runs the GameSpice Server its lock names, which may predate the field.[/b] Assigning
-	# a property an older DotServer does not declare is a script error at boot, so the
+	# a property an older GSServer does not declare is a script error at boot, so the
 	# question is asked of the object rather than assumed.
 	if not ("addon_set" in host.server):
-		DotLog.info(CHANNEL, "this dot-server cannot announce addons; clients keep their own", {
-			"needs": "dot-server with DotServer.addon_set",
+		GSLog.info(CHANNEL, "this dot-server cannot announce addons; clients keep their own", {
+			"needs": "dot-server with GSServer.addon_set",
 		})
 		return
 
@@ -50,14 +50,14 @@ func advertise() -> void:
 	if loaded.ok:
 		announced = TmcAddonSet.merge_overlays(announced, (loaded.value as TmcAddonsConfig).overlay_set())
 	else:
-		DotLog.warn(CHANNEL, "addons.yml overlays not announced: %s" % loaded.error.message)
+		GSLog.warn(CHANNEL, "addons.yml overlays not announced: %s" % loaded.error.message)
 
 	# server.yml's `addons:` list: installed by setup.sh, announced here at the listed version (the lock's when it names none).
 	var spaces := TmcAddonNamespaces.resolve((loaded.value as TmcAddonsConfig).namespaces if loaded.ok else PackedStringArray())
 	var listed := TmcAddonSet.addons_from_list(host.config.addons_listed, spaces, FileAccess.get_file_as_string(ADDONS_LOCK), dirs)
 
 	for problem in listed["errors"]:
-		DotLog.error(CHANNEL, "server.yml addons: not announced: %s" % problem)
+		GSLog.error(CHANNEL, "server.yml addons: not announced: %s" % problem)
 		push_error("TMC: server.yml addons: %s" % problem)
 
 	announced = TmcAddonSet.merge_overlays(announced, listed["entries"])
@@ -65,7 +65,7 @@ func advertise() -> void:
 	announced_set = announced
 	_publish_addon_set()
 
-	DotLog.info(CHANNEL, "the addon versions clients are told about", {
+	GSLog.info(CHANNEL, "the addon versions clients are told about", {
 		"addons": announced.size(), "lock": ADDONS_LOCK, "announce": host.config.addons_announce,
 	})
 
@@ -86,7 +86,7 @@ func advertise_groups() -> void:
 
 	if groups != told_groups:
 		told_groups = groups
-		DotLog.info(CHANNEL, "the download groups clients are told about", {
+		GSLog.info(CHANNEL, "the download groups clients are told about", {
 			"module": host._module_name, "groups": groups,
 		})
 
@@ -115,14 +115,14 @@ func _announced_now() -> Array:
 
 ## What a game's packs ask of the host's addons (`{dir: level}`, over its own pack and its dependencies), or null when not known: no game, a game with no
 ## delivered pack, or a pack whose requires.json has not been read. A dependency without one adds nothing; the game's own pack is the one that must be known.
-func _needs_of(descriptor: DotGameDescriptor) -> Variant:
+func _needs_of(descriptor: GSGameDescriptor) -> Variant:
 	if descriptor == null:
 		return null
 
 	# The game manager's descriptor is the loaded one, whose content id may be empty; the content list's names the pack and its dependencies,
 	# as the host's `_publish_requires` reads them.
-	var listed: DotGameDescriptor = host.content.find(descriptor.game_id) if host.content != null else null
-	var source: DotGameDescriptor = listed if listed != null else descriptor
+	var listed: GSGameDescriptor = host.content.find(descriptor.game_id) if host.content != null else null
+	var source: GSGameDescriptor = listed if listed != null else descriptor
 	var id := source.effective_content_id().get_slice("@", 0)
 	var own: Variant = host._pack_requires.get(id)
 
@@ -157,7 +157,7 @@ func _publish_addon_set() -> bool:
 	host.server.set("addon_set", wanted)
 
 	if host.config.addons_announce == TmcConfig.ADDONS_ANNOUNCE_GAME:
-		DotLog.info(CHANNEL, "the addons clients are told about (addons_announce: game)", {
+		GSLog.info(CHANNEL, "the addons clients are told about (addons_announce: game)", {
 			"addons": wanted.size(), "of": announced_set.size(),
 			"game": host.server.games.current_content_id() if host.server.games != null else "",
 			"next": change_to.content_id if change_to != null else "",
@@ -171,16 +171,16 @@ func wire() -> void:
 	if host.config.addons_announce != TmcConfig.ADDONS_ANNOUNCE_GAME or not ("addon_set" in host.server):
 		return
 
-	# Send-only here; the shell registers the handler. A shell that does not know it is not sent it (DotEnvelope).
+	# Send-only here; the shell registers the handler. A shell that does not know it is not sent it (GSEnvelope).
 	host.server.envelope.register(TmcAddonGroups.ANNOUNCE_KIND)
 	host.server.game_changing.connect(_on_game_changing)
 	host.server.games.game_load_failed.connect(_on_game_load_failed)
-	host.server.client_state_changed.connect(func(session: DotClientSession) -> void:
+	host.server.client_state_changed.connect(func(session: GSClientSession) -> void:
 		# The first state a session reports follows its challenge, which carried the set as it is now.
 		if session != null and not told.has(session.peer_id):
 			told[session.peer_id] = (host.server.get("addon_set") as Array).duplicate(true)
 	)
-	host.server.client_disconnected.connect(func(session: DotClientSession, _reason: String) -> void:
+	host.server.client_disconnected.connect(func(session: GSClientSession, _reason: String) -> void:
 		if session != null:
 			told.erase(session.peer_id)
 	)
@@ -191,7 +191,7 @@ func _on_game_changing(_from_key: String, _to_key: String) -> void:
 	announce_change()
 
 
-func _on_game_load_failed(_content_key: String, _error: DotError) -> void:
+func _on_game_load_failed(_content_key: String, _error: GSError) -> void:
 	change_to = null
 	_publish_addon_set()
 
@@ -227,10 +227,10 @@ func announce_change() -> void:
 
 		if host.server.send_kind(session.peer_id, TmcAddonGroups.ANNOUNCE_KIND, {"addons": wanted, "game": change_to.content_key()}):
 			told[session.peer_id] = wanted.duplicate(true)
-			DotLog.info(CHANNEL, "told a client the next game's addons", {"user": session.label(), "addons": dirs})
+			GSLog.info(CHANNEL, "told a client the next game's addons", {"user": session.label(), "addons": dirs})
 			continue
 
-		DotLog.warn(CHANNEL, "a client too old to be told the next game's addons is sent to rejoin", {
+		GSLog.warn(CHANNEL, "a client too old to be told the next game's addons is sent to rejoin", {
 			"user": session.label(), "addons": dirs,
 		})
 		host.server.kick(session, "The next game needs addons this client has not got. Rejoin to download them.")

@@ -16,14 +16,14 @@ var _server: TCPServer = null
 var _clients: Array[Dictionary] = []
 
 
-func start() -> DotResult:
+func start() -> GSResult:
 	_server = TCPServer.new()
 	var err := _server.listen(0, "127.0.0.1")
 	if err != OK:
-		return DotResult.fail(DotError.CODE_NETWORK, "The fake backbone could not listen.", error_string(err))
+		return GSResult.fail(GSError.CODE_NETWORK, "The fake backbone could not listen.", error_string(err))
 	port = _server.get_local_port()
 	set_process(true)
-	return DotResult.success(port)
+	return GSResult.success(port)
 
 
 func base_url() -> String:

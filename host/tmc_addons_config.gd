@@ -8,7 +8,7 @@ const CHANNEL := "tmc.content"
 ## The owner's file, under the config directory.
 ## Shares its file with the download list, which reads `entries:`; this reads `defaults:` and `games:`.
 const FILE := "content/addons.yml"
-## Before the cfg/ move; read through DotCfgLegacy until its cutoff.
+## Before the cfg/ move; read through GSCfgLegacy until its cutoff.
 const LEGACY_FILE := "addons.yml"
 
 ## The installer's answers, under the data directory: `{"packs": {"<owner>/<pack>": "<version>"}}`.
@@ -25,18 +25,18 @@ var namespaces: PackedStringArray = PackedStringArray()
 ## `owner/repo[@version]` -> `{dir, repo, id, version}` for an entry of `server.yml`'s `addons:` list, or a loud failure.
 ## [param namespaces] is [method TmcAddonNamespaces.resolve] of the trusted owners; [param lock_versions] is the lock's `repo -> version`, which an unpinned
 ## entry takes. The owner has to be trusted (a creator's code is never installed or announced by name alone) and the repository has to be one this box can name a directory for.
-static func addon_ref(raw: String, namespaces: PackedStringArray, lock_versions: Dictionary = {}) -> DotResult:
+static func addon_ref(raw: String, namespaces: PackedStringArray, lock_versions: Dictionary = {}) -> GSResult:
 	var parsed := parse_entry(raw)
 
 	if not parsed.ok:
-		return DotResult.fail(DotError.CODE_INVALID, "addons: %s" % parsed.error.message, "an addon is owner/repo or owner/repo@version, e.g. gamemann/dot-trail")
+		return GSResult.fail(GSError.CODE_INVALID, "addons: %s" % parsed.error.message, "an addon is owner/repo or owner/repo@version, e.g. gamemann/dot-trail")
 
 	var ref := TmcGameRef.parse(str(parsed.value))
 	var id := str(ref["id"])
 
 	if not TmcAddonNamespaces.covers(namespaces, id):
-		return DotResult.fail(
-			DotError.CODE_INVALID, "addons: '%s' is not from a trusted owner." % id,
+		return GSResult.fail(
+			GSError.CODE_INVALID, "addons: '%s' is not from a trusted owner." % id,
 			"trusted: %s; add the owner under namespaces: in cfg/content/addons.yml (and the same in your shell build)" % ", ".join(namespaces)
 		)
 
@@ -49,14 +49,14 @@ static func addon_ref(raw: String, namespaces: PackedStringArray, lock_versions:
 		version = str(lock_versions.get(lock, "")).trim_prefix("v")
 
 	if version == "":
-		return DotResult.fail(
-			DotError.CODE_INVALID, "addons: %s has no version." % id,
+		return GSResult.fail(
+			GSError.CODE_INVALID, "addons: %s has no version." % id,
 			"write %s@<version>, or add %s to addons.lock" % [id, TmcAddonNamespaces.lock_repo(dir)]
 		)
 
 	# The version decides the directory: fc-weapons up to 1.4.51 holds the legacy arena_weapons.
 	dir = TmcAddonNamespaces.dir_for_id(id, version)
-	return DotResult.success({"dir": dir, "repo": repo, "id": id, "version": version})
+	return GSResult.success({"dir": dir, "repo": repo, "id": id, "version": version})
 
 
 ## `overlays:`, `owner/repo@version` addon packs to announce to clients beyond `addons.lock`.
@@ -73,10 +73,10 @@ var warnings: PackedStringArray = PackedStringArray()
 
 
 ## Reads `cfg/content/addons.yml` and the installer's cache. A missing file is no extra packs.
-static func load_from(config_dir: String, data_dir: String) -> DotResult:
+static func load_from(config_dir: String, data_dir: String) -> GSResult:
 	var out := TmcAddonsConfig.new()
 	var dir := config_dir.rstrip("/")
-	var path := DotCfgLegacy.find("%s/%s" % [dir, LEGACY_FILE], "%s/%s" % [dir, FILE])
+	var path := GSCfgLegacy.find("%s/%s" % [dir, LEGACY_FILE], "%s/%s" % [dir, FILE])
 
 	if path != "" and FileAccess.file_exists(path):
 		var parsed := TmcYaml.parse_file(path)
@@ -97,21 +97,21 @@ static func load_from(config_dir: String, data_dir: String) -> DotResult:
 		if body is Dictionary and (body as Dictionary).get("packs") is Dictionary:
 			out.resolved = (body as Dictionary)["packs"]
 
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
 ## The `defaults:` section: only `add:`, which becomes [member defaults_add].
-func _read_defaults(tree: Dictionary) -> DotResult:
+func _read_defaults(tree: Dictionary) -> GSResult:
 	var defaults: Variant = tree.get("defaults", {})
 
 	if defaults != null and not (defaults is String and str(defaults) == ""):
 		if not (defaults is Dictionary):
-			return DotResult.fail(DotError.CODE_INVALID, "defaults: must be a mapping with add:.")
+			return GSResult.fail(GSError.CODE_INVALID, "defaults: must be a mapping with add:.")
 
 		for key: String in (defaults as Dictionary):
 			if key != "add":
-				return DotResult.fail(
-					DotError.CODE_INVALID, "defaults: unknown key '%s'." % key,
+				return GSResult.fail(
+					GSError.CODE_INVALID, "defaults: unknown key '%s'." % key,
 					"defaults takes add; remove is per game"
 				)
 
@@ -122,15 +122,15 @@ func _read_defaults(tree: Dictionary) -> DotResult:
 
 		defaults_add = added.value
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## Takes a parsed `content/addons.yml` apart, refusing what it would otherwise have to guess at.
-func read(tree: Dictionary) -> DotResult:
+func read(tree: Dictionary) -> GSResult:
 	for key: String in tree:
 		if not key in ["defaults", "games", "namespaces", "overlays", "entries", "merge", "remove"]:
-			return DotResult.fail(
-				DotError.CODE_INVALID,
+			return GSResult.fail(
+				GSError.CODE_INVALID,
 				"Unknown top-level key '%s'." % key,
 				"expected defaults: and games:; see cfg.example/%s" % FILE
 			)
@@ -155,8 +155,8 @@ func read(tree: Dictionary) -> DotResult:
 		var ref := TmcGameRef.parse(entry)
 
 		if str(ref["version"]) == "" or not TmcAddonNamespaces.covers(TmcAddonNamespaces.resolve(namespaces), str(ref["id"])):
-			return DotResult.fail(
-				DotError.CODE_INVALID, "overlays: %s needs @version and an owner listed under namespaces:." % entry,
+			return GSResult.fail(
+				GSError.CODE_INVALID, "overlays: %s needs @version and an owner listed under namespaces:." % entry,
 				"a creator's addon is announced only when its owner is trusted"
 			)
 
@@ -165,14 +165,14 @@ func read(tree: Dictionary) -> DotResult:
 
 
 ## The `games:` section: each game's `add:` and `remove:` lists, into [member games].
-func _read_games(tree: Dictionary) -> DotResult:
+func _read_games(tree: Dictionary) -> GSResult:
 	var listed: Variant = tree.get("games", {})
 
 	if listed == null or (listed is String and str(listed) == ""):
 		listed = {}
 
 	if not (listed is Dictionary):
-		return DotResult.fail(DotError.CODE_INVALID, "games: must map a game id to its packs.")
+		return GSResult.fail(GSError.CODE_INVALID, "games: must map a game id to its packs.")
 
 	for game: String in (listed as Dictionary):
 		var section: Variant = (listed as Dictionary)[game]
@@ -185,12 +185,12 @@ func _read_games(tree: Dictionary) -> DotResult:
 			section = {}
 
 		if not (section is Dictionary):
-			return DotResult.fail(DotError.CODE_INVALID, "%s must be a mapping with add: and remove:." % where)
+			return GSResult.fail(GSError.CODE_INVALID, "%s must be a mapping with add: and remove:." % where)
 
 		for key: String in (section as Dictionary):
 			if not key in SECTION_KEYS:
-				return DotResult.fail(
-					DotError.CODE_INVALID, "%s: unknown key '%s'." % [where, key],
+				return GSResult.fail(
+					GSError.CODE_INVALID, "%s: unknown key '%s'." % [where, key],
 					"a game's packs here are add and remove"
 				)
 
@@ -204,12 +204,12 @@ func _read_games(tree: Dictionary) -> DotResult:
 
 		games[game] = entry
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## The packs [param descriptor] gets, `owner/pack@version` where a version is known and `owner/pack`
 ## where it is not yet (install-games pins those).
-func entries_for(descriptor: DotGameDescriptor) -> PackedStringArray:
+func entries_for(descriptor: GSGameDescriptor) -> PackedStringArray:
 	var own: Dictionary = TmcGameConfig.section_in(games, descriptor)
 	var removed := PackedStringArray()
 	var by_id := {}
@@ -289,7 +289,7 @@ func apply_all(content: TmcContent) -> int:
 
 ## Appends [param descriptor]'s packs to `dependencies`, AFTER what the game lists, without
 ## repeating a content id it already has. True when anything was added.
-func apply(descriptor: DotGameDescriptor) -> bool:
+func apply(descriptor: GSGameDescriptor) -> bool:
 	var have := {}
 
 	for key in descriptor.dependencies:
@@ -327,7 +327,7 @@ func apply(descriptor: DotGameDescriptor) -> bool:
 
 	# Assigned back: a PackedStringArray is a value, and `deps` is a copy of the property.
 	descriptor.dependencies = deps
-	DotLog.info(CHANNEL, "extra packs added to a game for this server", {
+	GSLog.info(CHANNEL, "extra packs added to a game for this server", {
 		"game": descriptor.game_id, "packs": ", ".join(added),
 	})
 	return true
@@ -349,67 +349,67 @@ func describe_lines() -> PackedStringArray:
 
 
 ## `<owner>/<pack>` or `<owner>/<pack>@<version>` -> normalised `id[@version]`, or a failure.
-static func parse_entry(raw: String) -> DotResult:
+static func parse_entry(raw: String) -> GSResult:
 	var ref := TmcGameRef.parse(raw)
 	var id := str(ref["id"])
 	var segments := id.split("/")
 
 	if segments.size() != 2 or "" in segments:
-		return DotResult.fail(
-			DotError.CODE_INVALID, "'%s' is not <owner>/<pack>." % raw,
+		return GSResult.fail(
+			GSError.CODE_INVALID, "'%s' is not <owner>/<pack>." % raw,
 			"a pack here is a published content id, e.g. someone/extra-sounds"
 		)
 
 	var version := str(ref["version"])
-	return DotResult.success(id if version == "" else "%s@%s" % [id, version])
+	return GSResult.success(id if version == "" else "%s@%s" % [id, version])
 
 
-func _read_list(where: String, field: String, value: Variant) -> DotResult:
+func _read_list(where: String, field: String, value: Variant) -> GSResult:
 	var out := PackedStringArray()
 
 	if value == null or (value is String and str(value) == ""):
-		return DotResult.success(out)
+		return GSResult.success(out)
 
 	if not (value is Array):
-		return DotResult.fail(DotError.CODE_INVALID, "%s: %s must be a list." % [where, field])
+		return GSResult.fail(GSError.CODE_INVALID, "%s: %s must be a list." % [where, field])
 
 	for raw in value:
 		var one := parse_entry(str(raw))
 
 		if not one.ok:
-			return DotResult.fail(
-				DotError.CODE_INVALID, "%s: %s: %s" % [where, field, one.error.message],
+			return GSResult.fail(
+				GSError.CODE_INVALID, "%s: %s: %s" % [where, field, one.error.message],
 				str(one.error.detail)
 			)
 
 		if not out.has(str(one.value)):
 			out.append(str(one.value))
 
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
-func _read_namespaces(value: Variant) -> DotResult:
+func _read_namespaces(value: Variant) -> GSResult:
 	var out := PackedStringArray()
 
 	if value == null or (value is String and str(value) == ""):
-		return DotResult.success(out)
+		return GSResult.success(out)
 
 	if not (value is Array):
-		return DotResult.fail(DotError.CODE_INVALID, "namespaces: must be a list of owner/ or owner/repo.")
+		return GSResult.fail(GSError.CODE_INVALID, "namespaces: must be a list of owner/ or owner/repo.")
 
 	for raw in value:
 		var entry := str(raw).strip_edges()
 
 		if not TmcAddonNamespaces.is_valid(entry):
-			return DotResult.fail(
-				DotError.CODE_INVALID, "namespaces: '%s' is not owner/ or owner/repo." % entry,
+			return GSResult.fail(
+				GSError.CODE_INVALID, "namespaces: '%s' is not owner/ or owner/repo." % entry,
 				"no wildcards; an owner ends in a slash"
 			)
 
 		if not out.has(entry):
 			out.append(entry)
 
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
 ## `{dir, repo, id, version}` for each `overlays:` entry, in the shape `addon_set_from` returns. The directory is [method TmcAddonNamespaces.dir_for] (the inverse of `TmcHost.addon_repo`): an overlay of `gamemann/zee-dot-weapons` replaces the lock's `zee_weapons`, not a `zee_dot_weapons` no pack carries (the shell refused that as "not an addon pack" and joined on its own copy). The version decides a renamed directory: `gamemann/fc-weapons@1.4.40` is the legacy `arena_weapons` (with a warning), a newer one `fc_weapons`.

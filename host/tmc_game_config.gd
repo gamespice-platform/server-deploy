@@ -8,7 +8,7 @@ const CHANNEL := "tmc.content"
 
 ## The owner's file, under the config directory.
 const FILE := "server/content/overrides.yml"
-## Before the cfg/ move; read through DotCfgLegacy until its cutoff.
+## Before the cfg/ move; read through GSCfgLegacy until its cutoff.
 const LEGACY_FILE := "content.yml"
 
 ## A game's own file, `cfg/game/<game>/server.yml` (the successor of its `games:` entry).
@@ -85,14 +85,14 @@ func _init() -> void:
 
 ## Reads `cfg/server/content/overrides.yml` and the installer's cache. A missing file is no overrides, not
 ## an error: a server that takes every game as its author shipped it needs nothing here.
-static func load_from(config_dir: String, data_dir: String) -> DotResult:
+static func load_from(config_dir: String, data_dir: String) -> GSResult:
 	var out := TmcGameConfig.new()
 	var dir := config_dir.rstrip("/")
 
 	for line in TmcGameCfgDirs.migrate_retired_dirs(dir):
-		DotLog.warn(CHANNEL, line)  # A WRN naming the retired directory, so an operator renames it at the source too.
+		GSLog.warn(CHANNEL, line)  # A WRN naming the retired directory, so an operator renames it at the source too.
 
-	var path := DotCfgLegacy.find("%s/%s" % [dir, LEGACY_FILE], "%s/%s" % [dir, FILE])
+	var path := GSCfgLegacy.find("%s/%s" % [dir, LEGACY_FILE], "%s/%s" % [dir, FILE])
 
 	if path != "" and FileAccess.file_exists(path):
 		var parsed := TmcYaml.parse_file(path)
@@ -121,13 +121,13 @@ static func load_from(config_dir: String, data_dir: String) -> DotResult:
 		if body is Dictionary and (body as Dictionary).get("collections") is Dictionary:
 			out.collections = (body as Dictionary)["collections"]
 
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
 ## Reads `cfg/game/<game>/server.yml` (the game's shipped tier) then
 ## `cfg/server/game/<game>/server.yml` (the operator's, never touched by an update) for every game
 ## directory, laid over what `overrides.yml` said for that game (key by key.
-func read_game_files(config_dir: String) -> DotResult:
+func read_game_files(config_dir: String) -> GSResult:
 	var base := config_dir.rstrip("/")
 	var names := {}
 
@@ -148,12 +148,12 @@ func read_game_files(config_dir: String) -> DotResult:
 			if not done.ok:
 				return done
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
-func _read_game_file(path: String, game: String) -> DotResult:
+func _read_game_file(path: String, game: String) -> GSResult:
 	if not FileAccess.file_exists(path):
-		return DotResult.success(null)
+		return GSResult.success(null)
 
 	var parsed := TmcYaml.parse_file(path)
 
@@ -161,7 +161,7 @@ func _read_game_file(path: String, game: String) -> DotResult:
 		return parsed.wrap("Could not read %s" % path)
 
 	if not (parsed.value is Dictionary):
-		return DotResult.fail(DotError.CODE_PARSE, "%s must contain a mapping." % path)
+		return GSResult.fail(GSError.CODE_PARSE, "%s must contain a mapping." % path)
 
 	var raw := (parsed.value as Dictionary).duplicate()
 
@@ -179,7 +179,7 @@ func _read_game_file(path: String, game: String) -> DotResult:
 
 	if merged.is_empty():
 		games[game] = section.value
-		return DotResult.success(null)
+		return GSResult.success(null)
 
 	for key: String in raw:
 		if key in ["cvars", "metadata"]:
@@ -188,16 +188,16 @@ func _read_game_file(path: String, game: String) -> DotResult:
 			merged[key] = section.value[key]
 
 	games[game] = merged
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## Takes a parsed `overrides.yml` apart. Refuses anything it would otherwise have to guess
 ## about, naming the key: an override that is silently ignored is the bug this replaces.
-func read(tree: Dictionary) -> DotResult:
+func read(tree: Dictionary) -> GSResult:
 	for key: String in tree:
 		if not key in ["defaults", "games"]:
-			return DotResult.fail(
-				DotError.CODE_INVALID,
+			return GSResult.fail(
+				GSError.CODE_INVALID,
 				"Unknown top-level key '%s'." % key,
 				"expected defaults: and games:; see cfg.example/%s" % FILE
 			)
@@ -215,7 +215,7 @@ func read(tree: Dictionary) -> DotResult:
 		listed = {}
 
 	if not (listed is Dictionary):
-		return DotResult.fail(DotError.CODE_INVALID, "games: must map a game id to its settings.")
+		return GSResult.fail(GSError.CODE_INVALID, "games: must map a game id to its settings.")
 
 	for game: String in (listed as Dictionary):
 		var section := _read_section("games: " + game, (listed as Dictionary)[game])
@@ -225,7 +225,7 @@ func read(tree: Dictionary) -> DotResult:
 
 		games[game] = section.value
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## Every map entry the file names for the games in [param content], qualified: what the installer
@@ -263,25 +263,25 @@ func all_map_entries(content: TmcContent = null) -> PackedStringArray:
 
 
 ## The maps of one collection from its published `collection.json` body: `{"format": 1, "id":
-## "<owner>/<collection>", "version": "...", "packs": ["<owner>/<map>"]}`. Returns a DotResult of a
+## "<owner>/<collection>", "version": "...", "packs": ["<owner>/<map>"]}`. Returns a GSResult of a
 ## PackedStringArray of `owner/map` ids.
-static func parse_collection(collection: String, body: Variant) -> DotResult:
+static func parse_collection(collection: String, body: Variant) -> GSResult:
 	if not (body is Dictionary):
-		return DotResult.fail(DotError.CODE_INVALID, "collection %s: collection.json is not an object." % collection)
+		return GSResult.fail(GSError.CODE_INVALID, "collection %s: collection.json is not an object." % collection)
 
 	var doc := body as Dictionary
 	var format := int(doc.get("format", 0)) if (doc.get("format") is int or doc.get("format") is float) else 0
 
 	if format < 1 or format > COLLECTION_FORMAT:
-		return DotResult.fail(
-			DotError.CODE_INVALID, "collection %s: collection.json format %s is not one this build reads." % [collection, str(doc.get("format"))],
+		return GSResult.fail(
+			GSError.CODE_INVALID, "collection %s: collection.json format %s is not one this build reads." % [collection, str(doc.get("format"))],
 			"this build reads format %d; update the server" % COLLECTION_FORMAT)
 
 	if str(doc.get("id", collection)) != collection:
-		return DotResult.fail(DotError.CODE_INVALID, "collection %s: collection.json says it is %s." % [collection, str(doc.get("id"))])
+		return GSResult.fail(GSError.CODE_INVALID, "collection %s: collection.json says it is %s." % [collection, str(doc.get("id"))])
 
 	if not (doc.get("packs") is Array):
-		return DotResult.fail(DotError.CODE_INVALID, "collection %s: collection.json has no packs list." % collection)
+		return GSResult.fail(GSError.CODE_INVALID, "collection %s: collection.json has no packs list." % collection)
 
 	var out := PackedStringArray()
 
@@ -289,18 +289,18 @@ static func parse_collection(collection: String, body: Variant) -> DotResult:
 		var parts := str(pack).split("/")
 
 		if not (pack is String) or parts.size() != 2 or "" in parts or str(pack).contains("@") or str(pack).contains("*"):
-			return DotResult.fail(DotError.CODE_INVALID, "collection %s: '%s' is not an owner/map pack id." % [collection, str(pack)])
+			return GSResult.fail(GSError.CODE_INVALID, "collection %s: '%s' is not an owner/map pack id." % [collection, str(pack)])
 
 		if not out.has(str(pack)):
 			out.append(str(pack))
 
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
 ## Who a bare map name belongs to for [param descriptor]; "" when nothing says. The order
 ## is in the class comment. The cvar is read as the game will run with it: its
 ## `game.yml` value, then `defaults:`, then the game's section.
-func map_owner_for(descriptor: DotGameDescriptor) -> String:
+func map_owner_for(descriptor: GSGameDescriptor) -> String:
 	var own := _section_for(descriptor)
 
 	if str(own.get("map_owner", "")) != "":
@@ -321,9 +321,9 @@ func map_owner_for(descriptor: DotGameDescriptor) -> String:
 
 
 ## Which of the game's `suggested:` groups this server offers: all, none or a comma list. The command line (`--no-suggested`, `--suggested=<mode>`, `--no-suggested-<group>`) wins, then the game's `suggested_maps:`, then `defaults:`, then the `sv_suggested_maps` cvar, then all.
-func suggested_mode_for(descriptor: DotGameDescriptor) -> String:
+func suggested_mode_for(descriptor: GSGameDescriptor) -> String:
 	var own := _section_for(descriptor)
-	var fallback := DotCloudSuggested.MODE_ALL
+	var fallback := GSCloudSuggested.MODE_ALL
 
 	if own.has("suggested_maps"):
 		fallback = str(own["suggested_maps"])
@@ -337,23 +337,23 @@ func suggested_mode_for(descriptor: DotGameDescriptor) -> String:
 
 		if raw != "":
 			var mode := _suggested_mode_of(raw)
-			if DotCloudSuggested.valid_mode(mode):
+			if GSCloudSuggested.valid_mode(mode):
 				fallback = mode
 
-	var groups := DotCloudSuggested.groups_of(
-		DotCloudSuggested.from_entries(PackedStringArray(descriptor.metadata.get("suggested", []))))
-	return DotCloudSuggested.mode_from_args(OS.get_cmdline_args(), groups, fallback)
+	var groups := GSCloudSuggested.groups_of(
+		GSCloudSuggested.from_entries(PackedStringArray(descriptor.metadata.get("suggested", []))))
+	return GSCloudSuggested.mode_from_args(OS.get_cmdline_args(), groups, fallback)
 
 
 ## The map packs from the game's `suggested:` that [method suggested_mode_for] keeps, as unpinned `owner/id` entries.
-func suggested_entries(descriptor: DotGameDescriptor) -> PackedStringArray:
+func suggested_entries(descriptor: GSGameDescriptor) -> PackedStringArray:
 	var out := PackedStringArray()
 	var declared := PackedStringArray(descriptor.metadata.get("suggested", []))
 
 	if declared.is_empty():
 		return out
 
-	var kept := DotCloudSuggested.select(DotCloudSuggested.from_entries(declared), suggested_mode_for(descriptor))
+	var kept := GSCloudSuggested.select(GSCloudSuggested.from_entries(declared), suggested_mode_for(descriptor))
 	var owner := map_owner_for(descriptor)
 
 	for e in kept:
@@ -368,7 +368,7 @@ func suggested_entries(descriptor: DotGameDescriptor) -> PackedStringArray:
 ## `suggested_maps:` as a mode string: true is all, false is none, a list is its groups.
 static func _suggested_mode_of(value: Variant) -> String:
 	if value is bool:
-		return DotCloudSuggested.MODE_ALL if value else DotCloudSuggested.MODE_NONE
+		return GSCloudSuggested.MODE_ALL if value else GSCloudSuggested.MODE_NONE
 
 	if value is Array:
 		return ",".join(PackedStringArray(value))
@@ -426,7 +426,7 @@ func apply_all(content: TmcContent) -> int:
 
 ## Lays `defaults:` and then the game's own section over [param descriptor]. True when
 ## anything changed.
-func apply(descriptor: DotGameDescriptor) -> bool:
+func apply(descriptor: GSGameDescriptor) -> bool:
 	var before := [descriptor.display_name, descriptor.max_players,
 		descriptor.cvars.duplicate(true), descriptor.metadata.duplicate(true), descriptor.maps,
 		descriptor.dependencies, descriptor.server_dependencies]
@@ -450,7 +450,7 @@ func apply(descriptor: DotGameDescriptor) -> bool:
 	if str(before) == str(after):
 		return false
 
-	DotLog.info(CHANNEL, "the server's settings for a game override its own", {
+	GSLog.info(CHANNEL, "the server's settings for a game override its own", {
 		"game": descriptor.game_id,
 		"maps": descriptor.maps.size(),
 		"cvars": descriptor.cvars.size(),
@@ -485,7 +485,7 @@ func describe_lines() -> PackedStringArray:
 
 ## One section, normalised: `cvars` and `metadata` always Dictionaries, `maps` always
 ## `{"add", "remove", "game_maps"}`, `name` and `max_players` only when written.
-func _read_section(where: String, value: Variant) -> DotResult:
+func _read_section(where: String, value: Variant) -> GSResult:
 	var out := {
 		"cvars": {},
 		"metadata": {},
@@ -493,24 +493,24 @@ func _read_section(where: String, value: Variant) -> DotResult:
 	}
 
 	if value == null or (value is String and str(value) == ""):
-		return DotResult.success(out)
+		return GSResult.success(out)
 
 	if not (value is Dictionary):
-		return DotResult.fail(DotError.CODE_INVALID, "%s must be a mapping." % where)
+		return GSResult.fail(GSError.CODE_INVALID, "%s must be a mapping." % where)
 
 	var section := value as Dictionary
 
 	for key: String in section:
 		if key in IDENTITY:
-			return DotResult.fail(
-				DotError.CODE_INVALID,
+			return GSResult.fail(
+				GSError.CODE_INVALID,
 				"%s: '%s' cannot be overridden by a server." % [where, key],
 				"it says which game this is; a different value is a different game"
 			)
 
 		if not key in KEYS:
-			return DotResult.fail(
-				DotError.CODE_INVALID,
+			return GSResult.fail(
+				GSError.CODE_INVALID,
 				"%s: unknown key '%s'." % [where, key],
 				"a game's settings here are %s" % ", ".join(KEYS)
 			)
@@ -520,7 +520,7 @@ func _read_section(where: String, value: Variant) -> DotResult:
 
 	if section.has("max_players"):
 		if not str(section["max_players"]).is_valid_int():
-			return DotResult.fail(DotError.CODE_INVALID, "%s: max_players must be a number." % where)
+			return GSResult.fail(GSError.CODE_INVALID, "%s: max_players must be a number." % where)
 		out["max_players"] = int(section["max_players"])
 
 	for key in ["cvars", "metadata"]:
@@ -530,7 +530,7 @@ func _read_section(where: String, value: Variant) -> DotResult:
 			continue
 
 		if not (block is Dictionary):
-			return DotResult.fail(DotError.CODE_INVALID, "%s: %s must be a mapping." % [where, key])
+			return GSResult.fail(GSError.CODE_INVALID, "%s: %s must be a mapping." % [where, key])
 
 		out[key] = TmcContent.flatten_cvars(block) if key == "cvars" else block
 
@@ -538,8 +538,8 @@ func _read_section(where: String, value: Variant) -> DotResult:
 		var who := str(section["map_owner"]).strip_edges()
 
 		if who == "" or who.contains("/") or who.contains("@") or who.contains(" "):
-			return DotResult.fail(
-				DotError.CODE_INVALID, "%s: map_owner must be one owner name, e.g. gamemann." % where
+			return GSResult.fail(
+				GSError.CODE_INVALID, "%s: map_owner must be one owner name, e.g. gamemann." % where
 			)
 
 		out["map_owner"] = who
@@ -547,9 +547,9 @@ func _read_section(where: String, value: Variant) -> DotResult:
 	if section.has("suggested_maps"):
 		var mode := _suggested_mode_of(section["suggested_maps"])
 
-		if not DotCloudSuggested.valid_mode(mode):
-			return DotResult.fail(
-				DotError.CODE_INVALID,
+		if not GSCloudSuggested.valid_mode(mode):
+			return GSResult.fail(
+				GSError.CODE_INVALID,
 				"%s: suggested_maps must be true, false, all, none or a list of groups like dm,surf." % where
 			)
 
@@ -561,10 +561,10 @@ func _read_section(where: String, value: Variant) -> DotResult:
 		return maps
 
 	out["maps"] = maps.value
-	return DotResult.success(out)
+	return GSResult.success(out)
 
 
-func _read_maps(where: String, value: Variant) -> DotResult:
+func _read_maps(where: String, value: Variant) -> GSResult:
 	# Built here and assigned once: a PackedStringArray is a value, so appending through
 	# `rule[field] as PackedStringArray` appends to a copy nobody keeps.
 	var add := PackedStringArray()
@@ -577,14 +577,14 @@ func _read_maps(where: String, value: Variant) -> DotResult:
 		value = {}
 
 	if not (value is Dictionary):
-		return DotResult.fail(
-			DotError.CODE_INVALID, "%s: maps must be a list, or add/remove/game_maps." % where
+		return GSResult.fail(
+			GSError.CODE_INVALID, "%s: maps must be a list, or add/remove/game_maps." % where
 		)
 
 	for key: String in (value as Dictionary):
 		if not key in ["add", "remove", "game_maps"]:
-			return DotResult.fail(
-				DotError.CODE_INVALID, "%s: maps: unknown key '%s'." % [where, key],
+			return GSResult.fail(
+				GSError.CODE_INVALID, "%s: maps: unknown key '%s'." % [where, key],
 				"maps takes add, remove and game_maps"
 			)
 
@@ -595,8 +595,8 @@ func _read_maps(where: String, value: Variant) -> DotResult:
 			continue
 
 		if not (listed is Array):
-			return DotResult.fail(
-				DotError.CODE_INVALID, "%s: maps: %s must be a list." % [where, field]
+			return GSResult.fail(
+				GSError.CODE_INVALID, "%s: maps: %s must be a list." % [where, field]
 			)
 
 		for entry in listed:
@@ -606,8 +606,8 @@ func _read_maps(where: String, value: Variant) -> DotResult:
 			var shape := TmcGameRef.qualify_map(str(entry), "x")
 
 			if not bool(shape["ok"]):
-				return DotResult.fail(
-					DotError.CODE_INVALID,
+				return GSResult.fail(
+					GSError.CODE_INVALID,
 					"%s: maps: '%s' %s." % [where, str(entry), shape["why"]],
 					"a map here is a published pack: gamemann/surf_mesa, or surf_mesa with a map_owner"
 				)
@@ -624,13 +624,13 @@ func _read_maps(where: String, value: Variant) -> DotResult:
 				remove.append(str(ref["id"]))
 
 	game_maps = bool((value as Dictionary).get("game_maps", true))
-	return DotResult.success({"add": add, "remove": remove, "game_maps": game_maps})
+	return GSResult.success({"add": add, "remove": remove, "game_maps": game_maps})
 
 
 
 
 func _apply_section(
-	descriptor: DotGameDescriptor, section: Dictionary, owner: String, suggested := PackedStringArray()
+	descriptor: GSGameDescriptor, section: Dictionary, owner: String, suggested := PackedStringArray()
 ) -> void:
 	if section.has("name"):
 		descriptor.display_name = str(section["name"])
@@ -666,7 +666,7 @@ func _apply_section(
 ## When a game's maps are fetched, which only the game can say: `metadata: maps_delivery:` in its
 ## game.yml. - `lazy` (or absent): only in `maps`, fetched when the server changes to one. For a
 ## game whose maps are large scenes, one pack each -- a gigabyte before boot otherwise.
-func _maps_to_clients(descriptor: DotGameDescriptor) -> void:
+func _maps_to_clients(descriptor: GSGameDescriptor) -> void:
 	var mode := str(descriptor.metadata.get("maps_delivery", "lazy"))
 	var into: PackedStringArray
 
@@ -713,7 +713,7 @@ static func _merged(base: Variant, over: Variant) -> Variant:
 	return out
 
 
-func _maps(descriptor: DotGameDescriptor, rule: Dictionary) -> PackedStringArray:
+func _maps(descriptor: GSGameDescriptor, rule: Dictionary) -> PackedStringArray:
 	var by_id := {}
 	var order := PackedStringArray()
 
@@ -823,14 +823,14 @@ func _members_of(wildcard: String) -> PackedStringArray:
 
 
 ## The section for a descriptor: by its whole id, by its content id, by its name half, then by a former id.
-func _section_for(descriptor: DotGameDescriptor) -> Dictionary:
+func _section_for(descriptor: GSGameDescriptor) -> Dictionary:
 	return section_in(games, descriptor)
 
 
 ## [method _section_for] over any `games:` map, because `cfg/addons.yml` keys its games the
 ## same way and a second copy of the lookup would let the two files disagree about which
 ## game `airdrift` means.
-static func section_in(sections: Dictionary, descriptor: DotGameDescriptor) -> Dictionary:
+static func section_in(sections: Dictionary, descriptor: GSGameDescriptor) -> Dictionary:
 	for key in spellings(descriptor):
 		if key != "" and sections.has(key):
 			return sections[key]
@@ -859,7 +859,7 @@ static func key_matches_any(key: String, content: TmcContent) -> bool:
 
 ## What a `games:` key may call a game: its id, its content id, its name half, then the ids it
 ## had before a rename -- after the current ones, so a section for the new id wins.
-static func spellings(descriptor: DotGameDescriptor) -> Array:
+static func spellings(descriptor: GSGameDescriptor) -> Array:
 	var out: Array = [descriptor.game_id, descriptor.content_id, name_half(descriptor.game_id)]
 	var own := cfg_id(descriptor)
 
@@ -889,7 +889,7 @@ static func _content_id(key: String) -> String:
 
 
 ## The directory name under `cfg/game/` this game's settings live in, e.g. `game-fatal-contact`: its repository name. A game this build carries is named by [constant BUILTIN_CFG_IDS] (a `hungry_<mode>` is `game-hungario-<mode>`), a published one by the name half of its id, with a retired id mapped to the current one.
-static func cfg_id(descriptor: DotGameDescriptor) -> String:
+static func cfg_id(descriptor: GSGameDescriptor) -> String:
 	var id := descriptor.game_id
 
 	if id.contains("/"):

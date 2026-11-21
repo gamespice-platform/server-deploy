@@ -1,7 +1,7 @@
 class_name TmcRadioLink
 extends Node
 
-## The shell's half of GameSpice Radio: a `DotRadioClient` pointed at the station URL the server sends.
+## The shell's half of GameSpice Radio: a `GSRadioClient` pointed at the station URL the server sends.
 ## Nothing plays until the player presses the `radio_toggle` key (the client's own input handler
 ## calls tune_in from that gesture); this never tunes in itself.
 
@@ -18,8 +18,8 @@ func adopt(data: Dictionary) -> bool:
 	if radio != null:
 		radio.base_url = url
 		return true
-	var client_script := _script_named("DotRadioClient")
-	var sink_script := _script_named("DotRadioSinkGodot")
+	var client_script := _script_named("GSRadioClient")
+	var sink_script := _script_named("GSRadioSinkGodot")
 	if client_script == null or sink_script == null:
 		return false
 	radio = client_script.new()

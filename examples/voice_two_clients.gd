@@ -31,14 +31,14 @@ var _data := "user://tmc_voice_two_clients"
 var _config := "user://tmc_voice_two_clients_cfg"
 var _host: Node = null
 var _sides: Array[Node] = []
-var _links: Array[DotClientLink] = []
+var _links: Array[GSClientLink] = []
 var _passed := 0
 var _failed := 0
 var _result := {}
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else DotLog.Level.ERROR)
+	GSLog.set_level(GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else GSLog.Level.ERROR)
 	var args := OS.get_cmdline_user_args()
 	for i in range(args.size() - 1):
 		if args[i] == "--game":
@@ -84,13 +84,13 @@ func _run() -> void:
 			return
 
 	_write_config()
-	DotPaths.remove_tree(_data)
+	GSPaths.remove_tree(_data)
 	var ok := await _boot() and await _connect_both()
 	if ok:
 		await _probe()
 	await _teardown()
-	DotPaths.remove_tree(_data)
-	DotPaths.remove_tree(_config)
+	GSPaths.remove_tree(_data)
+	GSPaths.remove_tree(_config)
 	_result["passed"] = _passed
 	_result["failed"] = _failed
 	print("%d passed, %d failed" % [_passed, _failed])
@@ -101,7 +101,7 @@ func _run() -> void:
 ## A fixture of this suite's own, so one scene serves every game: the shared fixture files
 ## with this game in server.yml, the vote off, and a port nothing else here uses.
 func _write_config() -> void:
-	DotPaths.remove_tree(_config)
+	GSPaths.remove_tree(_config)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_config))
 	for name in DirAccess.get_files_at("res://examples/fixtures"):
 		if name.ends_with(".yml"):
@@ -127,8 +127,8 @@ func _write_config() -> void:
 			f.close()
 
 
-func _server() -> DotServer:
-	return _host.server as DotServer
+func _server() -> GSServer:
+	return _host.server as GSServer
 
 
 func _boot() -> bool:
@@ -136,12 +136,12 @@ func _boot() -> bool:
 	_host = (packed as PackedScene).instantiate()
 	_host.auto_start = false
 	ServerWorld.add(self, _host)
-	var started: DotResult = await _host.start(_config, CONTENT, _data)
+	var started: GSResult = await _host.start(_config, CONTENT, _data)
 	if not _check(started.ok, "the host boots (%s)" % (str(started.error) if not started.ok else "ok")):
 		return false
 	var reached := await _until(func() -> bool:
 		var current := _server().games.current()
-		return current != null and current.game_id == _game and _server().games.phase == DotGameManager.Phase.IDLE, 60.0)
+		return current != null and current.game_id == _game and _server().games.phase == GSGameManager.Phase.IDLE, 60.0)
 	return _check(reached, "and reaches the delivered game")
 
 
@@ -150,7 +150,7 @@ func _boot() -> bool:
 ## player and kicked her ("You joined from another tab or window").
 func _key_by_session() -> void:
 	for name in _server().modules.loaded_names():
-		var module: DotModule = _server().modules.get_module(name)
+		var module: GSModule = _server().modules.get_module(name)
 		var bridge: Variant = module.get("bridge") if module != null else null
 		if bridge is Object and "key_fn" in (bridge as Object):
 			(bridge as Object).set("key_fn", Callable())
@@ -163,7 +163,7 @@ func _connect_both() -> bool:
 		side.name = "ClientSide%d" % i
 		add_child(side)
 		get_tree().set_multiplayer(MultiplayerAPI.create_default_interface(), side.get_path())
-		var link := DotClientLink.new()
+		var link := GSClientLink.new()
 		link.name = "Server"
 		link.player_name = ["Ada", "Bea"][i]
 		side.add_child(link)
@@ -171,7 +171,7 @@ func _connect_both() -> bool:
 		_links.append(link)
 		var spawned := [false]
 		link.spawned.connect(func() -> void: spawned[0] = true)
-		var connecting: DotResult = await link.connect_to_server("127.0.0.1:%d" % PORT)
+		var connecting: GSResult = await link.connect_to_server("127.0.0.1:%d" % PORT)
 		if not connecting.ok or not await _until(func() -> bool: return spawned[0], 60.0):
 			return _check(false, "client %d finishes signon" % i)
 	return _check(true, "two clients finish signon over a real socket")
@@ -192,14 +192,14 @@ static func _find(root: Node, cls: String) -> Array[Node]:
 
 
 func _probe() -> void:
-	var routers := _find(_host, "DotVoiceRouter")
+	var routers := _find(_host, "GSVoiceRouter")
 	# A client builds its voice with its scene, which may finish a few frames after signon.
 	var _built := await _until(func() -> bool:
-		return _find(_sides[0], "DotVoiceManager").size() > 0 and _find(_sides[1], "DotVoiceManager").size() > 0, 15.0)
-	var a_mgrs := _find(_sides[0], "DotVoiceManager")
-	var b_mgrs := _find(_sides[1], "DotVoiceManager")
+		return _find(_sides[0], "GSVoiceManager").size() > 0 and _find(_sides[1], "GSVoiceManager").size() > 0, 15.0)
+	var a_mgrs := _find(_sides[0], "GSVoiceManager")
+	var b_mgrs := _find(_sides[1], "GSVoiceManager")
 	if a_mgrs.is_empty() or b_mgrs.is_empty():
-		for m in _find(get_tree().root, "DotVoiceManager"):
+		for m in _find(get_tree().root, "GSVoiceManager"):
 			print("  note  a voice manager at %s" % m.get_path())
 		for side in _sides:
 			var root := side.get_node_or_null(^"Server/GameRoot")
@@ -210,20 +210,20 @@ func _probe() -> void:
 		return
 	if not _check(a_mgrs.size() == 1 and b_mgrs.size() == 1, "each delivered client builds one voice manager (%d, %d)" % [a_mgrs.size(), b_mgrs.size()]):
 		return
-	var router: DotVoiceRouter = routers[0]
-	var a: DotVoiceManager = a_mgrs[0]
-	var b: DotVoiceManager = b_mgrs[0]
+	var router: GSVoiceRouter = routers[0]
+	var a: GSVoiceManager = a_mgrs[0]
+	var b: GSVoiceManager = b_mgrs[0]
 	var a_peer := _links[0].multiplayer.get_unique_id()
 
 	_check(not a.is_capturing() and not b.is_capturing(), "no microphone is open before anybody presses the talk key")
 
-	var heard := DotVoiceSinkBuffer.new()
+	var heard := GSVoiceSinkBuffer.new()
 	heard.sample_rate = b.config.sample_rate
-	b.sink_factory = func(_speaker: int) -> DotVoiceSink: return heard
-	var mic := DotVoiceSourceBuffer.new()
+	b.sink_factory = func(_speaker: int) -> GSVoiceSink: return heard
+	var mic := GSVoiceSourceBuffer.new()
 	mic.sample_rate = a.config.sample_rate
 	mic.loop = true
-	mic.write(DotVoiceSourceBuffer.tone(440.0, 0.2, mic.sample_rate, 0.4))
+	mic.write(GSVoiceSourceBuffer.tone(440.0, 0.2, mic.sample_rate, 0.4))
 	a.source = mic
 
 	# Everybody, so the transport is what is measured.

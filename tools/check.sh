@@ -385,7 +385,7 @@ fi
 # holds either somebody else's file or nothing at all.
 #
 #   script -> script by class_name    fixed: relative preloads
-#   scene  -> script by ext_resource  fixed: DotCloudPublisher rewrites on publish
+#   scene  -> script by ext_resource  fixed: GSCloudPublisher rewrites on publish
 #   script -> anything by "res://…"   THIS. Not fixed.
 #
 # Reported rather than failed, because these are harmless while every game is
@@ -457,7 +457,7 @@ fi
 
 echo
 echo "the selftest"
-# The example suites read examples/fixtures, but DotAddonConfig also reads res://cfg, and an
+# The example suites read examples/fixtures, but GSAddonConfig also reads res://cfg, and an
 # operator tier there (the provisioned cfg/ above, or a real install's) outranks the legacy
 # fixture files: 78 selftest checks and the game-vote ballot of multigame fail on a box that
 # has cfg/ (multigame is 73 passed, 0 failed with it aside). Put cfg/ aside until the booted
@@ -475,7 +475,7 @@ timeout 300 "$GODOT" --headless --path . res://examples/addon_entry.tscn || fail
 echo "a pack this box publishes for itself carries requires.json"
 timeout 900 "$GODOT" --headless --path . res://examples/pack_requires.tscn || fails=$((fails + 1))
 
-# The other suite: a real DotServer, and an admin changing the game under it. It is the
+# The other suite: a real GSServer, and an admin changing the game under it. It is the
 # only place the module swap runs -- GameSpice Server changes the scene and tells the modules
 # already loaded, it does not load one, so a multi-game server that got this wrong would
 # boot perfectly and have no netcode on its second game.
@@ -550,7 +550,7 @@ echo "returning to a game: its netcode for the client and a fresh joiner"
 timeout 600 "$GODOT" --headless --path . res://examples/return_to_game.tscn < /dev/null || fails=$((fails + 1))
 
 # The game vote on the real shell's HUD. The director counts, dot-server carries a
-# DotNotice, the overlay draws and plays -- each tested on its own elsewhere, and this is
+# GSNotice, the overlay draws and plays -- each tested on its own elsewhere, and this is
 # the only place a countdown the SERVER counts becomes a line and a sound on a client it
 # admitted. Armed: with TmcVote's cue wiring or its clear removed, checks fail here and in
 # multigame.
@@ -609,7 +609,7 @@ echo "dot-trail's install (addon linked or not)"
 "$GODOT" --headless --path . res://examples/trail_wiring.tscn || fails=$((fails + 1))
 if [ -n "$cfg_aside" ]; then mv "$cfg_aside" cfg; cfg_aside=""; fi
 
-# The other half: a real DotServer, a real listener, the default game loaded and a module in
+# The other half: a real GSServer, a real listener, the default game loaded and a module in
 # it. Everything the selftest cannot reach without starting one.
 if [ -x ./server ]; then
     echo

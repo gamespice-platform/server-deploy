@@ -68,7 +68,7 @@ func _test_ids() -> void:
 	_check(not TmcSolo.valid_id("../x"), "a path is refused")
 	_check(not TmcSolo.valid_id("gamemann"), "an id with no repo is refused")
 	_check(TmcSolo.valid_version("") and TmcSolo.valid_version("0.1.12"), "an empty or dotted version is accepted")
-	var hop: DotResult = TmcSolo.follow_pointer("a/old", {"version": "1.0.0", "moved_to": "a/new"}, 0)
+	var hop: GSResult = TmcSolo.follow_pointer("a/old", {"version": "1.0.0", "moved_to": "a/new"}, 0)
 	_check(hop.ok and hop.value["moved_to"] == "a/new" and hop.value["version"] == "",
 		"a latest.json with moved_to hands back the new id, not the stale version")
 	_check(not TmcSolo.follow_pointer("a/new", {"moved_to": "a/x"}, 1).ok
@@ -127,16 +127,16 @@ func _test_first_party() -> void:
 	file.store_string(str(out[0]) if not out.is_empty() else "")
 	file.close()
 
-	var client := DotAuthClient.new()
-	client.config = DotAuthConfig.new()
+	var client := GSAuthClient.new()
+	client.config = GSAuthConfig.new()
 	var applied := client.config.apply_json_file(path)
-	_check(code == 0 and applied.ok, "tools/shell-auth-json.sh writes a file DotAuthConfig reads")
+	_check(code == 0 and applied.ok, "tools/shell-auth-json.sh writes a file GSAuthConfig reads")
 	_check(client.is_first_party("server:3550523") and client.is_first_party("app:113"), "a listed server or app is first-party")
 	_check(not client.is_first_party("server:3550524") and not client.is_first_party(""), "an unlisted or unannounced server is not")
 	_check(OS.execute("bash", [tool, "https://site.example", "server:x"], [], true) != 0, "an entry that is not server:<id> or app:<id> fails the write")
 
-	var shipped := DotAuthClient.new()
-	shipped.config = DotAuthConfig.new()
+	var shipped := GSAuthClient.new()
+	shipped.config = GSAuthConfig.new()
 	shipped.config.apply_json_file("res://client/auth.json")
 	_check(not shipped.is_first_party("server:999999999"), "the shipped file does not trust an arbitrary server")
 
@@ -252,7 +252,7 @@ func _test_session() -> void:
 	_section("the session hands a game its map packs and the menu a way back")
 
 	var root := "user://solo_check"
-	DotPaths.remove_tree(root)
+	GSPaths.remove_tree(root)
 	DirAccess.make_dir_recursive_absolute(root.path_join("a/maps"))
 	DirAccess.make_dir_recursive_absolute(root.path_join("b/courses"))
 
@@ -261,14 +261,14 @@ func _test_session() -> void:
 	var left := [0]
 	session.leave_fn = func() -> void: left[0] += 1
 	add_child(session)
-	DotRegistry.register(TmcSolo.MAPS_SERVICE, session)
+	GSRegistry.register(TmcSolo.MAPS_SERVICE, session)
 
 	# The way a delivered game asks: by name, duck-typed.
-	var host: Object = DotRegistry.get_service(&"dot_solo")
+	var host: Object = GSRegistry.get_service(&"dot_solo")
 	_check(host == session, "the session is published under dot_solo, the name every game looks up")
 	_check(host.call(&"map_dirs", "maps") == PackedStringArray([root.path_join("a/maps")]), "map_dirs names the packs that have the directory")
 	_check(host.call(&"map_dirs", "routes") == PackedStringArray(), "and none when no pack has it")
-	_check(DotRegistry.get_service(&"dot_client_link") == null, "no client link is published, so the game plays offline")
+	_check(GSRegistry.get_service(&"dot_client_link") == null, "no client link is published, so the game plays offline")
 	session.start_map = &"ph_apartment"
 	_check(&"start_map" in host and host.get(&"start_map") == &"ph_apartment", "a game reads the start map duck-typed as start_map")
 
@@ -277,9 +277,9 @@ func _test_session() -> void:
 	await get_tree().process_frame
 	_check(left[0] == 1, "Leave reaches the shell's leave_fn")
 
-	DotRegistry.unregister_instance(TmcSolo.MAPS_SERVICE, session)
+	GSRegistry.unregister_instance(TmcSolo.MAPS_SERVICE, session)
 	session.queue_free()
-	DotPaths.remove_tree(root)
+	GSPaths.remove_tree(root)
 	_done()
 
 
@@ -450,15 +450,15 @@ func _test_pack_holds_dir() -> void:
 	var overlay := load("res://addons/dot_cloud/addon_set/dot_cloud_addon_set_overlay.gd") as GDScript
 	var agree := true
 	for case: Array in [["fc_weapons", legacy], ["fc_weapons", current], ["arena_weapons", legacy], ["x", PackedStringArray(["plugin.cfg"])]]:
-		var manifest := DotCloudManifest.new()
+		var manifest := GSCloudManifest.new()
 		for path: String in case[1]:
-			var f := DotCloudFile.new()
+			var f := GSCloudFile.new()
 			f.path = path
 			manifest.files.append(f)
 		var mounts: bool = overlay.base(manifest, case[0]) != overlay.NOT_AN_ADDON
 		var takes: bool = shell.pack_holds_dir(case[0], "o/r", "1", shell.manifest_paths(manifest)) == ""
 		agree = agree and mounts == takes
-	_check(agree, "it agrees with the overlay's own rule (DotCloudAddonSet's base) on every case")
+	_check(agree, "it agrees with the overlay's own rule (GSCloudAddonSet's base) on every case")
 	_done()
 
 
@@ -483,7 +483,7 @@ class FakeStorage:
 func _test_overlay_blocked() -> void:
 	_section("a solo game whose addons did not start is blocked behind Retry, per shell build")
 
-	var plan_before := FileAccess.get_file_as_string(DotCloudAddonSet.PLAN)
+	var plan_before := FileAccess.get_file_as_string(GSCloudAddonSet.PLAN)
 	var shell: Node = (load("res://client/shell.gd") as GDScript).new()
 	var storage := FakeStorage.new()
 	shell.set("attempt_storage", storage)
@@ -494,7 +494,7 @@ func _test_overlay_blocked() -> void:
 	var attempt: String = shell.call("_attempt_key", target, wanted)
 	_check(attempt == "solo:gamemann/game-playlot|arena_weapons@1.4.46,zee_weapons@0.1.62", "the attempt key names the game and its addon set", attempt)
 
-	DotCloudAddonSet.forget()
+	GSCloudAddonSet.forget()
 	_check(not shell.call("_overlay_blocked", attempt, wanted), "a fresh tab builds the overlay")
 	shell.call("_note_update_attempt", attempt)
 	_check(not shell.call("_overlay_blocked", attempt, wanted), "one restart leaves another")
@@ -520,11 +520,11 @@ func _test_overlay_blocked() -> void:
 		"once a game's addons are running its counts go, and only its own")
 
 	# A failed mark: the overlay's plan written for this build's addons.lock, then marked failed at boot.
-	DotCloudAddonSet.write_plan({"state": DotCloudAddonSet.STATE_FAILED, "build": DotCloudAddonSet.build_fingerprint(), "addons": wanted})
-	_check(DotCloudAddonSet.failed_before(wanted), "the seeded plan is a failed mark for this set")
+	GSCloudAddonSet.write_plan({"state": GSCloudAddonSet.STATE_FAILED, "build": GSCloudAddonSet.build_fingerprint(), "addons": wanted})
+	_check(GSCloudAddonSet.failed_before(wanted), "the seeded plan is a failed mark for this set")
 	_check(not shell.call("_overlay_blocked", attempt, wanted), "a failed mark no shell build stamped gets one more try")
 	shell.call("_stamp_plan")
-	_check(str(DotCloudAddonSet.read_plan().get("shell", "")) == "20261114-0900" and DotCloudAddonSet.failed_before(wanted),
+	_check(str(GSCloudAddonSet.read_plan().get("shell", "")) == "20261114-0900" and GSCloudAddonSet.failed_before(wanted),
 		"the plan is stamped with the shell build that built it, the rest kept")
 	_check(shell.call("_overlay_blocked", attempt, wanted), "a failed mark from this shell build blocks")
 	shell.set("shell_build", "20261115-0100")
@@ -532,13 +532,13 @@ func _test_overlay_blocked() -> void:
 	shell.set("shell_build", "20261114-0900")
 	shell.set("_solo_retry", attempt)
 	shell._solo_flow.call("_forget_solo_retry")
-	_check(DotCloudAddonSet.read_plan().is_empty() and not shell.call("_overlay_blocked", attempt, wanted), "Retry forgets the failed mark")
+	_check(GSCloudAddonSet.read_plan().is_empty() and not shell.call("_overlay_blocked", attempt, wanted), "Retry forgets the failed mark")
 
 	shell.free()
 	if plan_before != "":
-		DotPaths.write_text(DotCloudAddonSet.PLAN, plan_before)
+		GSPaths.write_text(GSCloudAddonSet.PLAN, plan_before)
 	else:
-		DotCloudAddonSet.forget()
+		GSCloudAddonSet.forget()
 	_done()
 
 
@@ -550,10 +550,10 @@ func _test_overlay_in_place() -> void:
 
 	var dir := "solo_check_overlay"
 	var root := "res://addons/%s" % dir
-	var shell_classes_build: String = DotCloudAddonSet.SHELL_CLASSES_BUILD
+	var shell_classes_build: String = GSCloudAddonSet.SHELL_CLASSES_BUILD
 	var setting: String = (load("res://client/shell.gd") as GDScript).get_script_constant_map()["OVERLAY_SETTING"]
 	var kept := {}
-	for path: String in [DotCloudAddonSet.PLAN, DotCloudAddonSet.SHELL_CLASSES, shell_classes_build]:
+	for path: String in [GSCloudAddonSet.PLAN, GSCloudAddonSet.SHELL_CLASSES, shell_classes_build]:
 		kept[path] = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else null
 		DirAccess.remove_absolute(path)
 	var setting_before: Variant = ProjectSettings.get_setting(setting, "")
@@ -561,7 +561,7 @@ func _test_overlay_in_place() -> void:
 	# dot-cloud's early requirement check (the "needs a newer version of the client" panel) reads res://addons/<dir>: it refuses a game
 	# needing an addon this shell does not carry, and passes once the addon's overlay is mounted (checked after the mount below).
 	var needs := '{"format": 1, "addons": {"%s": 1}}' % dir
-	var before_mount := DotAddonApi.new().check_text(needs, "client")
+	var before_mount := GSAddonApi.new().check_text(needs, "client")
 	_check(not before_mount.ok and before_mount.error.message.contains("does not have it"),
 		"before its overlay, a game needing the addon is refused as client_behind", str(before_mount.error) if not before_mount.ok else "passed")
 
@@ -585,7 +585,7 @@ func _test_overlay_in_place() -> void:
 	shell.call("_note_update_attempt", target + "|" + dir + "@0.0.1")
 	shell.call("_note_update_attempt", "wss://other.invalid|x@1")
 	_check(not shell.call("_join_in_place", {"addons": {"dot_core": {}, dir: {}}}, target)
-		and str(DotCloudAddonSet.read_plan().get("state", "")) == DotCloudAddonSet.STATE_READY,
+		and str(GSCloudAddonSet.read_plan().get("state", "")) == GSCloudAddonSet.STATE_READY,
 		"a server overlay that would replace an addon the shell carries is left for a restart")
 	var joined: bool = shell.call("_join_in_place", plan, target)
 	_check(joined and not restarted[0], "it is mounted in this process, with no restart, and the join goes on")
@@ -593,17 +593,17 @@ func _test_overlay_in_place() -> void:
 		and int(shell.call("_update_attempts", "wss://other.invalid|x@1")) == 1
 		and not (shell.get("_addons_skipped") as Dictionary).has(target),
 		"the server's restart counts go, another server's stay, and its addons are not skipped")
-	var after := DotCloudAddonSet.read_plan()
-	_check(str(after.get("state", "")) == DotCloudAddonSet.STATE_OK and DotCloudAddonSet.mounted_this_boot(after),
+	var after := GSCloudAddonSet.read_plan()
+	_check(str(after.get("state", "")) == GSCloudAddonSet.STATE_OK and GSCloudAddonSet.mounted_this_boot(after),
 		"the plan says ok and names the mounted pack", str(after))
 	_check((after.get("resume", {}) as Dictionary).is_empty(), "nothing is left to resume on the next visit")
-	_check(FileAccess.get_file_as_string(DotCloudAddonSet.SHELL_CLASSES) != ""
-		and FileAccess.get_file_as_string(shell_classes_build) == DotCloudAddonSet.build_fingerprint(),
+	_check(FileAccess.get_file_as_string(GSCloudAddonSet.SHELL_CLASSES) != ""
+		and FileAccess.get_file_as_string(shell_classes_build) == GSCloudAddonSet.build_fingerprint(),
 		"the shell's own class list is kept for the next overlay")
 	var user := load(root.path_join("user.gd")) as GDScript
 	var answer: int = int(user.new().answer()) if user != null and user.can_instantiate() else -1
 	_check(answer == 42, "a script naming the overlay's class_name compiles and runs", "got %d" % answer)
-	var after_mount := DotAddonApi.new().check_text(needs, "client")
+	var after_mount := GSAddonApi.new().check_text(needs, "client")
 	_check(after_mount.ok, "with its overlay mounted, the same game passes the early requirement check (not client_behind)",
 		str(after_mount.error) if not after_mount.ok else "")
 	_check(not shell.call("_overlay_additive", {"addons": {"solo_check_other": {}}}),
@@ -615,23 +615,23 @@ func _test_overlay_in_place() -> void:
 		if kept[path] == null:
 			DirAccess.remove_absolute(path)
 		else:
-			DotPaths.write_text(path, str(kept[path]))
-	DotPaths.remove_tree(scratch)
+			GSPaths.write_text(path, str(kept[path]))
+	GSPaths.remove_tree(scratch)
 	DirAccess.remove_absolute(pack)
 	_done()
 
 
-## A pack as DotCloudAddonSet assembles it (an addon's files and the build's class list with its class added), with the READY plan that names it. Returns {plan, pack, scratch}.
+## A pack as GSCloudAddonSet assembles it (an addon's files and the build's class list with its class added), with the READY plan that names it. Returns {plan, pack, scratch}.
 func _build_probe_overlay(dir: String, root: String) -> Dictionary:
-	# The overlay as DotCloudAddonSet assembles it: the addon's files and the build's class list with its class added.
-	var scratch := DotCloudAddonSet.DIR.path_join("solo_check_scratch")
-	DotPaths.ensure_dir(scratch)
+	# The overlay as GSCloudAddonSet assembles it: the addon's files and the build's class list with its class added.
+	var scratch := GSCloudAddonSet.DIR.path_join("solo_check_scratch")
+	GSPaths.ensure_dir(scratch)
 	var scripts := {
 		root.path_join("solo_check_overlay_probe.gd"): "class_name SoloCheckOverlayProbe\nextends RefCounted\n\nfunc answer() -> int:\n\treturn 42\n",
 		root.path_join("user.gd"): "extends RefCounted\n\nfunc answer() -> int:\n\treturn SoloCheckOverlayProbe.new().answer()\n",
 	}
 	var packer := PCKPacker.new()
-	var pack := DotCloudAddonSet.DIR.path_join("solo_check_overlay.pck")
+	var pack := GSCloudAddonSet.DIR.path_join("solo_check_overlay.pck")
 	packer.pck_start(pack)
 	var files := {root.path_join("plugin.cfg"): "[plugin]\nname=\"solo_check_overlay\"\n"}
 	files.merge(scripts)
@@ -639,18 +639,18 @@ func _build_probe_overlay(dir: String, root: String) -> Dictionary:
 	for target: String in files:
 		var source := scratch.path_join("f%d" % n)
 		n += 1
-		DotPaths.write_text(source, str(files[target]), false)
+		GSPaths.write_text(source, str(files[target]), false)
 		packer.add_file(target, source)
-	DotCloudAddonSet._write_class_cache(scripts, PackedStringArray([root]), scratch)
-	packer.add_file(DotCloudScriptClass.CACHE_PATH, scratch.path_join("global_script_class_cache.cfg"))
+	GSCloudAddonSet._write_class_cache(scripts, PackedStringArray([root]), scratch)
+	packer.add_file(GSCloudScriptClass.CACHE_PATH, scratch.path_join("global_script_class_cache.cfg"))
 	packer.flush(false)
 
 	var plan := {
-		"format": DotCloudAddonSet.FORMAT, "build": DotCloudAddonSet.build_fingerprint(), "pack": pack,
+		"format": GSCloudAddonSet.FORMAT, "build": GSCloudAddonSet.build_fingerprint(), "pack": pack,
 		"addons": {dir: {"repo": dir, "version": "0.0.1"}}, "uids": [], "probes": {},
-		"state": DotCloudAddonSet.STATE_READY, "resume": {"solo": "gamemann/game-playlot"},
+		"state": GSCloudAddonSet.STATE_READY, "resume": {"solo": "gamemann/game-playlot"},
 	}
-	DotCloudAddonSet.write_plan(plan)
+	GSCloudAddonSet.write_plan(plan)
 	return {"plan": plan, "pack": pack, "scratch": scratch}
 
 
@@ -675,7 +675,7 @@ func _check(ok: bool, what: String, detail: String = "") -> bool:
 	return ok
 
 
-## [param name] (a DOT_ name) read as its GS_ spelling first, then as itself: what DotConfig.gs_env does,
+## [param name] (a DOT_ name) read as its GS_ spelling first, then as itself: what GSConfig.gs_env does,
 ## written out because the dot-core addons.lock pins predates gs_env and a call to it does not compile there.
 static func _gs_env(name: String) -> String:
 	if name.begins_with("DOT_"):

@@ -1,7 +1,7 @@
 extends Node
 # [b]Nothing preloaded out of a game, because no game is in this build.[/b] Every game is a
 # delivered pack; each one's match is reached through the module's `game` and its
-# `match_node`, a GameSpice Match DotMatch, which this build does carry.
+# `match_node`, a GameSpice Match GSMatch, which this build does carry.
 
 ## The game vote's `time_up: finish_round`, through REAL round ends in four delivered games. Exits
 ## non-zero on any failure.
@@ -23,7 +23,7 @@ const ORDER := ["fatalcontact", "smash", "prophunt", "buses"]
 const NEEDS := ["tmc/arena", "tmc/smash", "tmc/prophunt", "tmc/prophunt_maps", "tmc/buses"]
 
 ## What each game's match must be playing to once the fixture's cvars are applied: the values in
-## `fixtures/game_vote_rounds/content.yml`, read back off the running match's [DotMatchRules]. One
+## `fixtures/game_vote_rounds/content.yml`, read back off the running match's [GSMatchRules]. One
 ## check per game listed.
 const RULES := {
 	"fatalcontact": {"score_limit": 50, "time_limit_sec": 80.0, "warmup_sec": 0.0},
@@ -33,7 +33,7 @@ const RULES := {
 const CHANGE_AFTER_ROUND_MS := 15000
 
 ## Games whose one person is the hunted and would end a round early by being caught: given an
-## admin's god (`DotHealth.invulnerable`, which carries across rounds) so the round runs to
+## admin's god (`GSHealth.invulnerable`, which carries across rounds) so the round runs to
 ## its clock and the vote's clock runs out inside it. Buses' bots drive straight at them.
 const PROTECT := ["buses"]
 
@@ -45,7 +45,7 @@ const PER_GAME := 10
 const CHECKS := 4 + PER_GAME * 4 + 1 + 2 + 3
 
 ## GameSpice Match's `State.LIVE`: the round is being played.
-const LIVE := DotMatch.State.LIVE
+const LIVE := GSMatch.State.LIVE
 
 var _passed := 0
 var _failed := 0
@@ -60,12 +60,12 @@ var _shell: Node = null
 var _round_ends: Array[int] = []
 
 ## The match being listened to.
-var _match: DotMatch = null
+var _match: GSMatch = null
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -84,7 +84,7 @@ func _run() -> void:
 			get_tree().quit(0)
 			return
 
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	var rpc_watch := RpcPathWatch.new()
 	OS.add_logger(rpc_watch)
@@ -96,7 +96,7 @@ func _run() -> void:
 		await _test_back_at_the_start()
 
 	await _teardown()
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 	OS.remove_logger(rpc_watch)
 
 	print("")
@@ -154,23 +154,23 @@ func _skip(count: int, why: String) -> void:
 		_check(false, "skipped: %s" % why)
 
 
-func _server() -> DotServer:
+func _server() -> GSServer:
 	if _host == null or not is_instance_valid(_host):
 		return null
-	return _host.server as DotServer
+	return _host.server as GSServer
 
 
 func _votes() -> TmcVote:
 	return _host.votes as TmcVote if _host != null else null
 
 
-func _director() -> DotVoteDirector:
+func _director() -> GSVoteDirector:
 	var votes := _votes()
 	return votes.director if votes != null else null
 
 
-func _link() -> DotClientLink:
-	return _shell.link as DotClientLink if _shell != null else null
+func _link() -> GSClientLink:
+	return _shell.link as GSClientLink if _shell != null else null
 
 
 func _overlay() -> TmcNoticeOverlay:
@@ -192,35 +192,35 @@ func _until(condition: Callable, seconds: float = 20.0) -> bool:
 func _at_game(game_id: String) -> bool:
 	var current := _server().games.current()
 	return current != null and current.game_id == game_id \
-		and _server().games.phase == DotGameManager.Phase.IDLE
+		and _server().games.phase == GSGameManager.Phase.IDLE
 
 
 ## The server has started leaving [param game_id]: another game current, or a change under way.
 func _leaving(game_id: String) -> bool:
 	var current := _server().games.current()
 	return current == null or current.game_id != game_id \
-		or _server().games.phase != DotGameManager.Phase.IDLE
+		or _server().games.phase != GSGameManager.Phase.IDLE
 
 
 func _client_in(game_id: String) -> bool:
 	var link := _link()
 	return (
 		link != null and link.server_game_id == game_id
-		and link.phase == DotClientLink.Phase.PLAYING
+		and link.phase == GSClientLink.Phase.PLAYING
 		and link._scene_instance != null and is_instance_valid(link._scene_instance)
 		and _server().playing_sessions().size() == 1
 	)
 
 
 ## The running game's match: the first loaded module whose `game` has a `match_node`.
-func _find_match() -> DotMatch:
+func _find_match() -> GSMatch:
 	for name in _server().modules.loaded_names():
 		var module := _server().modules.get_module(name)
 		var world: Variant = module.get("game") if module != null else null
 		var node: Variant = (world as Object).get("match_node") if world is Object else null
 
-		if node is DotMatch:
-			return node as DotMatch
+		if node is GSMatch:
+			return node as GSMatch
 
 	return null
 
@@ -243,8 +243,8 @@ func _protect_people() -> int:
 
 			var health: Variant = (player as Object).get("health")
 
-			if health is DotHealth:
-				(health as DotHealth).invulnerable = true
+			if health is GSHealth:
+				(health as GSHealth).invulnerable = true
 				protected += 1
 
 	return protected
@@ -265,7 +265,7 @@ func _world_says() -> String:
 func _match_state() -> String:
 	if _match == null or not is_instance_valid(_match):
 		return "no match"
-	return DotMatch.State.keys()[_match.state]
+	return GSMatch.State.keys()[_match.state]
 
 
 func _panel_index(id: StringName) -> int:
@@ -284,7 +284,7 @@ func _panel_index(id: StringName) -> int:
 ## The running match's rules against [constant RULES]: the fixture's cvars reached the match.
 func _check_rules(game_id: String) -> void:
 	var want: Dictionary = RULES[game_id]
-	var rules: DotMatchRules = _match.rules if _match != null and is_instance_valid(_match) else null
+	var rules: GSMatchRules = _match.rules if _match != null and is_instance_valid(_match) else null
 	var wrong := PackedStringArray()
 
 	for key: String in want:
@@ -319,7 +319,7 @@ func _boot() -> bool:
 	ServerWorld.add(self, _host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 
 	if not _check(started.ok, "the host boots", str(started.error)):
 		_skip(3, "the host did not boot")
@@ -327,8 +327,8 @@ func _boot() -> bool:
 		return false
 
 	_check(
-		_director() != null and _director().rules.time_up == DotVoteRules.TimeUp.FINISH_ROUND
-			and _director().rules.apply == DotVoteRules.Apply.END_OF_TIME,
+		_director() != null and _director().rules.time_up == GSVoteRules.TimeUp.FINISH_ROUND
+			and _director().rules.apply == GSVoteRules.Apply.END_OF_TIME,
 		"with the game vote on finish_round, applied at the end of time",
 		"time_up %d, apply %d" % [_director().rules.time_up, _director().rules.apply] if _director() != null else "no game vote"
 	)
@@ -351,7 +351,7 @@ func _boot() -> bool:
 		ProjectSettings.globalize_path("res://dist")
 	])
 
-	var sink := _overlay().audio.sink as DotAudioSinkNull
+	var sink := _overlay().audio.sink as GSAudioSinkNull
 	if sink != null:
 		_overlay().audio.played.connect(
 			func(_id: StringName, handle: int, _why: StringName) -> void:
@@ -504,7 +504,7 @@ func _test_back_at_the_start() -> void:
 
 	_check(_at_game(first) and _client_in(first), "the server is running %s again, the client in it" % first)
 	_check(
-		_server().state == DotServer.State.RUNNING and _server().sessions().size() == 1,
+		_server().state == GSServer.State.RUNNING and _server().sessions().size() == 1,
 		"after %d changes under finish_round the server is still serving its one player" % ORDER.size()
 	)
 	_done()

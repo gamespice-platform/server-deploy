@@ -12,7 +12,7 @@
 # Never stored: a name, an account id, a peer number, an address, a team roster, chat, voice,
 # or a time finer than a day.
 #
-# Every key is a DotBotDemoConfig property with a `bot_record_` prefix (`record` alone is
+# Every key is a GSBotDemoConfig property with a `bot_record_` prefix (`record` alone is
 # `bot_record`). GS_BOT_RECORD_* and --bot-record-* override them; the console cvars of the
 # same names change them while the server runs.
 

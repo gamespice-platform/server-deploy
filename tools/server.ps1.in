@@ -143,7 +143,7 @@ function Show-Usage {
     .\server.ps1 --game airdrift -- +map bhop_g2g_intro
 
   Secrets are deliberately NOT options. argv is readable by every other process on
-  the machine and ends up in pasted bug reports, which is why DotConfig refuses
+  the machine and ends up in pasted bug reports, which is why GSConfig refuses
   secrets from argv and the environment too. rcon_password lives in cfg\server\addon\dot_console\rcon.yml.
 '@ | Write-Host
 }
@@ -813,13 +813,13 @@ if ($Command -eq 'run') {
 # --- dot-core's page script -------------------------------------------------
 
 # Twin of install_dot_web in tools/server.in. The game origin's CSP has no
-# 'unsafe-eval', so every browser call DotWeb makes is a named function in dot-core's
+# 'unsafe-eval', so every browser call GSWeb makes is a named function in dot-core's
 # dot_web.js, loaded in <head> before the engine's own script. embed.html names it in
 # its source; index.html is Godot's, so it is patched here.
-function Install-DotWeb([string]$Build) {
+function Install-GSWeb([string]$Build) {
     $js = Join-Path $Project 'addons\dot_core\web\dot_web.js'
     if (-not (Test-Path -LiteralPath $js)) {
-        Write-Warning 'addons\dot_core\web\dot_web.js is missing (dot-core older than the CSP-safe DotWeb): this web build has no keyboard lock, leave prompt or parent messages'
+        Write-Warning 'addons\dot_core\web\dot_web.js is missing (dot-core older than the CSP-safe GSWeb): this web build has no keyboard lock, leave prompt or parent messages'
         return
     }
     Copy-Item -LiteralPath $js -Destination (Join-Path $Build 'dot_web.js') -Force
@@ -832,7 +832,7 @@ function Install-DotWeb([string]$Build) {
             [IO.File]::WriteAllText($page, $html, (New-Object Text.UTF8Encoding($false)))
         }
         if (-not ([IO.File]::ReadAllText($page)).Contains('src="dot_web.js"')) {
-            Die "$page does not load dot_web.js, so DotWeb has no page side" 3
+            Die "$page does not load dot_web.js, so GSWeb has no page side" 3
         }
     }
 }
@@ -932,7 +932,7 @@ switch ($Command) {
             Copy-Item -LiteralPath $embed -Destination (Join-Path $Project 'web\build\embed.html') -Force
         }
 
-        Install-DotWeb (Join-Path $Project 'web\build')
+        Install-GSWeb (Join-Path $Project 'web\build')
         Write-Loader
         Write-Host "  wrote $(Join-Path $Project 'web\build')"
         exit 0

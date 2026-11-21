@@ -113,7 +113,7 @@ GAME2_NAME="${TMC_DEMO_GAME2_NAME:-TMC Hungry Server}"
 # THE WEBSITE CHAT RELAY, and the one thing about it worth an operator's attention.
 #
 # Every server started here gets these in its environment, which works because
-# DotChatRelayConfig is a DotConfig and a DotConfig is layered -- exported defaults, a JSON
+# GSChatRelayConfig is a GSConfig and a GSConfig is layered -- exported defaults, a JSON
 # file, the environment, then argv. (It was NOT layered until recently: the games built the
 # config with `new()` and read `.enabled` off it, so these variables reached nothing and the
 # relay could not be turned on by any documented route, in any of the five games.)
@@ -841,7 +841,7 @@ do_switch() {
 ## single `map`: GameSpice Server deliberately gave the plain name to GameSpice Map, and each game
 ## registers its own under its own prefix so two games' map changes cannot collide in
 ## one console. An unknown game gets plain `map`, which is what an addon that installs
-## DotMapCommands with default names answers to.
+## GSMapCommands with default names answers to.
 map_command_for() {
     case "$1" in
         airdrift) printf 'g2g_map' ;;

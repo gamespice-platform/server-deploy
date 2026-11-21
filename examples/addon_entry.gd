@@ -16,15 +16,15 @@ var _failures: PackedStringArray = []
 
 
 func _ready() -> void:
-	DotPaths.remove_tree(SCRATCH)
+	GSPaths.remove_tree(SCRATCH)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SCRATCH))
 
-	var pair := DotCloudSignature.generate_keypair()
+	var pair := GSCloudSignature.generate_keypair()
 
 	if _publish(pair):
 		await _mount_and_attach(pair)
 
-	DotPaths.remove_tree(SCRATCH)
+	GSPaths.remove_tree(SCRATCH)
 
 	print("")
 	print("%d sections, %d completed" % [_entered, _completed])
@@ -40,7 +40,7 @@ func _ready() -> void:
 	get_tree().quit(1 if _failed > 0 else 0)
 
 
-func _publish(pair: DotResult) -> bool:
+func _publish(pair: GSResult) -> bool:
 	_section("tools/pack.gd publishes a pack whose manifest carries its entry")
 
 	var scratch := ProjectSettings.globalize_path(SCRATCH)
@@ -89,7 +89,7 @@ func _publish(pair: DotResult) -> bool:
 	return true
 
 
-func _mount_and_attach(pair: DotResult) -> void:
+func _mount_and_attach(pair: GSResult) -> void:
 	_section("the owner's file adds the packs, and each side starts its own")
 
 	var scratch := ProjectSettings.globalize_path(SCRATCH)
@@ -105,10 +105,10 @@ func _mount_and_attach(pair: DotResult) -> void:
 		"defaults:\n  add: [dev/extra@1.2.0, dev/plain]\ngames:\n  game:\n    add: [dev/clientside@0.3.0, dev/broken@1.0.0]\n")
 	_write(data.path_join(TmcAddonsConfig.RESOLVED_FILE), JSON.stringify({"packs": {"dev/plain": "2.0.0"}}))
 
-	var cloud := DotCloudClient.new()
+	var cloud := GSCloudClient.new()
 	cloud.name = "Cloud"
 	cloud.host_role = "server"
-	cloud.config = DotCloudConfig.new()
+	cloud.config = GSCloudConfig.new()
 	cloud.config.cache_dir = scratch.path_join("cache")
 	cloud.config_file = cfg.path_join("content.json")
 	cloud.local_search_dirs = PackedStringArray([scratch.path_join("dist")])
@@ -126,7 +126,7 @@ func _mount_and_attach(pair: DotResult) -> void:
 		return
 
 	var addons := loaded.value as TmcAddonsConfig
-	var descriptor := DotGameDescriptor.new()
+	var descriptor := GSGameDescriptor.new()
 	descriptor.game_id = "dev/game"
 	descriptor.dependencies = PackedStringArray(["dev/maps@1.0.0"])
 	var content := TmcContent.new()
@@ -140,7 +140,7 @@ func _mount_and_attach(pair: DotResult) -> void:
 	# What the server's game change does: every dependency is mounted first.
 	for key in descriptor.dependencies.slice(1):
 		var ref := TmcGameRef.parse(key)
-		var got: DotResult = await cloud.ensure(StringName(str(ref["id"])), str(ref["version"]))
+		var got: GSResult = await cloud.ensure(StringName(str(ref["id"])), str(ref["version"]))
 		_check(got.ok, "%s mounts" % key, str(got.error) if not got.ok else "")
 
 	var server_side := Node.new()
@@ -169,7 +169,7 @@ func _mount_and_attach(pair: DotResult) -> void:
 	_write(cfg.path_join("content/addons.yml"),
 		"defaults:\n  add: [dev/extra@1.2.0]\ngames:\n  game:\n    remove: [dev/extra]\n")
 	var again := TmcAddonsConfig.load_from(cfg, data)
-	var other := DotGameDescriptor.new()
+	var other := GSGameDescriptor.new()
 	other.game_id = "dev/other"
 	_check(again.ok and (again.value as TmcAddonsConfig).entries_for(descriptor).is_empty()
 		and (again.value as TmcAddonsConfig).entries_for(other) == PackedStringArray(["dev/extra@1.2.0"]),
@@ -196,7 +196,7 @@ func _read_manifest(path: String) -> Dictionary:
 	if not outer is Dictionary:
 		return {}
 	var payload := str((outer as Dictionary).get("payload", ""))
-	var inner: Variant = JSON.parse_string(DotHash.base64url_decode(payload).get_string_from_utf8()) if payload != "" else outer
+	var inner: Variant = JSON.parse_string(GSHash.base64url_decode(payload).get_string_from_utf8()) if payload != "" else outer
 	return inner if inner is Dictionary else {}
 
 

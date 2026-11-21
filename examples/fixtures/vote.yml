@@ -17,5 +17,5 @@ rtv_fraction: 0.75
 max_options: 4
 nomination_slots: 2
 
-# A key nothing recognises. Reported, never fatal — DotConfig's rule.
+# A key nothing recognises. Reported, never fatal — GSConfig's rule.
 vote_nonsense: 12

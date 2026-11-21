@@ -503,7 +503,7 @@
      * cannot fix.[/b] Godot refuses an RPC when the two ends declare different `@rpc`
      * methods, so a client build that predates a change to dot-server's handshake can
      * never join a server that has it -- the socket opens, the join stalls, and every
-     * retry stalls the same way. The shell recognises it (`DotSignon`) and posts this,
+     * retry stalls the same way. The shell recognises it (`GSSignon`) and posts this,
      * because a build cannot become a different build and the page can load one.
      *
      * Every build the site has ever published is still at its own immutable prefix, so

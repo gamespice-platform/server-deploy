@@ -10,12 +10,12 @@ const ROOT := "res://packprobe"
 
 func _init() -> void:
 	var cases := {
-		# 1. The question. `DotResult` is the host's, registered in the host's global
+		# 1. The question. `GSResult` is the host's, registered in the host's global
 		#    class list at export; the pack does not contribute to that list, but it does
 		#    not empty it either -- so this should resolve if anything does.
 		"host class_name": ("extends RefCounted\nfunc probe() -> String:\n"
-			+ "\tvar r := DotResult.success(42)\n"
-			+ "\treturn \"resolved DotResult, value \" + str(r.value)\n"),
+			+ "\tvar r := GSResult.success(42)\n"
+			+ "\treturn \"resolved GSResult, value \" + str(r.value)\n"),
 		# 2. The known failure, re-run here so the test proves it can TELL them apart
 		#    rather than reporting whatever the engine happens to do today.
 		"pack class_name": "extends RefCounted\nfunc probe() -> String:\n\tvar x := PackProbeLocal.new()\n\treturn \"pack class ok: %s\" % x\n",

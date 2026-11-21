@@ -33,7 +33,7 @@ var _completed := 0
 
 var _host: Node = null
 var _client_side: Node = null
-var _link: DotClientLink = null
+var _link: GSClientLink = null
 
 # Through Arrays: a GDScript lambda captures locals by value.
 var _spawned := [false]
@@ -41,8 +41,8 @@ var _refused := [""]
 
 
 func _ready() -> void:
-	DotLog.set_level(
-		DotLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else DotLog.Level.ERROR
+	GSLog.set_level(
+		GSLog.Level.DEBUG if "--verbose" in OS.get_cmdline_user_args() else GSLog.Level.ERROR
 	)
 	_run.call_deferred()
 
@@ -50,7 +50,7 @@ func _ready() -> void:
 func _run() -> void:
 	print("dot-server-deploy: a real client in a delivered Playlot, with its maps pack")
 
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://dist/tmc/playground")) \
 			or not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://dist/tmc/playground_maps")):
@@ -69,7 +69,7 @@ func _run() -> void:
 			_test_still_serving()
 
 	await _teardown()
-	DotPaths.remove_tree(DATA)
+	GSPaths.remove_tree(DATA)
 
 	print("")
 	_check(
@@ -113,8 +113,8 @@ func _check(condition: bool, what: String, detail: String = "") -> bool:
 	return condition
 
 
-func _server() -> DotServer:
-	return _host.server as DotServer
+func _server() -> GSServer:
+	return _host.server as GSServer
 
 
 func _until(condition: Callable, seconds: float = 20.0) -> bool:
@@ -131,7 +131,7 @@ func _until(condition: Callable, seconds: float = 20.0) -> bool:
 
 ## The server's world, through the module's `game` — GameSpice Game's own name for it.
 func _world() -> Node:
-	var module: DotModule = _server().modules.get_module(MODULE)
+	var module: GSModule = _server().modules.get_module(MODULE)
 	return module.get("game") as Node if module != null else null
 
 
@@ -180,7 +180,7 @@ func _boot() -> bool:
 	ServerWorld.add(self, _host)
 
 	_host.port_override = -1
-	var started: DotResult = await _host.start(CONFIG, CONTENT, DATA)
+	var started: GSResult = await _host.start(CONFIG, CONTENT, DATA)
 
 	if not _check(started.ok, "the host boots", str(started.error)):
 		return false
@@ -189,7 +189,7 @@ func _boot() -> bool:
 		func() -> bool:
 			var current := _server().games.current()
 			return current != null and current.game_id == GAME \
-				and _server().games.phase == DotGameManager.Phase.IDLE,
+				and _server().games.phase == GSGameManager.Phase.IDLE,
 		45.0
 	)
 
@@ -234,7 +234,7 @@ func _teardown() -> void:
 func _test_connect() -> bool:
 	_section("a client connects to a delivered game")
 
-	_link = DotClientLink.new()
+	_link = GSClientLink.new()
 	_link.name = "Server"
 	_link.player_name = "Runner"
 	_client_side.add_child(_link)
@@ -242,7 +242,7 @@ func _test_connect() -> bool:
 	_link.spawned.connect(func() -> void: _spawned[0] = true)
 	_link.disconnected.connect(func(reason: String) -> void: _refused[0] = reason)
 
-	var connecting: DotResult = await _link.connect_to_server("127.0.0.1:%d" % _host.config.server.port)
+	var connecting: GSResult = await _link.connect_to_server("127.0.0.1:%d" % _host.config.server.port)
 
 	if not _check(connecting.ok, "it starts connecting", str(connecting.error)):
 		_done()
@@ -264,7 +264,7 @@ func _test_the_packs_mounted() -> void:
 	var entry := _server().games.current()
 	_check(entry != null and String(entry.content_id) == CONTENT_ID, "the current game is the delivered one")
 
-	var module: DotModule = _server().modules.get_module(MODULE)
+	var module: GSModule = _server().modules.get_module(MODULE)
 	var script: Variant = module.get_script() if module != null else null
 	var path := String((script as Resource).resource_path) if script != null else ""
 	_check(path.begins_with("res://dot_cloud/tmc/playground/"), "its module is the mounted copy", path)
@@ -273,7 +273,7 @@ func _test_the_packs_mounted() -> void:
 	_check(deps.has(MAPS_KEY), "the maps are a CLIENT dependency, not server-only", str(deps))
 	_check(_link.content_extra.has(MAPS_KEY), "and the client was told to fetch them", str(_link.content_extra))
 
-	var file := DotCloudClient.mount_prefix_for(MAPS_ID, MAPS_VERSION).path_join("maps/%s.json" % MAP)
+	var file := GSCloudClient.mount_prefix_for(MAPS_ID, MAPS_VERSION).path_join("maps/%s.json" % MAP)
 	_check(FileAccess.file_exists(file), "mounted where both ends compute they are", file)
 	_done()
 
@@ -282,7 +282,7 @@ func _test_the_packs_mounted() -> void:
 func _test_both_catalogues() -> void:
 	_section("both catalogues list the custom maps, from the maps pack")
 
-	var prefix := DotCloudClient.mount_prefix_for(MAPS_ID, MAPS_VERSION)
+	var prefix := GSCloudClient.mount_prefix_for(MAPS_ID, MAPS_VERSION)
 	var ready := await _until(func() -> bool: return _client_world() != null, 30.0)
 	_check(ready, "the client built its Playlot world")
 
@@ -300,8 +300,8 @@ func _test_the_client_follows_a_custom_map() -> void:
 	_section("a change to a custom map is followed, box for box")
 
 	var changed: Variant = await _world().call("change_map", MAP)
-	_check(changed is DotResult and (changed as DotResult).ok, "the server changes to %s" % MAP,
-		str((changed as DotResult).error) if changed is DotResult and not (changed as DotResult).ok else "")
+	_check(changed is GSResult and (changed as GSResult).ok, "the server changes to %s" % MAP,
+		str((changed as GSResult).error) if changed is GSResult and not (changed as GSResult).ok else "")
 
 	var followed := await _until(
 		func() -> bool:
@@ -337,8 +337,8 @@ func _test_the_maps_props_cross() -> void:
 				return false
 			for behaviour: Variant in (nets as Dictionary).values():
 				var node: Variant = (behaviour as Object).get("prop")
-				if node is Node and is_instance_valid(node) and node.get("def") is DotPropDef \
-						and (node.get("def") as DotPropDef).id == &"door":
+				if node is Node and is_instance_valid(node) and node.get("def") is GSPropDef \
+						and (node.get("def") as GSPropDef).id == &"door":
 					doors[0] += 1
 			return doors[0] >= 5,
 		20.0
@@ -353,7 +353,7 @@ func _test_still_serving() -> void:
 	_section("the game's own console still answers")
 
 	var captured: Array[String] = []
-	var context := DotCmdContext.console("", PackedStringArray())
+	var context := GSCmdContext.console("", PackedStringArray())
 	context.reply_sink = func(text: String) -> void: captured.append(text)
 	_server().console.execute("pg_status", context)
 	var said := "\n".join(captured)

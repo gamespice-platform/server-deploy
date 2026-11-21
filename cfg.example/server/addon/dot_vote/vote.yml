@@ -12,7 +12,7 @@
 # talking to two systems at once. !rtv is about the game in front of you;
 # !game_rtv is about which game is next.
 #
-# This is dot-vote's DotVoteRules, so every setting below is documented on the
+# This is dot-vote's GSVoteRules, so every setting below is documented on the
 # property of the same name and layers the way everything else in this family
 # layers: these defaults < this file < GS_GAME_VOTE_* < --game-vote-* (see below).
 #
@@ -38,7 +38,7 @@ enabled: true
 
 # --- Which games ----------------------------------------------------------
 #
-# Not a DotVoteRules setting: this is TMC's, because "which of the things in
+# Not a GSVoteRules setting: this is TMC's, because "which of the things in
 # content/ are games a player would choose" is a question about this deployment.
 #
 # Games named here are never on a ballot. Empty offers every installed game.

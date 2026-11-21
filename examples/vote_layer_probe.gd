@@ -1,13 +1,13 @@
 extends SceneTree
 
-## Loads this deployment's [TmcConfig] the way a host does and runs one real [DotVoteDirector] on
+## Loads this deployment's [TmcConfig] the way a host does and runs one real [GSVoteDirector] on
 ## its server vote, then prints what the ballot did as one JSON line.
 
 # No `CHANNEL`: a probe that prints one line for a suite to read.
 
 
 func _initialize() -> void:
-	DotLog.set_level(DotLog.Level.ERROR)
+	GSLog.set_level(GSLog.Level.ERROR)
 	_run.call_deferred()
 
 
@@ -18,21 +18,21 @@ func _run() -> void:
 		quit(1)
 		return
 
-	var rules: DotVoteRules = (loaded.value as TmcConfig).vote
+	var rules: GSVoteRules = (loaded.value as TmcConfig).vote
 
 	rules.apply_delay_sec = 0.0
-	rules.trigger = DotVoteRules.Trigger.TIME_LIMIT
+	rules.trigger = GSVoteRules.Trigger.TIME_LIMIT
 	rules.duration_sec = 100.0
 	rules.vote_lead_sec = 20.0
 	rules.cooldown = 0
-	rules.apply = DotVoteRules.Apply.IMMEDIATE
+	rules.apply = GSVoteRules.Apply.IMMEDIATE
 
-	var choices: Array[DotVoteChoice] = []
+	var choices: Array[GSVoteChoice] = []
 	for id in ["a", "b", "c"]:
-		choices.append(DotVoteChoice.of(StringName(id), id.capitalize()))
+		choices.append(GSVoteChoice.of(StringName(id), id.capitalize()))
 
-	var source := DotVoteListSource.of(choices)
-	var director := DotVoteDirector.new()
+	var source := GSVoteListSource.of(choices)
+	var director := GSVoteDirector.new()
 	director.rules = rules
 	director.source = source
 	director.register_service = false
@@ -54,7 +54,7 @@ func _run() -> void:
 	if offered:
 		var before := director.clock.remaining
 		for voter in [&"v1", &"v2", &"v3", &"v4"]:
-			var _cast := director.cast_one(voter, DotVoteBallot.EXTEND)
+			var _cast := director.cast_one(voter, GSVoteBallot.EXTEND)
 		var _result := director.close_vote()
 		extended_by = director.clock.remaining - before
 

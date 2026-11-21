@@ -43,7 +43,7 @@ var cache_dir: String = ""
 var content_url: String = ""
 
 
-## GameSpice Menu's Leave calls this on its [member DotMenu.leave_link].
+## GameSpice Menu's Leave calls this on its [member GSMenu.leave_link].
 func disconnect_from_server(_reason: String = "") -> void:
 	leave()
 
@@ -59,7 +59,7 @@ func leave() -> void:
 
 
 ## `<root>/<subdir>` for every mounted map pack that has that directory: the same answer
-## `DotGameContent.map_dirs` gives a server module for the packs its server names.
+## `GSGameContent.map_dirs` gives a server module for the packs its server names.
 func map_dirs(subdir: String) -> PackedStringArray:
 	var out := PackedStringArray()
 	for root in map_roots:

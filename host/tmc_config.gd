@@ -3,7 +3,7 @@ extends RefCounted
 
 ## The `cfg/` directory, read into everything a server needs. Where a key names something the console knows it becomes a console command (the console is the parser, validator,
 ## clamp, permission check and audit trail; `sv_maxplayers: 64` is the line `sv_maxplayers 64`); what the console cannot reach (the port, the bind address) goes to the boot config;
-## the rest is handed to its owner. An unknown key is reported, never fatal, as `DotConfig` does: refusing to boot over a newer version's setting is worse than ignoring it.
+## the rest is handed to its owner. An unknown key is reported, never fatal, as `GSConfig` does: refusing to boot over a newer version's setting is worse than ignoring it.
 
 const CHANNEL := "tmc.config"
 
@@ -30,43 +30,43 @@ const ALIAS_FILE := "alias.yml"
 const HANDLED_ELSEWHERE := ["sv_content_dir"]
 
 ## The boot configuration, after every file has been applied.
-var server: DotServerConfig = DotServerConfig.new()
+var server: GSServerConfig = GSServerConfig.new()
 
 
 func _init() -> void:
 	# TMC's scanner speaks A2S, so a server with no cfg file naming it must still answer.
 	server.a2s_enabled = true
 
-## The operator's net settings as written in cfg (a [DotNetConfig] with its defaults
-## for the rest). Nothing reads this directly: a game builds its own [DotNetConfig], so
+## The operator's net settings as written in cfg (a [GSNetConfig] with its defaults
+## for the rest). Nothing reads this directly: a game builds its own [GSNetConfig], so
 ## these numbers only matter through [method net_ceiling].
-var net: DotNetConfig = DotNetConfig.new()
+var net: GSNetConfig = GSNetConfig.new()
 
-## The [DotNetConfig] properties the operator actually wrote, so [method net_ceiling]
-## does not pass off a DotNetConfig default as an operator limit.
+## The [GSNetConfig] properties the operator actually wrote, so [method net_ceiling]
+## does not pass off a GSNetConfig default as an operator limit.
 var _net_written: PackedStringArray = []
 
 ## What GameSpice Log adds on top of the file every server already writes. Only the router-only half is read into it, see [constant LOG_KEYS];
 ## the rest is copied out of [member server] by [method build_log_router], so there is one list.
-var log: DotLogConfig = DotLogConfig.new()
+var log: GSLogConfig = GSLogConfig.new()
 
 ## Whether the sink layer is built at all: [code]"auto"[/code], [code]"on"[/code] or [code]"off"[/code].
 ## `auto` is on: the router is a strict superset of the file every server writes, so it costs nothing and buys `log tail`, `log grep` and `log test`. `off` is for a box that wants the plain sink.
 var log_router: String = "auto"
 
-## The guard, after every file has been applied. Its keys are [constant DotSecurityConfig.CFG_KEYS].
-var security: DotSecurityConfig = DotSecurityConfig.new()
+## The guard, after every file has been applied. Its keys are [constant GSSecurityConfig.CFG_KEYS].
+var security: GSSecurityConfig = GSSecurityConfig.new()
 
-## The detectors. Separate dry run, deliberately. Its keys are [constant DotAntiCheatConfig.CFG_KEYS].
-var anticheat: DotAntiCheatConfig = DotAntiCheatConfig.new()
+## The detectors. Separate dry run, deliberately. Its keys are [constant GSAntiCheatConfig.CFG_KEYS].
+var anticheat: GSAntiCheatConfig = GSAntiCheatConfig.new()
 
-## `party.yml`: the timings both party nodes read. Every [DotPartyConfig] property,
+## `party.yml`: the timings both party nodes read. Every [GSPartyConfig] property,
 ## written with a `party_` prefix — `party_seat_hold_sec: 120`. See [method _apply_party].
-var party: DotPartyConfig = DotPartyConfig.new()
+var party: GSPartyConfig = GSPartyConfig.new()
 
-## `party.yml`: this server's terms for a party booking it, written `party_reserve_*`. Ships with [member DotPartyReservePolicy.enabled] off, as the site does,
+## `party.yml`: this server's terms for a party booking it, written `party_reserve_*`. Ships with [member GSPartyReservePolicy.enabled] off, as the site does,
 ## so an owner opts in; a booking made at the console with `party_reserve` is the owner's own act and is not held to it.
-var party_policy: DotPartyReservePolicy = DotPartyReservePolicy.new()
+var party_policy: GSPartyReservePolicy = GSPartyReservePolicy.new()
 
 ## Whether this server takes part in parties at all. On: a server with no backbone still
 ## gets console bookings and party chat, and one with no booking admits everybody.
@@ -78,8 +78,8 @@ var party_chat: bool = true
 ## This server's id on the backbone, for bookings a local hub would make. 0 is none.
 var party_server_id: int = 0
 
-## `matchmaking.yml`: the queue's own settings, written `mm_*` over [DotMatchmakingConfig].
-var matchmaking: DotMatchmakingConfig = DotMatchmakingConfig.new()
+## `matchmaking.yml`: the queue's own settings, written `mm_*` over [GSMatchmakingConfig].
+var matchmaking: GSMatchmakingConfig = GSMatchmakingConfig.new()
 
 ## Off unless `matchmaking.yml` says so. A matchmaker with no playlists queues nobody,
 ## and a server that silently ran one would be a server answering `mm_queue` for a queue
@@ -90,21 +90,21 @@ var mm_enabled: bool = false
 ## on a server in the ticket's region, so it has to be the same word `mm_servers` uses.
 var mm_region: String = "local"
 
-## `mm_playlists:`, one mapping per queue, each built into a [DotMmPlaylist].
-var mm_playlists: Array[DotMmPlaylist] = []
+## `mm_playlists:`, one mapping per queue, each built into a [GSMmPlaylist].
+var mm_playlists: Array[GSMmPlaylist] = []
 
 ## `mm_servers:`, id -> {address, region, playlists}. Empty means a ready match carries no
 ## allocation and the players are told who they are playing with and nothing about where.
 var mm_servers: Dictionary = {}
 
-## `replay.yml`: every [DotReplayConfig] property written with a `replay_` prefix (`replay_ring_seconds: 120`). See [method _apply_replay] and [TmcReplay].
+## `replay.yml`: every [GSReplayConfig] property written with a `replay_` prefix (`replay_ring_seconds: 120`). See [method _apply_replay] and [TmcReplay].
 ## `directory` starts empty, and empty means `<data>/replays`: the addon's `user://replays` is outside `data/`, the one directory a container mounts writable, so a clip written there is evidence nobody can find.
-var replay: DotReplayConfig = _replay_defaults()
+var replay: GSReplayConfig = _replay_defaults()
 
-## `bot_record.yml`: the demonstration recorder's settings, every [DotBotDemoConfig] property
+## `bot_record.yml`: the demonstration recorder's settings, every [GSBotDemoConfig] property
 ## written `bot_record_<name>` (`record` is `bot_record`). Empty `path` means `<data>/bot/demos`.
-## Handed to the game through [DotRegistry] as `bot_record_config`; see [TmcHost].
-var bot_record: DotBotDemoConfig = DotBotDemoConfig.new()
+## Handed to the game through [GSRegistry] as `bot_record_config`; see [TmcHost].
+var bot_record: GSBotDemoConfig = GSBotDemoConfig.new()
 
 ## Whether the replay ring is built at all. On: see [TmcReplay] for what it costs.
 var replay_enabled: bool = true
@@ -142,9 +142,9 @@ var users: Dictionary = {}
 ## `auth.yml`, as parsed. Handed to [TmcAuth], which is the only thing that reads it.
 var auth: Dictionary = {}
 
-## `vote.yml`, as a real [DotVoteRules]. Applied through [method DotConfig.apply_dictionary] rather than key by key, because that reads an enum by name and coerces every scalar through the property's type,
+## `vote.yml`, as a real [GSVoteRules]. Applied through [method GSConfig.apply_dictionary] rather than key by key, because that reads an enum by name and coerces every scalar through the property's type,
 ## the same path `GS_GAME_VOTE_*` takes (see [method _layer_vote_overrides]); a second table would be a second place for `method: instant_runoff` to mean something else.
-var vote: DotVoteRules = DotVoteRules.new()
+var vote: GSVoteRules = GSVoteRules.new()
 
 ## `admin_menu.yml`, as parsed. Handed to [TmcAdminMenu], which is the only thing that
 ## reads it and reports its own problems — the menu's vocabulary is its own, not the
@@ -160,7 +160,7 @@ var radio_enabled: bool = false
 ## `trail.yml` (GameSpice Trail, optional): the `trail_*` keys, read by [method TmcTrail.apply_config].
 var trail: Dictionary = {}
 
-## Game ids `vote.yml` says are never on a ballot. Not a [DotVoteRules] setting: which things in `content/` count as games a player would choose is this deployment's question, and GameSpice Vote should not have an opinion.
+## Game ids `vote.yml` says are never on a ballot. Not a [GSVoteRules] setting: which things in `content/` count as games a player would choose is this deployment's question, and GameSpice Vote should not have an opinion.
 var vote_exclude: PackedStringArray = PackedStringArray()
 
 ## The game to load at boot, or "" for whatever the content directory says is first.
@@ -232,10 +232,10 @@ var files_missing: PackedStringArray = PackedStringArray()
 
 
 ## Reads a whole `cfg/` directory. A missing file is not an error (no RCON means no reason to carry an `auth.yml`); a file that is *present and malformed* is, and names the line.
-static func load_dir(directory: String) -> DotResult:
+static func load_dir(directory: String) -> GSResult:
 	var config := TmcConfig.new()
 	var base := directory.rstrip("/")
-	DotAddonConfig.config_root = base
+	GSAddonConfig.config_root = base
 
 	var alias_read := config._load_aliases("%s/%s/%s" % [base, SERVER_DIR, ALIAS_FILE])
 	if not alias_read.ok:
@@ -262,8 +262,8 @@ static func load_dir(directory: String) -> DotResult:
 		var tree: Variant = parsed.value
 
 		if not (tree is Dictionary):
-			return DotResult.fail(
-				DotError.CODE_PARSE, "%s must contain a mapping." % path
+			return GSResult.fail(
+				GSError.CODE_PARSE, "%s must contain a mapping." % path
 			)
 
 		config.files_read.append(name)
@@ -290,22 +290,22 @@ static func load_dir(directory: String) -> DotResult:
 	if not valid.ok:
 		return valid.wrap("The configuration in %s is not usable" % base)
 
-	return DotResult.success(config)
+	return GSResult.success(config)
 
 
-## `server.yml` lives in `cfg/server/` now; the flat `cfg/server.yml` is read until DotCfgLegacy's cutoff, and the new one wins whole.
+## `server.yml` lives in `cfg/server/` now; the flat `cfg/server.yml` is read until GSCfgLegacy's cutoff, and the new one wins whole.
 func _flat_path(name: String, base: String) -> String:
 	if name == "server.yml":
-		return DotCfgLegacy.find("%s/%s" % [base, name], "%s/%s/%s" % [base, SERVER_DIR, name])
+		return GSCfgLegacy.find("%s/%s" % [base, name], "%s/%s/%s" % [base, SERVER_DIR, name])
 	var path := "%s/%s" % [base, name]
 	return path if FileAccess.file_exists(path) else ""
 
 
 ## Every other `cfg/server/*.yml` the loaders below do not own: more flat server keys, applied after `net.yml` in name order.
-func _load_server_extras(base: String) -> DotResult:
+func _load_server_extras(base: String) -> GSResult:
 	var dir := DirAccess.open("%s/%s" % [base, SERVER_DIR])
 	if dir == null:
-		return DotResult.success(null)
+		return GSResult.success(null)
 	var names := Array(dir.get_files())
 	names.sort()
 	for file: String in names:
@@ -318,21 +318,21 @@ func _load_server_extras(base: String) -> DotResult:
 		if parsed.value == null:
 			continue
 		if not (parsed.value is Dictionary):
-			return DotResult.fail(DotError.CODE_PARSE, "%s must contain a mapping." % path)
+			return GSResult.fail(GSError.CODE_PARSE, "%s must contain a mapping." % path)
 		files_read.append("%s/%s" % [SERVER_DIR, file])
 		var applied := _apply("server.yml", parsed.value as Dictionary)
 		if not applied.ok:
 			return applied
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
-## One WARN per file that moved but is merged, not replaced, so DotCfgLegacy.find (which picks one) does not fit.
+## One WARN per file that moved but is merged, not replaced, so GSCfgLegacy.find (which picks one) does not fit.
 func _warn_legacy_file(path: String, new_home: String) -> void:
-	if DotCfgLegacy._warned.has(path):
+	if GSCfgLegacy._warned.has(path):
 		return
-	DotCfgLegacy._warned[path] = true
-	DotLog.warn("cfg", "legacy config file %s: still read after server.yml; move its keys to %s before %s" % [
-		path, new_home, DotCfgLegacy.REMOVE_AFTER], {"old": path, "remove_after": DotCfgLegacy.REMOVE_AFTER})
+	GSCfgLegacy._warned[path] = true
+	GSLog.warn("cfg", "legacy config file %s: still read after server.yml; move its keys to %s before %s" % [
+		path, new_home, GSCfgLegacy.REMOVE_AFTER], {"old": path, "remove_after": GSCfgLegacy.REMOVE_AFTER})
 
 
 ## One WARN naming the subsystem keys of `server.yml` that have an addon folder ([constant LEGACY_KEYS]).
@@ -345,15 +345,15 @@ func _warn_legacy_keys(path: String, tree: Dictionary) -> void:
 		for prefix: String in TmcConfigKeys.LEGACY_KEYS:
 			if name.begins_with(prefix):
 				moved.append("%s -> cfg/addons/%s/" % [name, TmcConfigKeys.LEGACY_KEYS[prefix]])
-	if moved.is_empty() or DotCfgLegacy._warned.has(path + "#keys"):
+	if moved.is_empty() or GSCfgLegacy._warned.has(path + "#keys"):
 		return
-	DotCfgLegacy._warned[path + "#keys"] = true
-	DotLog.warn("cfg", "%s: subsystem keys still read here until %s: %s" % [
-		path, DotCfgLegacy.REMOVE_AFTER, ", ".join(moved)], {"path": path})
+	GSCfgLegacy._warned[path + "#keys"] = true
+	GSLog.warn("cfg", "%s: subsystem keys still read here until %s: %s" % [
+		path, GSCfgLegacy.REMOVE_AFTER, ", ".join(moved)], {"path": path})
 
 
-## DotConfig.apply_env with the GS_ spelling too, so GS_X wins over DOT_X even on a GameSpice Core older than gs_env_name (pinned addons).
-func _apply_env_both(cfg: DotConfig, prefix: String = "") -> void:
+## GSConfig.apply_env with the GS_ spelling too, so GS_X wins over DOT_X even on a GameSpice Core older than gs_env_name (pinned addons).
+func _apply_env_both(cfg: GSConfig, prefix: String = "") -> void:
 	var p := prefix if prefix != "" else cfg.env_prefix()
 	cfg.apply_env(p)
 	if p.begins_with("DOT_"):
@@ -376,7 +376,7 @@ func _layer_vote_overrides() -> void:
 ## unlike the vote there is one of each in the process, so no second one for a prefix to collide with.
 func _layer_party_overrides() -> void:
 	for target in [party, matchmaking]:
-		var cfg := target as DotConfig
+		var cfg := target as GSConfig
 		var before := cfg.unknown_keys.size()
 		_apply_env_both(cfg)
 		cfg.apply_cli()
@@ -403,8 +403,8 @@ func _layer_bot_record_overrides() -> void:
 		unknown.append("%s: %s" % [bot_record.cli_prefix(), bot_record.unknown_keys[i]])
 
 
-static func _replay_defaults() -> DotReplayConfig:
-	var cfg := DotReplayConfig.new()
+static func _replay_defaults() -> GSReplayConfig:
+	var cfg := GSReplayConfig.new()
 	cfg.directory = ""
 	# Half the addon's 512. A match file is the event stream and a roster, kilobytes a
 	# minute; a file that reaches this is a loop somewhere, and 512 MiB of it on a small
@@ -413,8 +413,8 @@ static func _replay_defaults() -> DotReplayConfig:
 	return cfg
 
 
-## The operator's net settings as limits on a game's own: [DotNetConfig] property -> number, only for what cfg wrote. Handed to the game module, which applies it ([code]DotGameNetcode.cap[/code]) before its netcode starts,
-## because every game builds its own [DotNetConfig]. Ceilings, not overrides: 0 is "no limit", the game's lower value wins; [code]net_interp_buffer[/code] is a smoothing choice the module overrides.
+## The operator's net settings as limits on a game's own: [GSNetConfig] property -> number, only for what cfg wrote. Handed to the game module, which applies it ([code]GSGameNetcode.cap[/code]) before its netcode starts,
+## because every game builds its own [GSNetConfig]. Ceilings, not overrides: 0 is "no limit", the game's lower value wins; [code]net_interp_buffer[/code] is a smoothing choice the module overrides.
 func net_ceiling() -> Dictionary:
 	var out := {}
 
@@ -425,24 +425,24 @@ func net_ceiling() -> Dictionary:
 
 
 ## One file in [constant LAYERED], read through its addon's loaders over every tier.
-func _load_layered(name: String, base: String) -> DotResult:
+func _load_layered(name: String, base: String) -> GSResult:
 	var addon: String = TmcConfigKeys.LAYERED[name]
 	var found := true
 	match name:
 		"groups.yml":
-			var g := DotAdminCfg.load_groups(base)
+			var g := GSAdminCfg.load_groups(base)
 			if not g.ok:
 				return g
 			groups = g.value as Dictionary
 			found = not groups.is_empty()
 		"permissions.yml":
-			var u := DotAdminCfg.load_users(base)
+			var u := GSAdminCfg.load_users(base)
 			if not u.ok:
 				return u
 			users = u.value as Dictionary
 			found = not users.is_empty()
 		"admin_menu.yml":
-			var m := DotMenuCfg.load_admin_menu(base)
+			var m := GSMenuCfg.load_admin_menu(base)
 			if not m.ok:
 				return m
 			admin_menu = m.value as Dictionary
@@ -463,32 +463,32 @@ func _load_layered(name: String, base: String) -> DotResult:
 		files_read.append(name)
 	else:
 		files_missing.append(name)
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## Value: every tier of [param file] merged into one tree ({} when no tier has it).
-static func merged_file(addon: String, file: String, base: String) -> DotResult:
+static func merged_file(addon: String, file: String, base: String) -> GSResult:
 	var config := TmcConfig.new()
 	var merged := config._merged_tree(addon, file, base)
-	return DotResult.success(merged.value["tree"]) if merged.ok else merged
+	return GSResult.success(merged.value["tree"]) if merged.ok else merged
 
 
 ## Value: {tree, found}, every tier of [param file] merged, for the keys that are this deployment's.
-func _merged_tree(addon: String, file: String, base: String) -> DotResult:
+func _merged_tree(addon: String, file: String, base: String) -> GSResult:
 	var tree := {}
-	var res := DotAddonConfig.apply_file(
+	var res := GSAddonConfig.apply_file(
 		addon, file, base,
 		func(values: Dictionary, path: String) -> PackedStringArray:
-			DotAddonConfig.merge(tree, values)
+			GSAddonConfig.merge(tree, values)
 			return PackedStringArray([path])
 	)
 	if not res.ok:
 		return res
-	return DotResult.success({"tree": tree, "found": not (res.value as PackedStringArray).is_empty()})
+	return GSResult.success({"tree": tree, "found": not (res.value as PackedStringArray).is_empty()})
 
 
 ## The addon's own typed properties, from its own loader.
-func _apply_typed(name: String, base: String) -> DotResult:
+func _apply_typed(name: String, base: String) -> GSResult:
 	match name:
 		"security.yml":
 			var sec := security.apply_cfg_file(name, base)
@@ -501,17 +501,17 @@ func _apply_typed(name: String, base: String) -> DotResult:
 			return _note_unknown(replay, name, replay.apply_cfg_file(name, base))
 		"matchmaking.yml":
 			return _note_unknown(matchmaking, name, matchmaking.apply_cfg_file(name, base))
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
-func _note_unknown(cfg: DotConfig, file: String, res: DotResult) -> DotResult:
+func _note_unknown(cfg: GSConfig, file: String, res: GSResult) -> GSResult:
 	for k in cfg.unknown_keys:
 		unknown.append("%s: %s" % [file, k])
 	cfg.unknown_keys = PackedStringArray()
 	return res
 
 
-func _apply(file: String, tree: Dictionary) -> DotResult:
+func _apply(file: String, tree: Dictionary) -> GSResult:
 	match file:
 		"replay.yml":
 			return _apply_replay(tree)
@@ -523,10 +523,10 @@ func _apply(file: String, tree: Dictionary) -> DotResult:
 			return _apply_bot_record(tree)
 		"auth.yml":
 			auth = tree
-			return DotResult.success(null)
+			return GSResult.success(null)
 		"loading.yml":
 			loading = tree
-			return DotResult.success(null)
+			return GSResult.success(null)
 		"radio.yml":
 			return _apply_radio(tree)
 		"trail.yml":
@@ -537,8 +537,8 @@ func _apply(file: String, tree: Dictionary) -> DotResult:
 			return _apply_settings(file, tree)
 
 
-## `vote.yml`: straight onto a [DotVoteRules], minus this deployment's own keys.
-func _apply_vote(tree: Dictionary) -> DotResult:
+## `vote.yml`: straight onto a [GSVoteRules], minus this deployment's own keys.
+func _apply_vote(tree: Dictionary) -> GSResult:
 	var settings := tree.duplicate()
 
 	if settings.has("vote_exclude"):
@@ -548,16 +548,16 @@ func _apply_vote(tree: Dictionary) -> DotResult:
 	var before := vote.unknown_keys.size()
 	vote.apply_dictionary(settings, "vote.yml")
 
-	# Reported here rather than left in the resource, so a typo in vote.yml appears in the same boot report as one in server.yml; an unknown key is never fatal (DotConfig's rule).
+	# Reported here rather than left in the resource, so a typo in vote.yml appears in the same boot report as one in server.yml; an unknown key is never fatal (GSConfig's rule).
 	for i in range(before, vote.unknown_keys.size()):
 		unknown.append("vote.yml: %s" % vote.unknown_keys[i])
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
-## `party.yml`: three switches of this deployment's, then two objects by prefix rather than by table (`party_seat_hold_sec` is `seat_hold_sec` on [DotPartyConfig]),
+## `party.yml`: three switches of this deployment's, then two objects by prefix rather than by table (`party_seat_hold_sec` is `seat_hold_sec` on [GSPartyConfig]),
 ## because a table would be a second copy of each addon's property list, which goes stale when the addon gains a setting. An unknown one is still reported, by the object that did not have it.
-func _apply_party(tree: Dictionary) -> DotResult:
+func _apply_party(tree: Dictionary) -> GSResult:
 	for key in tree.keys():
 		var name := String(key)
 		var value: Variant = tree[key]
@@ -594,7 +594,7 @@ func _apply_party(tree: Dictionary) -> DotResult:
 		# the feature failing while looking configured.
 		return valid.wrap("party.yml")
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## Every key `radio.yml` accepts, with its type; anything else is reported as unknown.
@@ -607,7 +607,7 @@ const RADIO_KEYS := {
 
 
 ## `radio.yml`: kept as a tree for [TmcRadio]; the addon may be absent, so nothing here names its classes.
-func _apply_radio(tree: Dictionary) -> DotResult:
+func _apply_radio(tree: Dictionary) -> GSResult:
 	radio = {}
 	for key in tree.keys():
 		var name := String(key)
@@ -616,12 +616,12 @@ func _apply_radio(tree: Dictionary) -> DotResult:
 			continue
 		radio[name] = tree[key]
 	radio_enabled = _truthy(radio.get("radio_enabled", false))
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
-## `replay.yml`: six switches of this deployment's, then every [DotReplayConfig] property by its `replay_` name, by prefix as [method _apply_party] explains.
+## `replay.yml`: six switches of this deployment's, then every [GSReplayConfig] property by its `replay_` name, by prefix as [method _apply_party] explains.
 ## A setting the addon refuses refuses the boot: otherwise a recorder is quietly not built, and a moderator finds out typing `replay save` during an incident.
-func _apply_replay(tree: Dictionary) -> DotResult:
+func _apply_replay(tree: Dictionary) -> GSResult:
 	for key in tree.keys():
 		var name := String(key)
 		var value: Variant = tree[key]
@@ -660,12 +660,12 @@ func _apply_replay(tree: Dictionary) -> DotResult:
 	if not valid.ok:
 		return valid.wrap("replay.yml")
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## `bot_record.yml`: `bot_record` and `bot_record_<property>`, onto [member bot_record]. A value the
 ## addon refuses refuses the boot, like `replay.yml`.
-func _apply_bot_record(tree: Dictionary) -> DotResult:
+func _apply_bot_record(tree: Dictionary) -> GSResult:
 	var own := {}
 	var keys := bot_record.config_keys()
 	for raw in tree:
@@ -682,12 +682,12 @@ func _apply_bot_record(tree: Dictionary) -> DotResult:
 	var valid := bot_record.validate()
 	if not valid.ok:
 		return valid.wrap("bot_record.yml")
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## `matchmaking.yml`: `mm_enabled`, `mm_region`, `mm_playlists`, `mm_servers`, and every
-## [DotMatchmakingConfig] property by its `mm_` name.
-func _apply_matchmaking(tree: Dictionary) -> DotResult:
+## [GSMatchmakingConfig] property by its `mm_` name.
+func _apply_matchmaking(tree: Dictionary) -> GSResult:
 	for key in tree.keys():
 		var name := String(key)
 		var value: Variant = tree[key]
@@ -716,22 +716,22 @@ func _apply_matchmaking(tree: Dictionary) -> DotResult:
 
 		unknown.append("matchmaking.yml: %s" % name)
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
 ## `mm_playlists:` as a mapping of id to settings. The id is the key, so two playlists
-## cannot share one -- which [method DotMatchmaker.add_playlist] would refuse anyway, but
+## cannot share one -- which [method GSMatchmaker.add_playlist] would refuse anyway, but
 ## later and with less to say about where.
-func _playlists_from(value: Variant) -> DotResult:
+func _playlists_from(value: Variant) -> GSResult:
 	if value == null or (value is String and String(value) == ""):
-		return DotResult.success(null)
+		return GSResult.success(null)
 
 	if not (value is Dictionary):
-		return DotResult.fail(DotError.CODE_INVALID, "mm_playlists must be a mapping of id to settings")
+		return GSResult.fail(GSError.CODE_INVALID, "mm_playlists must be a mapping of id to settings")
 
 	for id in (value as Dictionary).keys():
 		var settings: Variant = (value as Dictionary)[id]
-		var pl := DotMmPlaylist.new()
+		var pl := GSMmPlaylist.new()
 		pl.id = StringName(String(id))
 		pl.display_name = String(id)
 
@@ -748,12 +748,12 @@ func _playlists_from(value: Variant) -> DotResult:
 
 		mm_playlists.append(pl)
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
-## Sets one property on a plain [Resource], coerced through the property's own type. [DotConfig] has this built in and these two (the reservation policy, a playlist) are not DotConfigs;
+## Sets one property on a plain [Resource], coerced through the property's own type. [GSConfig] has this built in and these two (the reservation policy, a playlist) are not GSConfigs;
 ## a plain `set()` would store a YAML string into an int and fail far away.
-static func _set_on_resource(target: Object, property: String, value: Variant) -> DotResult:
+static func _set_on_resource(target: Object, property: String, value: Variant) -> GSResult:
 	for prop in target.get_property_list():
 		if String(prop["name"]) != property:
 			continue
@@ -768,7 +768,7 @@ static func _set_on_resource(target: Object, property: String, value: Variant) -
 				coerced = _truthy(value)
 			TYPE_INT:
 				# An enum is an int, and an operator writes its NAME. Matched against the
-				# hint string the same way DotConfig reads one.
+				# hint string the same way GSConfig reads one.
 				if int(prop["hint"]) == PROPERTY_HINT_ENUM and value is String \
 						and not String(value).is_valid_int():
 					var names := String(prop["hint_string"]).to_lower().split(",")
@@ -780,8 +780,8 @@ static func _set_on_resource(target: Object, property: String, value: Variant) -
 							# `NAME:value` when the enum says so, the position when not.
 							index = names[i].get_slice(":", 1).to_int() if names[i].contains(":") else i
 					if index < 0:
-						return DotResult.fail(
-							DotError.CODE_INVALID,
+						return GSResult.fail(
+							GSError.CODE_INVALID,
 							"'%s' is not one of %s" % [value, prop["hint_string"]]
 						)
 					coerced = index
@@ -806,9 +806,9 @@ static func _set_on_resource(target: Object, property: String, value: Variant) -
 					coerced = list
 
 		target.set(property, coerced)
-		return DotResult.success(coerced)
+		return GSResult.success(coerced)
 
-	return DotResult.fail(DotError.CODE_INVALID, "'%s' is not a setting of %s" % [property, target.get_class()])
+	return GSResult.fail(GSError.CODE_INVALID, "'%s' is not a setting of %s" % [property, target.get_class()])
 
 
 static func _truthy(value: Variant) -> bool:
@@ -835,7 +835,7 @@ func alias_lines() -> PackedStringArray:
 
 
 ## After the console is up: every alias target must be a real setting, command or cvar, see [method TmcAliases.check]. Returns the number of failures.
-func check_aliases(console: DotConsole) -> int:
+func check_aliases(console: GSConsole) -> int:
 	var report := TmcAliases.check(aliases, console)
 	unknown.append_array(report["unknown"])
 	alias_failures = report["failures"]
@@ -850,14 +850,14 @@ func load_game_aliases(content_dir: String, game_id: String) -> void:
 
 
 ## Reads the defaults and `cfg/server/alias.yml`. No limit on the number of entries. A file mistake fails the boot (the message names every `path:line`).
-func _load_aliases(path: String) -> DotResult:
+func _load_aliases(path: String) -> GSResult:
 	var errors := _load_default_aliases()
 	if FileAccess.file_exists(path):
 		files_read.append("%s/%s" % [SERVER_DIR, ALIAS_FILE])
 		errors.append_array(merge_alias_layer("server", path, FileAccess.get_file_as_string(path)))
 	if not errors.is_empty():
-		return DotResult.fail(DotError.CODE_INVALID, "alias files are not usable:\n  %s" % "\n  ".join(errors))
-	return DotResult.success(null)
+		return GSResult.fail(GSError.CODE_INVALID, "alias files are not usable:\n  %s" % "\n  ".join(errors))
+	return GSResult.success(null)
 
 
 ## The setting [param name] stands for: itself, or what its alias targets. Empty when the entry is to be skipped: an alias whose target has arguments, or one whose canonical key was already written.
@@ -875,7 +875,7 @@ func _canonical_setting(file: String, name: String, value: Variant) -> String:
 	if _written_keys.has(target):
 		# Silent when the two agree; the canonical key wins when they do not, and that is worth one line.
 		if str(_written_keys[target]) != str(value):
-			DotLog.warn(CHANNEL, "%s: `%s` and its alias disagree (%s vs %s); `%s` wins" % [file, target, str(_written_keys[target]), str(value), target])
+			GSLog.warn(CHANNEL, "%s: `%s` and its alias disagree (%s vs %s); `%s` wins" % [file, target, str(_written_keys[target]), str(value), target])
 		return ""
 
 	return target
@@ -889,13 +889,13 @@ const _PLAIN_SETTINGS := {"game": "initial_game", "sv_map": "initial_map", "map"
 
 
 ## The values refused at boot rather than at read, so the command line has had its say first: the announce mode ([method check_addons_announce]) and the cache ceiling ([method TmcCloudLimit.parse]).
-func check_boot_values() -> DotResult:
+func check_boot_values() -> GSResult:
 	var announce_mode := check_addons_announce(addons_announce)
 	return announce_mode if not announce_mode.ok else TmcCloudLimit.parse(cache_bytes)
 
 
 ## `server.yml` and `net.yml`: flat keys, three possible destinations.
-func _apply_settings(file: String, tree: Dictionary) -> DotResult:
+func _apply_settings(file: String, tree: Dictionary) -> GSResult:
 	for key in tree.keys():
 		var name := String(key)
 		var value: Variant = tree[key]
@@ -964,7 +964,7 @@ func _apply_settings(file: String, tree: Dictionary) -> DotResult:
 
 			continue
 
-		if DotSecurityConfig.CFG_KEYS.has(name) or DotAntiCheatConfig.CFG_KEYS.has(name):
+		if GSSecurityConfig.CFG_KEYS.has(name) or GSAntiCheatConfig.CFG_KEYS.has(name):
 			# security.yml went through the addons' loaders already; the keys are theirs alone.
 			if file != "security.yml":
 				unknown.append("%s: %s (belongs in security.yml)" % [file, name])
@@ -996,12 +996,12 @@ func _apply_settings(file: String, tree: Dictionary) -> DotResult:
 		# so a name-based guess here would refuse every setting a game contributed; the console answers "unknown command" for a real typo.
 		console_lines.append(_console_line(name, value))
 
-	return DotResult.success(null)
+	return GSResult.success(null)
 
 
-## The sink layer this configuration describes, or null when it is switched off (the server then makes its own [code]DotLogSink[/code]).
+## The sink layer this configuration describes, or null when it is switched off (the server then makes its own [code]GSLogSink[/code]).
 ## The shared settings are copied out of [member server] rather than read twice: a deployment with no GameSpice Log has them through GameSpice Core's sink, so `log.yml` names each once; a second set of keys is a shape this project was bitten by twice.
-func build_log_router() -> DotLogRouter:
+func build_log_router() -> GSLogRouter:
 	if log_router == "off":
 		return null
 
@@ -1015,7 +1015,7 @@ func build_log_router() -> DotLogRouter:
 	log.file_json = server.log_json
 	log.file_max_bytes = server.log_max_file_bytes
 	log.file_max_files = server.log_max_files
-	# The file keeps whatever DotLog itself let through, which is what the plain sink does.
+	# The file keeps whatever GSLog itself let through, which is what the plain sink does.
 	# A second threshold in front of the file is a way to have a log file quieter than the
 	# level an operator set, which is never what they meant.
 	log.file_level = server.log_level
@@ -1041,19 +1041,19 @@ func build_log_router() -> DotLogRouter:
 	return log.build_router()
 
 
-## Assigns onto a [DotConfig], coercing through its own rules: through [method DotConfig.apply_dictionary] rather than [method Object.set], so a wrong-typed value is coerced and reported
+## Assigns onto a [GSConfig], coercing through its own rules: through [method GSConfig.apply_dictionary] rather than [method Object.set], so a wrong-typed value is coerced and reported
 ## as every other layer does, and `max-players`, `maxPlayers` and `max_players` reach the same property.
-func _set_on(target: DotConfig, property: String, value: Variant) -> DotResult:
+func _set_on(target: GSConfig, property: String, value: Variant) -> GSResult:
 	var before := target.unknown_keys.size()
 	var applied := target.apply_dictionary({property: value}, "cfg")
 
 	if applied.is_empty() and target.unknown_keys.size() > before:
-		return DotResult.fail(
-			DotError.CODE_INVALID,
+		return GSResult.fail(
+			GSError.CODE_INVALID,
 			"'%s' is not a setting of %s." % [property, target.get_class()]
 		)
 
-	return DotResult.success(applied)
+	return GSResult.success(applied)
 
 
 ## One console line, quoted so a value with spaces survives.
@@ -1073,10 +1073,10 @@ static func _console_line(name: String, value: Variant) -> String:
 	return "%s %s" % [name, text]
 
 
-## Writes the console lines to a `.cfg` for GameSpice Server to execute at boot, through its own startup-config path: `DotServer.boot()` runs it after the console exists and *before* the listener opens,
+## Writes the console lines to a `.cfg` for GameSpice Server to execute at boot, through its own startup-config path: `GSServer.boot()` runs it after the console exists and *before* the listener opens,
 ## the only window where a `FLAG_STARTUP_ONLY` cvar (`sv_tickrate`) is still settable, and a hook of our own would be a second ordering to keep in step.
 ## Generated and overwritten every boot (it is derived; the YAML is the authored file) and written rather than kept in memory so an operator can read what their configuration became.
-func write_cfg(path: String) -> DotResult:
+func write_cfg(path: String) -> GSResult:
 	var text := PackedStringArray([
 		"// GENERATED from cfg/*.yml on every boot. Do not edit: your changes will be",
 		"// overwritten. Edit the YAML instead.",
@@ -1089,29 +1089,29 @@ func write_cfg(path: String) -> DotResult:
 	text.append_array(console_lines)
 	text.append("")
 
-	var written := DotPaths.write_text(path, "\n".join(text))
+	var written := GSPaths.write_text(path, "\n".join(text))
 
 	if not written.ok:
 		return written.wrap("Could not write the generated config")
 
-	return DotResult.success(path)
+	return GSResult.success(path)
 
 
 ## Reports what GameSpice Server made of the generated config, after boot. A line the console refused is a warning, for [member unknown]'s reason, but one that names the line.
-func note_console_result(console: DotConsole) -> void:
+func note_console_result(console: GSConsole) -> void:
 	check_aliases(console)
 	for line in console_lines:
 		var name := line.split(" ")[0]
 
 		if console.find_cvar(name) == null and console.find_command(name) == null:
 			var near := nearest_names(name, console)
-			DotLog.warn(CHANNEL, "a setting names nothing this server has", {"setting": name, "did_you_mean": near})
+			GSLog.warn(CHANNEL, "a setting names nothing this server has", {"setting": name, "did_you_mean": near})
 			unknown.append("cfg: %s%s" % [name, " (did you mean %s?)" % ", ".join(near) if not near.is_empty() else ""])
 
 
 ## The settings this server does have that [param name] most resembles, best first (at most 3). Godot's bigram [method String.similarity] rather than a prefix test:
 ## a typo like `net_intrest_radius` shares no useful prefix with the key it meant.
-func nearest_names(name: String, console: DotConsole = null) -> PackedStringArray:
+func nearest_names(name: String, console: GSConsole = null) -> PackedStringArray:
 	var pool := PackedStringArray()
 	for keys: Dictionary in [TmcConfigKeys.BOOT_KEYS, TmcConfigKeys.NET_KEYS, TmcConfigKeys.LOG_KEYS]:
 		pool.append_array(PackedStringArray(keys.keys()))
@@ -1146,12 +1146,12 @@ static func _string_list(value: Variant) -> PackedStringArray:
 
 
 ## Refuses an `addons_announce` this build does not know, naming the ones it does. A typo would otherwise fall back to one of the two without anybody noticing which.
-static func check_addons_announce(value: String) -> DotResult:
+static func check_addons_announce(value: String) -> GSResult:
 	if value in ADDONS_ANNOUNCE_MODES:
-		return DotResult.success(value)
+		return GSResult.success(value)
 
-	return DotResult.fail(
-		DotError.CODE_INVALID,
+	return GSResult.fail(
+		GSError.CODE_INVALID,
 		"addons_announce is %s, not '%s'" % [" or ".join(PackedStringArray(ADDONS_ANNOUNCE_MODES)), value],
 		"server.yml addons_announce, --addons-announce or TMC_ADDONS_ANNOUNCE"
 	)

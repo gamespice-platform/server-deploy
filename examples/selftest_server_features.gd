@@ -41,12 +41,12 @@ func _test_party() -> void:
 	_check(config.party_enabled and config.party_chat, "the two switches reach the host")
 	_check(config.party_server_id == 42, "party_server_id reaches the booking keeper")
 	# By prefix, onto the addon's own config: the table this file does not keep.
-	_check(config.party.seat_hold_sec == 120.0, "party_seat_hold_sec reaches DotPartyConfig")
+	_check(config.party.seat_hold_sec == 120.0, "party_seat_hold_sec reaches GSPartyConfig")
 	_check(config.party.state_report_sec == 20.0, "and the roster report interval")
 	_check(config.party_policy.enabled, "party_reserve_enabled reaches the owner's terms")
 	# Written by NAME, as an operator writes it, and read as the enum.
 	_check(
-		config.party_policy.lobbies == DotPartyReservePolicy.Lobbies.PUBLIC_AND_PRIVATE,
+		config.party_policy.lobbies == GSPartyReservePolicy.Lobbies.PUBLIC_AND_PRIVATE,
 		"a booking shape written by name is read as the enum (%d)" % config.party_policy.lobbies
 	)
 	_check(not config.party_policy.empty_only, "a bool reaches the terms")
@@ -63,10 +63,10 @@ func _test_party() -> void:
 
 	_check(config.mm_enabled, "mm_enabled reaches the host")
 	_check(config.mm_region == "eu", "and the region tickets are filed under")
-	_check(is_equal_approx(config.matchmaking.tau, 0.6), "mm_tau reaches DotMatchmakingConfig")
+	_check(is_equal_approx(config.matchmaking.tau, 0.6), "mm_tau reaches GSMatchmakingConfig")
 	_check(config.mm_playlists.size() == 2, "two playlists, one per key (%d)" % config.mm_playlists.size())
 
-	var duel: DotMmPlaylist = config.mm_playlists[0] if config.mm_playlists.size() > 0 else null
+	var duel: GSMmPlaylist = config.mm_playlists[0] if config.mm_playlists.size() > 0 else null
 	_check(
 		duel != null and duel.id == &"duel" and duel.team_size == 1 and duel.accept_timeout_sec == 15.0,
 		"a playlist's settings reach it by their own names"
@@ -107,7 +107,7 @@ func _test_bot_record() -> void:
 	_check(
 		not config.bot_record.record and config.bot_record.rate == 8.0 and config.bot_record.cap == 50
 			and config.bot_record.store == "memory" and config.bot_record.kinds == "ride",
-		"bot_record, bot_record_rate, _cap, _store and _kinds reach DotBotDemoConfig"
+		"bot_record, bot_record_rate, _cap, _store and _kinds reach GSBotDemoConfig"
 	)
 	var stray := PackedStringArray()
 	for entry in config.unknown:
@@ -128,15 +128,15 @@ func _test_bot_record() -> void:
 			var key := "bot_record" if k == "record" else "bot_record_" + k
 			if not (tpl.value as Dictionary).has(key):
 				missing.append(key)
-		_check(missing.is_empty(), "no DotBotDemoConfig property is missing from it", ", ".join(missing))
+		_check(missing.is_empty(), "no GSBotDemoConfig property is missing from it", ", ".join(missing))
 	_done()
 
 
 func _test_radio() -> void:
 	_section("dot-radio, optional")
 	var root := "user://selftest_radio_cfg"
-	DotPaths.remove_tree(root)
-	DotCfgLegacy.reset()
+	GSPaths.remove_tree(root)
+	GSCfgLegacy.reset()
 	var template := TmcYaml.parse_file("res://cfg.example/addon/dot_radio/radio.yml")
 	_check(template.ok and template.value is Dictionary, "the shipped radio.yml parses")
 	var shipped: Dictionary = template.value if template.ok else {}
@@ -165,7 +165,7 @@ func _test_radio() -> void:
 		cfg.radio["radio_port"] = 0
 		cfg.radio["radio_dir"] = ProjectSettings.globalize_path(root + "/lib")
 		var on := TmcRadio.install(host, null, cfg, ProjectSettings.globalize_path(root))
-		live = on != null and DotRegistry.get_service(TmcRadio.SERVICE) != null and on.api.authenticate("secret-token").ok
+		live = on != null and GSRegistry.get_service(TmcRadio.SERVICE) != null and on.api.authenticate("secret-token").ok
 		if on != null:
 			on.free()
 	_check(not present or live, "with the addon: the station starts, registers, and the token file is the admin token")
@@ -212,12 +212,12 @@ func _test_security() -> void:
 	# The shipped default, restated here because it is the decision rather than the value:
 	# an addon that starts punishing an existing community the moment it is installed is
 	# one that gets turned off after the first false positive.
-	_check(DotSecurityConfig.new().dry_run, "a guard nobody configured is in dry run")
+	_check(GSSecurityConfig.new().dry_run, "a guard nobody configured is in dry run")
 
 	_done()
 
 
-## A game older than the list asks for, and a `map:` for a game without a DotMapSession: each ends in a logged ERROR, not a yellow warning nobody reads.
+## A game older than the list asks for, and a `map:` for a game without a GSMapSession: each ends in a logged ERROR, not a yellow warning nobody reads.
 func _test_startup_checks() -> void:
 	_section("startup: an old game and a map path of the game's own")
 
@@ -289,7 +289,7 @@ func _test_cache_limit() -> void:
 	cfg.cache_bytes = "lots"
 	_check(not cfg.check_boot_values().ok and str(cfg.check_boot_values().error).contains("cache_bytes"), "a ceiling that is not a byte count fails it, by name")
 
-	var cloud := DotCloudConfig.new()
+	var cloud := GSCloudConfig.new()
 	var dir := OS.get_user_data_dir().path_join("selftest-cache-limit")
 	cloud.cache_dir = dir
 	_check(cloud.cache_bytes > 0, "dot-cloud's own default is a ceiling (%d), which is why the server sets one" % cloud.cache_bytes)
@@ -309,5 +309,5 @@ func _test_cache_limit() -> void:
 
 
 class _MapStarter extends Node:
-	func start_on_map(_id: StringName) -> DotResult:
-		return DotResult.success(null)
+	func start_on_map(_id: StringName) -> GSResult:
+		return GSResult.success(null)

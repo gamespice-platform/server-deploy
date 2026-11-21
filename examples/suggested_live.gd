@@ -11,7 +11,7 @@ var _asked := 0
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.ERROR)
+	GSLog.set_level(GSLog.Level.ERROR)
 	_run.call_deferred()
 
 
@@ -28,15 +28,15 @@ func _run() -> void:
 		get_tree().quit(1)
 		return
 	var desc := TmcSolo.parse_descriptor(FileAccess.get_file_as_string(yml))
-	DotPaths.remove_tree(WORK)
+	GSPaths.remove_tree(WORK)
 
 	var shell: Node = (load(SHELL) as PackedScene).instantiate()
 	shell.set("workshop_backbone_url", "")
 	shell.call("_ensure_cloud")
-	var cloud: DotCloudClient = shell.get("_cloud")
+	var cloud: GSCloudClient = shell.get("_cloud")
 	cloud.config.cache_dir = WORK.path_join("cache")
 	cloud.http_base_urls = PackedStringArray([_arg("--content-url", "https://content.gamespice.net/content")])
-	var ws: DotCloudWorkshop = shell.call("_ensure_workshop")
+	var ws: GSCloudWorkshop = shell.call("_ensure_workshop")
 	ws.config_file = ""
 	ws.cache_dir = WORK.path_join("workshop")
 	shell.set("workshop_ask_override", func(_summary: Dictionary) -> bool:
@@ -58,5 +58,5 @@ func _run() -> void:
 		(summary.get("suggested", {}) as Dictionary).get("mode", "?"),
 		int((summary.get("suggested", {}) as Dictionary).get("kept", -1)), _asked,
 		", ".join(mounted), "; ".join(failed)])
-	DotPaths.remove_tree(WORK)
+	GSPaths.remove_tree(WORK)
 	get_tree().quit(0 if not summary.is_empty() else 1)

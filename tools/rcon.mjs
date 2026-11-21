@@ -18,7 +18,7 @@
 // The password comes from cfg/rcon.yml by default. It is deliberately NOT a command
 // line option: argv is readable by every other process on the machine and ends up in
 // pasted bug reports, which is why ./server refuses --rcon-password and why
-// DotConfig refuses secrets from argv and the environment. TMC_RCON_PASSWORD exists
+// GSConfig refuses secrets from argv and the environment. TMC_RCON_PASSWORD exists
 // for a CI runner that has no file, and is the lesser evil rather than a good idea.
 //
 // The protocol is four little-endian int32 fields and two NULs:
@@ -98,7 +98,7 @@ if (!port && gamePort) {
 }
 
 if (!port) {
-  // rcon_port 0 means "the game port + 1", which is what DotServerConfig does.
+  // rcon_port 0 means "the game port + 1", which is what GSServerConfig does.
   const declared = Number(readCfg(rconFile, 'rcon_port')) || 0;
   port = declared || (Number(readCfg(path.join(configDir, 'net.yml'), 'net_port')) || Number(readCfg(path.join(configDir, 'server.yml'), 'net_port')) || 6064) + 1;
 }

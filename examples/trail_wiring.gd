@@ -1,6 +1,6 @@
 extends Node
 
-## GameSpice Trail's install: trail.yml, TmcTrail on an unstarted DotServer, and TmcTrailLink in a shell. Without the addon linked only the off paths run.
+## GameSpice Trail's install: trail.yml, TmcTrail on an unstarted GSServer, and TmcTrailLink in a shell. Without the addon linked only the off paths run.
 
 const SECTIONS := 3
 const CHECKS := 14
@@ -11,7 +11,7 @@ var _sections := 0
 
 
 func _ready() -> void:
-	DotLog.set_level(DotLog.Level.FATAL)
+	GSLog.set_level(GSLog.Level.FATAL)
 	_run.call_deferred()
 
 
@@ -48,15 +48,15 @@ func _test_host() -> void:
 	var cfg := TmcConfig.new()
 	_check(TmcTrail.install(host, null, cfg, "user://") == null and host.get_child_count() == 0, "off builds nothing")
 	cfg.trail = {"trail_enabled": true}
-	var server := DotServer.new()
+	var server := GSServer.new()
 	var on := TmcTrail.install(host, server, cfg, ProjectSettings.globalize_path("user://trail_wiring"))
 	if not TmcTrail.available():
 		_check(on == null and host.get_child_count() == 0, "enabled without the addon is a warning, not a crash")
 		for i in 3:
 			_check(true, "(addon absent) skipped")
 	else:
-		_check(on != null and DotRegistry.get_service(TmcTrail.SERVICE) == on.relay, "enabled: the relay is built and registered")
-		var session := DotClientSession.new(0, 7)
+		_check(on != null and GSRegistry.get_service(TmcTrail.SERVICE) == on.relay, "enabled: the relay is built and registered")
+		var session := GSClientSession.new(0, 7)
 		session.groups = PackedStringArray(["vip"])
 		server.client_spawned.emit(session)
 		_check(on.relay.peers().has(7) and on._groups(7) == PackedStringArray(["vip"]), "a spawned player is a relay peer with its groups")
@@ -73,12 +73,12 @@ func _test_link() -> void:
 	add_child(link)
 	var present := TmcTrailLink.available()
 	_check(present == (link.client != null), "a client exists exactly when the addon is in the build")
-	var prejoin := DotGamePrejoin.new()
+	var prejoin := GSGamePrejoin.new()
 	var before: int = prejoin.extra_steps.size() if &"extra_steps" in prejoin else 0
 	link.before_join(prejoin)
 	var after: int = prejoin.extra_steps.size() if &"extra_steps" in prejoin else 0
 	_check(after == before + (1 if present and &"extra_steps" in prejoin else 0), "the pack fetch is one extra prejoin step")
-	var client_link := DotClientLink.new()
+	var client_link := GSClientLink.new()
 	link.attach(client_link)
 	_check(not present or client_link.envelope.knows(&"dot.trail"), "the link carries the dot.trail kind")
 	link.reset()
