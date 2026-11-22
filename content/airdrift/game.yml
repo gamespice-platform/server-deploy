@@ -29,7 +29,7 @@
 
 name: "Zee's Airdrift"
 # legacy id: still the published pack's id; renaming it is a re-publish on the content origin.
-content_id: tmc/airdrift
+content_id: tmc/g2gfast
 version: 0.1.0
 kind: pack
 max_players: 32
@@ -149,7 +149,7 @@ cvars:
 #     time_limit_sec: 2400
 
 metadata:
-  # legacy id: the id this game had before it was renamed. `changelevel airdrift`, an allow list
-  # or a cfg/game/airdrift/ written for it still reach this game.
-  former_ids: [airdrift]
+  # legacy id: the id this game had before it was renamed. `changelevel g2gfast`, an allow list
+  # or a cfg/game/g2gfast/ written for it still reach this game.
+  former_ids: [g2gfast]
 

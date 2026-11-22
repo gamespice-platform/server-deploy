@@ -429,7 +429,7 @@ game_tickrate() {
     done
     case "$g" in
         fatalcontact|arena) printf 66 ;;
-        airdrift|airdrift|playlot|playground) printf 128 ;;  # airdrift: legacy id (a server still configured under it)
+        airdrift|g2gfast|playlot|playground) printf 128 ;;  # g2gfast: legacy id (a server still configured under it)
         *)                 printf 60 ;;
     esac
 }
@@ -990,7 +990,7 @@ ADDONS_LOCK="$ROOT/addons.lock"
 lock_ref() {
     [ "${TMC_ADDONS_LOCK:-on}" != "off" ] || return 1
     local pin a p2
-    # Either name of a renamed repository finds its pin (fc-weapons was fc-weapons).
+    # Either name of a renamed repository finds its pin (fc-weapons was arena-weapons).
     a="$(repo_alias "$1")" || a="$1"
     pin="$(content_list addons "$ROOT/cfg" 2>/dev/null | awk -F'\t' -v r="$1" -v a="$a" '($2 == r || $2 == a) && $3 != "" { print $3; exit }')"
     # An `addons:` entry in server.yml that names a version is the operator's word over the shipped list and the lock.
@@ -1504,7 +1504,7 @@ while IFS= read -r _repo; do
         zee-gs-weapons) ADDONS_ALL+=(zee_weapons) ;;
         zed-gs-weapons) ADDONS_ALL+=(zed_weapons) ;;
         # fc_weapons, or the legacy arena_weapons where the locked ref still holds it: settle_renamed_dirs.
-        fc-weapons) ADDONS_ALL+=(fc_weapons) ;;
+        fc-weapons|arena-weapons) ADDONS_ALL+=(fc_weapons) ;;
         *)               ADDONS_ALL+=("${_repo//-/_}") ;;
     esac
 done < <(content_addon_repos "$ROOT/cfg") || die "cfg/content/addons.yml: could not be read" 5
@@ -1518,7 +1518,7 @@ while IFS=$'\t' read -r _repo _pin; do
     case "$_repo" in
         zee-gs-weapons) _dir=zee_weapons ;;
         zed-gs-weapons) _dir=zed_weapons ;;
-        fc-weapons) _dir=arena_weapons ;;
+        fc-weapons|arena-weapons) _dir=arena_weapons ;;
         *) _dir="${_repo//-/_}" ;;
     esac
     case " ${ADDONS_ALL[*]} " in *" $_dir "*) ;; *) ADDONS_ALL+=("$_dir") ;; esac
@@ -1703,8 +1703,8 @@ addon_repo() {
 ## server's existing clone under addons/.repos/, may still use the old one.
 repo_alias() {
     case "$1" in
-        fc-weapons)    printf 'fc-weapons\n' ;;
-        fc-weapons) printf 'fc-weapons\n' ;;
+        fc-weapons)    printf 'arena-weapons\n' ;;
+        arena-weapons) printf 'fc-weapons\n' ;;
         *) return 1 ;;
     esac
 }

@@ -5,11 +5,11 @@ extends RefCounted
 
 ## The organisation's (both its ids), and the game addons published under their author (the weapons packs, natural-disasters).
 ## A shell carries none of those (it is gs-* addons only), so these are what it fetches them under when a server announces them.
-## `modcommunity/` and `gamemann/fc-weapons` (fc-weapons' old id) stay for servers that still announce the old ids.
-const DEFAULTS: PackedStringArray = ["gamespice-platform/", "modcommunity/", "gamemann/zee-gs-weapons", "gamemann/zed-gs-weapons", "gamemann/fc-weapons", "gamemann/fc-weapons", "gamemann/natural-disasters", "gamemann/gs-trail", "gamemann/gs-radio"]
+## `modcommunity/` and `gamemann/arena-weapons` (fc-weapons' old id) stay for servers that still announce the old ids.
+const DEFAULTS: PackedStringArray = ["gamespice-platform/", "modcommunity/", "gamemann/zee-gs-weapons", "gamemann/zed-gs-weapons", "gamemann/fc-weapons", "gamemann/arena-weapons", "gamemann/natural-disasters", "gamemann/gs-trail", "gamemann/gs-radio"]
 
-## Old repository names a lock or content list may still use, to the current one (fc-weapons was fc-weapons).
-const PUBLISHED_AS := {"fc-weapons": "fc-weapons"}
+## Old repository names a lock or content list may still use, to the current one (fc-weapons was arena-weapons).
+const PUBLISHED_AS := {"arena-weapons": "fc-weapons"}
 
 ## The `gs-*` addons that are their author's, not the organisation's: published as `gamemann/<repo>` (the repository name, `gs-` kept), like the weapons packs.
 const AUTHOR_GS_ADDONS: PackedStringArray = ["gs-trail", "gs-radio"]

@@ -402,7 +402,7 @@ static func derive_requires(source: String, out_path: String, pins: Dictionary =
 
 
 ## The addon levels at the commits addons.lock pins, which is what the shell this box ships has: gs-core's [method GSAddonApi.pinned_levels] reads each addon folder at the locked ref.
-## The repositories are looked for in GS_REPOS_ROOT (old name GS_REPOS_ROOT), beside this project, then in TMC_REPOS_DIR and ~/godot; a root fills only the addons the earlier ones could not read. An addon none could read is left out, so a floor on it is judged against the linked build.
+## The repositories are looked for in GS_REPOS_ROOT, beside this project, then in TMC_REPOS_DIR and ~/godot; a root fills only the addons the earlier ones could not read. An addon none could read is left out, so a floor on it is judged against the linked build.
 static func pinned_levels() -> Dictionary:
 	var here := ProjectSettings.globalize_path("res://")
 	var lock := here.path_join("addons.lock")

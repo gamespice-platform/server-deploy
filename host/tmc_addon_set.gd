@@ -170,7 +170,7 @@ static func addon_set_from(lock_text: String, dirs: PackedStringArray) -> Array:
 
 		var repo := addon_repo(dir)
 
-		# An older lock may still name a renamed repository by its old name (fc-weapons was fc-weapons).
+		# An older lock may still name a renamed repository by its old name (fc-weapons was arena-weapons).
 		for old: String in TmcAddonNamespaces.PUBLISHED_AS:
 			if TmcAddonNamespaces.PUBLISHED_AS[old] == repo and not versions.has(repo) and versions.has(old):
 				repo = old

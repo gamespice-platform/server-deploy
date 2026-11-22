@@ -12,7 +12,7 @@ while IFS=$'\t' read -r repo tag; do
     case "$repo" in ''|\#*) continue ;; esac
     src="$SIB/$repo"
     # A checkout not yet moved to the repository's new name (gs-bootstrap leaves the old one).
-    [ "$repo" = fc-weapons ] && [ ! -e "$src/.git" ] && src="$SIB/fc-weapons"
+    [ "$repo" = fc-weapons ] && [ ! -e "$src/.git" ] && src="$SIB/arena-weapons"
     [ -e "$src/.git" ] || { echo "missing sibling $repo" >&2; bad=1; continue; }
     git -C "$src" rev-parse -q --verify "refs/tags/$tag^{commit}" >/dev/null \
         || { echo "no tag $tag in $repo" >&2; bad=1; continue; }

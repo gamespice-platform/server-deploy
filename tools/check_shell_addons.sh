@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # A shell carries the gs-* addons and nothing else. The game addons (the weapons packs,
 # natural_disasters) reach a player as GameSpice Cloud overlay packs when they join; baked in,
-# fc-weapons (then fc-weapons) v1.4.28's embedded textures took the web pck from 44 MB to 147 MB.
+# fc-weapons (then arena-weapons) v1.4.28's embedded textures took the web pck from 44 MB to 147 MB.
 #
 # Text only, no Godot: every non-dot repository addons.lock names is excluded by every
 # preset in export_presets.example.cfg, the shell takes its overlay (TmcAddonNamespaces),
@@ -25,13 +25,13 @@ dir_of() {
         zee-gs-weapons) echo zee_weapons ;;
         zed-gs-weapons) echo zed_weapons ;;
         # Both names: fc-weapons holds fc_weapons, its tags up to v1.4.51 the legacy arena_weapons.
-        fc-weapons) echo fc_weapons arena_weapons ;;
+        fc-weapons|arena-weapons) echo fc_weapons arena_weapons ;;
         *) echo "${1//-/_}" ;;
     esac
 }
 
 # Game addons: one game's own, never in a shell (the owner's rule; fc-weapons is Fatal Contact's).
-GAME_ADDONS="fc-weapons fc-weapons zee-gs-weapons zed-gs-weapons natural-disasters"
+GAME_ADDONS="fc-weapons arena-weapons zee-gs-weapons zed-gs-weapons natural-disasters"
 
 [ -f tools/shell-addons.list ] && good "tools/shell-addons.list exists" || bad "no tools/shell-addons.list"
 mapfile -t allowed < <(sed 's/#.*//; s/[[:space:]]//g; /^$/d' tools/shell-addons.list 2>/dev/null)

@@ -5,14 +5,14 @@ extends RefCounted
 
 ## Directory names under `cfg/game/` and `cfg/server/game/` a game was configured under before it was renamed, and the name it has now. [method migrate_retired_dirs] moves them on boot, and `tools/cfg_sync.sh` does the same before the first boot of an update (the selftest checks that the two lists agree). Exact directory names, no owner.
 const RETIRED_DIRS := {
-	"game-fatal-contact": "game-fatal-contact",
+	"game-arena": "game-fatal-contact",
 	"game-final-contact": "game-fatal-contact",
 	"arena": "game-fatal-contact",
 	# legacy id: the names these games had before the rename; a directory under one is moved.
-	"game-airdrift": "game-airdrift",
+	"game-g2gfast": "game-airdrift",
 	"game-g2gfast01": "game-airdrift",
-	"airdrift": "game-airdrift",
-	"game-playlot": "game-playlot",
+	"g2gfast": "game-airdrift",
+	"game-playground": "game-playlot",
 	"playground": "game-playlot",
 }
 

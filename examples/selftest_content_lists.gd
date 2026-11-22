@@ -96,7 +96,7 @@ func _test_former_game_id() -> void:
 
 	# A live overrides.yml named a collection without /* and lost its start map to a 404.
 	_check(TmcGameRef.qualify_map("gamemann/fc-dm-maps", "")["id"] == "gamemann/fc-dm-maps/*"
-			and TmcGameRef.qualify_map("gamemann/fc-surf-dm-maps", "")["id"] == "gamemann/fc-surf-dm-maps/*",
+			and TmcGameRef.qualify_map("gamemann/arena-surf-dm-maps", "")["id"] == "gamemann/fc-surf-dm-maps/*",
 		"a known collection named without /* is read as the whole collection, not a pack that 404s")
 	_check(not bool(TmcGameRef.qualify_map("gamemann/fc-dm-maps@1.0.0", "")["ok"]),
 		"a pin on a bare collection is refused like a pin on its wildcard")
@@ -143,14 +143,14 @@ func _test_former_game_id() -> void:
 		"a games list naming arena keeps fatalcontact and reports nothing missing",
 		str(dm_kept.ids()) + " missing " + str(dm_kept.missing) if dm_kept != null else str(dm_only.error))
 
-	# legacy id: airdrift was renamed airdrift; its pack id stays tmc/airdrift until a re-publish.
-	var timer := content.find("airdrift")
-	_check(timer != null and timer.game_id == "airdrift", "find(\"airdrift\") is airdrift",
+	# legacy id: g2gfast was renamed airdrift; its pack id stays tmc/g2gfast until a re-publish.
+	var timer := content.find("g2gfast")
+	_check(timer != null and timer.game_id == "airdrift", "find(\"g2gfast\") is airdrift",
 		timer.game_id if timer != null else "null")
-	var timer_only := TmcContent.scan("res://content", PackedStringArray(["airdrift"]))
+	var timer_only := TmcContent.scan("res://content", PackedStringArray(["g2gfast"]))
 	var timer_kept := timer_only.value as TmcContent if timer_only.ok else null
 	_check(timer_kept != null and timer_kept.ids() == PackedStringArray(["airdrift"]) and timer_kept.missing.is_empty(),
-		"a games list naming airdrift keeps airdrift and reports nothing missing",
+		"a games list naming g2gfast keeps airdrift and reports nothing missing",
 		str(timer_kept.ids()) + " missing " + str(timer_kept.missing) if timer_kept != null else str(timer_only.error))
 
 	_done()

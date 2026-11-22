@@ -19,7 +19,7 @@ const NOT_PREFETCHED := {
 	# (`g2g: fetching a map this build does not have`), as a server does.
 	"game-airdrift": "one large pack per map, fetched by the game when it changes to it",
 	"game-fatal-contact": "39 combat surf packs, lazy delivery like game-airdrift: fetched when the game changes to a map",
-	"game-fatal-contact": "39 combat surf packs, lazy delivery like game-airdrift: fetched when the game changes to a map",
+	"game-arena": "39 combat surf packs, lazy delivery like game-airdrift: fetched when the game changes to a map",
 }
 
 var _passed := 0
