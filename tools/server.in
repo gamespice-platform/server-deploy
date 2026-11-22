@@ -1632,7 +1632,7 @@ check_lock_exported() {
 
 ## [b]A shell carries the gs-* addons and nothing else.[/b] A game's own addons (the
 ## weapons packs, natural_disasters) and their models reach a player as gs-cloud overlay
-## packs when they join. Baked in, fc-weapons (then fc-weapons) v1.4.28's embedded textures took the web
+## packs when they join. Baked in, fc-weapons (then arena-weapons) v1.4.28's embedded textures took the web
 ## pck from 44 MB to 147 MB, past the upload limit. These are the folders every export
 ## leaves out: everything under addons/ that tools/shell-addons.list (the explicit allow
 ## list, read by tools/shell_lock.sh) does not name, so a game addon is left out even when

@@ -51,7 +51,7 @@ check "the run left the operator's file byte for byte" test "$before" = "$(sha25
 printf 'rotation: main\n' > "$C/content/games.yml"
 out="$(run TMC_GAMES=arena)"
 check "a rotation-only games.yml does not take TMC_GAMES' place" grep -q -- "--games arena" <<<"$out"
-printf 'entries: [game-fatal-contact]\n' > "$C/content/games.yml"
+printf 'entries: [game-arena]\n' > "$C/content/games.yml"
 out="$(run TMC_GAMES=arena)"
 check "a games.yml with entries beats TMC_GAMES" bash -c '! grep -q -- "--games" <<<"$1"' _ "$out"
 

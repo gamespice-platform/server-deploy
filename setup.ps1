@@ -40,7 +40,7 @@
 
 .EXAMPLE
     .\setup.ps1
-    .\setup.ps1 -Godot C:\Godot\Godot_v4.4.1-stable_win64.exe -Check
+    .\setup.ps1 -Godot C:\Godot\Gogs_v4.4.1-stable_win64.exe -Check
 #>
 
 [CmdletBinding()]
@@ -77,8 +77,8 @@ Step "Godot runtime"
 #   curl -fsSL https://github.com/godotengine/godot/releases/download/4.7.2-stable/SHA512-SUMS.txt
 $GodotVersion = '4.7.2-stable'
 $GodotAssets = @{
-    'X64'   = @{ Asset = "Godot_v${GodotVersion}_win64.exe.zip";         Exe = "Godot_v${GodotVersion}_win64_console.exe";         Sha512 = '83decd58fdf67b9d657958a1ae6bf1929c20785315a81effe245874cdc57acb709bf868e00778a96984338c1b29dafdb453c6847747694621c6ecf5da2259993' }
-    'Arm64' = @{ Asset = "Godot_v${GodotVersion}_windows_arm64.exe.zip"; Exe = "Godot_v${GodotVersion}_windows_arm64_console.exe"; Sha512 = '683f8dd9fb087db79dfbbc52d5b2209df98218a4fef0d10d8478ec2230ae8db6032a36929677479b9f9c5a6aa0c51ee359d7e57eb5abbcb6cef4998526dec5a6' }
+    'X64'   = @{ Asset = "Gogs_v${GodotVersion}_win64.exe.zip";         Exe = "Gogs_v${GodotVersion}_win64_console.exe";         Sha512 = '83decd58fdf67b9d657958a1ae6bf1929c20785315a81effe245874cdc57acb709bf868e00778a96984338c1b29dafdb453c6847747694621c6ecf5da2259993' }
+    'Arm64' = @{ Asset = "Gogs_v${GodotVersion}_windows_arm64.exe.zip"; Exe = "Gogs_v${GodotVersion}_windows_arm64_console.exe"; Sha512 = '683f8dd9fb087db79dfbbc52d5b2209df98218a4fef0d10d8478ec2230ae8db6032a36929677479b9f9c5a6aa0c51ee359d7e57eb5abbcb6cef4998526dec5a6' }
 }
 
 # The CONSOLE exe, not the plain one. The plain Windows build detaches from the
@@ -231,7 +231,7 @@ function Get-AddonRepo([string]$name) {
         'zee_weapons' { return 'zee-gs-weapons' }
         'zed_weapons' { return 'zed-gs-weapons' }
         'fc_weapons'    { return 'fc-weapons' }
-        'fc_weapons' { return 'fc-weapons' }
+        'arena_weapons' { return 'fc-weapons' }
         default       { return ($name -replace '_', '-') }
     }
 }
@@ -243,15 +243,15 @@ $missing = @()
 foreach ($name in $addons) {
     $repo   = Get-AddonRepo $name
     $source = Join-Path $Root "..\$repo\addons\$name"
-    # fc-weapons moved addons\fc_weapons to addons\fc_weapons; its tags up to v1.4.51 hold
+    # fc-weapons moved addons\arena_weapons to addons\fc_weapons; its tags up to v1.4.51 hold
     # the legacy name. The checkout decides which one is linked (setup.sh: settle_renamed_dirs).
     if ($name -eq 'fc_weapons' -and -not (Test-Path -LiteralPath $source -PathType Container)) {
-        $legacy = Join-Path $Root "..\$repo\addons\fc_weapons"
+        $legacy = Join-Path $Root "..\$repo\addons\arena_weapons"
         if (Test-Path -LiteralPath $legacy -PathType Container) {
             $ref = (& git -C (Join-Path $Root "..\$repo") describe --tags --always 2>$null)
             if (-not $ref) { $ref = '?' }
-            Warn "addons\fc_weapons is a legacy directory (deprecated): $repo at $ref still holds it; a newer tag holds addons\fc_weapons"
-            $name = 'fc_weapons'; $source = $legacy
+            Warn "addons\arena_weapons is a legacy directory (deprecated): $repo at $ref still holds it; a newer tag holds addons\fc_weapons"
+            $name = 'arena_weapons'; $source = $legacy
         }
     }
     $link   = Join-Path $Root "addons\$name"

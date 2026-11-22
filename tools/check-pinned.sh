@@ -18,22 +18,22 @@ while IFS=$'\t' read -r repo tag; do
     case "$repo" in ''|\#*) continue ;; esac
     src="$SIB/$repo"
     # A checkout not yet moved to the repository's new name (gs-bootstrap leaves the old one).
-    [ "$repo" = fc-weapons ] && [ ! -e "$src/.git" ] && src="$SIB/fc-weapons"
+    [ "$repo" = fc-weapons ] && [ ! -e "$src/.git" ] && src="$SIB/arena-weapons"
     [ -e "$src/.git" ] || { echo "missing sibling $repo" >&2; bad=1; continue; }
     git -C "$src" rev-parse -q --verify "refs/tags/$tag^{commit}" >/dev/null \
         || { echo "no tag $tag in $repo" >&2; bad=1; continue; }
     # The repo's own addon only (zee-gs-weapons -> zee_weapons); some carry nested copies.
     d="$(echo "$repo" | tr - _ | sed 's/_dot//')"
-    # fc-weapons moved addons/fc_weapons to addons/fc_weapons; the tag's own tree decides
+    # fc-weapons moved addons/arena_weapons to addons/fc_weapons; the tag's own tree decides
     # which one it holds (up to v1.4.51 the legacy one, which is deprecated and said so).
     if [ "$repo" = fc-weapons ]; then
         if git -C "$src" cat-file -e "$tag:addons/fc_weapons" 2>/dev/null; then
             d=fc_weapons
-        elif git -C "$src" cat-file -e "$tag:addons/fc_weapons" 2>/dev/null; then
-            d=fc_weapons
-            echo "WRN addons/fc_weapons is a legacy directory (deprecated): $repo $tag still holds it; a newer tag holds addons/fc_weapons" >&2
+        elif git -C "$src" cat-file -e "$tag:addons/arena_weapons" 2>/dev/null; then
+            d=arena_weapons
+            echo "WRN addons/arena_weapons is a legacy directory (deprecated): $repo $tag still holds it; a newer tag holds addons/fc_weapons" >&2
         fi
-        rm -rf "$OUT/fc_weapons" "$OUT/fc_weapons"
+        rm -rf "$OUT/fc_weapons" "$OUT/arena_weapons"
     fi
     rm -rf "$OUT/$d"
     git -C "$src" archive "$tag" "addons/$d" | tar -x -C "$OUT" --strip-components=1 \
