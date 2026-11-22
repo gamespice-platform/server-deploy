@@ -183,6 +183,8 @@ var _addons_skipped := {}
 
 
 func _ready() -> void:
+	# Before anything else: the GameSpice window, not the project name, from the first frame the script runs.
+	TmcGameIdentity.apply_shell()
 	# Scoped to this subtree: an RPC is addressed by node path relative to the MultiplayerAPI root, so with `/root`
 	# both ends would have to agree on what each other's scene is called.
 	get_tree().set_multiplayer(
@@ -1976,6 +1978,7 @@ func _on_solo_node_added(node: Node) -> void:
 
 ## Leave in a solo game: the game comes down and the menu comes back, with Play solo on it.
 func _leave_solo() -> void:
+	TmcGameIdentity.apply_shell()
 	_clear_game()
 	_end_solo_session()
 	_leave_game_ui()
@@ -2010,8 +2013,9 @@ func is_solo() -> bool:
 
 ## The server told us which game it is running; fires on the first load and on every change.
 ## The old game comes down here, not in `_on_spawned`: `GSClientLink._unload_scene` frees only a scene *it* built, so built-in games would stack, each with its own netcode manager.
-func _on_game_changed(game_id: String, _content_id: String, display_name: String) -> void:
+func _on_game_changed(game_id: String, content_id: String, display_name: String) -> void:
 	_join_marks["game_changed"] = Time.get_ticks_usec()
+	_show_game_identity(game_id, content_id, display_name, _cloud)
 	if _joining and display_name != "":
 		loading.set_progress(-1.0, _text("shell.loading.game", {"game": display_name}, "Loading %s…" % display_name))
 	if _has_spawned or _joining:
@@ -2027,8 +2031,26 @@ func _on_game_changed(game_id: String, _content_id: String, display_name: String
 	_say("Loading %s…" % (display_name if display_name != "" else game_id))
 
 
+## The window's title and icon and the loading screen's icon for the game named, from the pack once it is mounted and from the device's memory of it before. Safe to call again as more becomes known.
+func _show_game_identity(game_id: String, content_id: String, display_name: String, cloud: Object) -> void:
+	var title := TmcGameIdentity.display_name(display_name, content_id)
+	var manifest := TmcGameIdentity.manifest_of(cloud, content_id)
+	if title == "" and manifest != null:
+		title = TmcGameIdentity.display_name(manifest.display_name, content_id)
+	var icon: Texture2D = TmcGameIdentity.icon_of_manifest(manifest)
+	if icon != null:
+		TmcGameIdentity.cache_icon(content_id, icon)
+	else:
+		icon = TmcGameIdentity.cached_icon(content_id)
+	TmcGameIdentity.apply_window(title, icon if icon != null else TmcGameIdentity.shell_icon())
+	if loading != null:
+		loading.set_game_icon(game_id, icon)
+
+
 ## Signon finished. Put the game on screen.
 func _on_spawned() -> void:
+	if link != null:
+		_show_game_identity(link.server_game_id, link.server_content_id, link.server_game_name, _cloud)
 	_log_join()
 	_joining = false
 	_set_busy(false)
@@ -2352,6 +2374,7 @@ func clear_pending() -> int:
 ## Reports something that stopped the game from starting, and puts the menu back: the only way out, since a player who cannot be shown a game needs the address box.
 func _fail(text: String) -> void:
 	GSLog.error(CHANNEL, text)
+	TmcGameIdentity.apply_shell()
 	_leave_game_ui()
 	_set_busy(false)
 	_menu.visible = true
@@ -2364,6 +2387,7 @@ func _on_disconnected(reason: String) -> void:
 	var err: GSError = link.last_error if link != null else null
 	var wanted: String = link.server_signon if link != null else ""
 
+	TmcGameIdentity.apply_shell()
 	_clear_game()
 	_drop_link()
 	_set_busy(false)

@@ -243,6 +243,8 @@ func _enter_solo_game(session: TmcSoloSession, packed: PackedScene, desc: Dictio
 	if session.takes_subscriptions:
 		shell._sync_suggested_later(content_id, desc["suggested"] as PackedStringArray)
 
+	var solo_icon := TmcGameIdentity.icon_from_mount(session.mount_root, TmcGameIdentity.icon_rel({"icon": desc.get("icon", TmcGameIdentity.DEFAULT_ICON)}))
+	TmcGameIdentity.apply_window(TmcGameIdentity.display_name(session.display_name, content_id), solo_icon if solo_icon != null else TmcGameIdentity.shell_icon())
 	var shown := session.display_name if session.display_name != "" else content_id
 	if shell._solo_button != null:
 		shell._solo_button.text = "Play %s solo" % shown

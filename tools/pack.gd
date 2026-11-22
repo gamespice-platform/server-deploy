@@ -277,6 +277,10 @@ func _publish_one(
 	for key in (meta["addon"] as Dictionary):
 		pub.metadata[key] = str(meta["addon"][key])
 
+	var icon := game_icon(source, str(meta["icon"]))
+	if icon != "":
+		pub.metadata["icon"] = icon
+
 	for prefix in (meta["groups"] as Dictionary):
 		pub.group_rules[prefix] = str((meta["groups"] as Dictionary)[prefix])
 
@@ -453,6 +457,25 @@ static func _godot(args: Array) -> Dictionary:
 
 
 
+## The icon a pack names for the shell's window and loading screen, relative to the pack: [param named] (`icon:` in `game.yml`) if the file is in [param source], else the source project's `config/icon` (`res://` stripped), else `icon.svg`; "" when the source has none, and the shell then shows the GameSpice icon.
+static func game_icon(source: String, named: String) -> String:
+	var candidates: Array[String] = []
+	if named != "":
+		candidates.append(named)
+	var project := source.path_join("project.godot")
+	if FileAccess.file_exists(project):
+		var cfg := ConfigFile.new()
+		if cfg.load(project) == OK:
+			var configured := str(cfg.get_value("application", "config/icon", "")).trim_prefix("res://")
+			if configured != "":
+				candidates.append(configured)
+	candidates.append("icon.svg")
+	for rel in candidates:
+		if DotPaths.safe_relative(rel).ok and FileAccess.file_exists(source.path_join(rel)):
+			return rel
+	return ""
+
+
 ## Everything the publisher needs, from `pack.json`, then `game.yml`, then defaults.
 func _read_spec(dir: String, id: String) -> GSResult:
 	var meta := {
@@ -467,6 +490,8 @@ func _read_spec(dir: String, id: String) -> GSResult:
 		"optional": [],
 		"groups": {},
 		"mirrors": [],
+		# The pack-relative file the shell shows as the game's icon (window and loading screen); "" asks for the source's own.
+		"icon": "",
 		# A server-owner extra pack that starts something: {"entry": "scene.tscn", "side":
 		# "server|client|both"}.
 		"addon": {},
@@ -494,6 +519,7 @@ func _read_spec(dir: String, id: String) -> GSResult:
 		meta["version"] = str(TmcYaml.at(tree, "version", "0.0.0"))
 		meta["name"] = str(TmcYaml.at(tree, "name", ""))
 		meta["entry"] = str(TmcYaml.at(tree, "client_scene", ""))
+		meta["icon"] = str(TmcYaml.at(tree, "icon", ""))
 		kind = str(TmcYaml.at(tree, "kind", "builtin"))
 
 	var pack_json := dir.path_join("pack.json")

@@ -609,6 +609,9 @@ if have_packs buses; then "$GODOT" --headless --path . res://examples/party_live
 echo
 echo "the admin menu and the loading screen"
 "$GODOT" --headless --path . res://examples/admin_loading_selftest.tscn || fails=$((fails + 1))
+echo
+echo "the game identity (window title and icon, loading header and footer)"
+"$GODOT" --headless --path . res://examples/game_identity_selftest.tscn || fails=$((fails + 1))
 if have_packs buses; then "$GODOT" --headless --path . res://examples/admin_live.tscn < /dev/null || fails=$((fails + 1)); fi
 echo
 echo "gs-trail's install (addon linked or not)"

@@ -126,6 +126,12 @@ var _powered_by: TmcPoweredBy = null
 var _backdrop: ColorRect = null
 var _image: TextureRect = null
 var _title: Label = null
+## The game's identity above the words: its icon and name (the GameSpice icon until the game's is known).
+var _game_icon: TextureRect = null
+var _game_label: Label = null
+## "Powered by GameSpice" and "Made with Godot", bottom-centre.
+var _footer: HBoxContainer = null
+var _icons: Dictionary = {}
 var _status: Label = null
 var _detail: Label = null
 var _bar: ProgressBar = null
@@ -203,6 +209,8 @@ func reset() -> void:
 	_game_id = ""
 	_game_name = ""
 	_server_name = ""
+	_icons.clear()
+	_sync_identity()
 	# The next server's media is the next server's budget. Kept: what has ARRIVED, which
 	# costs nothing to keep and is the same picture if the next server names it too.
 	_queue.clear()
@@ -236,6 +244,8 @@ func begin(reason: StringName, game_id: String = "", game_name: String = "", ins
 	if game_name != "":
 		_game_name = game_name
 	_last_activity = _now()
+	if _visible:
+		_sync_identity()
 
 	if reason == REASON_CONTENT:
 		# Delayed: see [member show_delay_sec].
@@ -402,6 +412,7 @@ func _show() -> void:
 	_last_activity = _shown_at
 	_apply_entry()
 	_status.text = "Loading %s…" % _game_name if _game_name != "" else "Loading…"
+	_sync_identity()
 	_detail.visible = false
 	_bar.value = 0.0
 	if "indeterminate" in _bar:
@@ -933,7 +944,7 @@ func _build_view() -> void:
 	bottom.anchor_right = 1.0
 	bottom.anchor_top = 1.0
 	bottom.anchor_bottom = 1.0
-	bottom.offset_top = -170.0
+	bottom.offset_top = -250.0
 	bottom.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	for side in ["left", "right"]:
 		bottom.add_theme_constant_override("margin_" + side, 40)
@@ -947,6 +958,18 @@ func _build_view() -> void:
 	box.alignment = BoxContainer.ALIGNMENT_END
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.add_child(box)
+
+	var identity := HBoxContainer.new()
+	identity.add_theme_constant_override("separation", 14)
+	identity.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(identity)
+	_game_icon = _logo(TmcGameIdentity.shell_icon(), 72.0)
+	identity.add_child(_game_icon)
+	_game_label = Label.new()
+	_game_label.add_theme_font_size_override("font_size", 36)
+	_game_label.add_theme_font_override("font", TmcShellStyle.bold(0.8))
+	_game_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	identity.add_child(_game_label)
 
 	box.add_child(TmcShellStyle.eyebrow("Loading"))
 
@@ -990,7 +1013,78 @@ func _build_view() -> void:
 	# Which client this is, for a bug report that says "the loading screen" and nothing else.
 	_version = TmcShellVersion.add_corner_label(_root)
 	_powered_by = TmcPoweredBy.add_to(_root, site_url)
+	_build_footer()
+	_sync_identity()
 	_build_audio()
+
+
+## A logo of [param side] pixels square, kept in proportion.
+func _logo(tex: Texture2D, side: float) -> TextureRect:
+	var rect := TextureRect.new()
+	rect.texture = tex
+	rect.custom_minimum_size = Vector2(side, side)
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return rect
+
+
+## "Powered by GameSpice" and "Made with Godot" along the bottom edge, each a logo and its words. The Godot logo is CC BY 4.0, credited in client/branding/ATTRIBUTION.md.
+func _build_footer() -> void:
+	_footer = HBoxContainer.new()
+	_footer.name = "Footer"
+	_footer.anchor_left = 0.5
+	_footer.anchor_right = 0.5
+	_footer.anchor_top = 1.0
+	_footer.anchor_bottom = 1.0
+	_footer.offset_top = -30.0
+	_footer.offset_bottom = -6.0
+	_footer.offset_left = -220.0
+	_footer.offset_right = 220.0
+	_footer.alignment = BoxContainer.ALIGNMENT_CENTER
+	_footer.add_theme_constant_override("separation", 8)
+	_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_footer.modulate = Color(1, 1, 1, 0.75)
+	_root.add_child(_footer)
+	var parts: Array = [
+		[TmcGameIdentity.GS_ICON, "Powered by GameSpice"],
+		[TmcGameIdentity.GODOT_LOGO, "Made with Godot"],
+	]
+	for i in parts.size():
+		if i > 0:
+			var gap := Control.new()
+			gap.custom_minimum_size = Vector2(18.0, 0.0)
+			gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_footer.add_child(gap)
+		var tex: Texture2D = load(parts[i][0]) as Texture2D
+		_footer.add_child(_logo(tex, 22.0))
+		var words := Label.new()
+		words.text = parts[i][1]
+		words.add_theme_font_size_override("font_size", 13)
+		words.add_theme_color_override("font_color", TmcShellStyle.MUTED)
+		_footer.add_child(words)
+
+
+## The game's icon for [param game_id], from the pack once it is mounted or from the device's memory of it. The screen shows it in place of the GameSpice icon.
+func set_game_icon(game_id: String, tex: Texture2D) -> void:
+	if game_id == "" or tex == null:
+		return
+	_icons[game_id] = tex
+	_sync_identity()
+
+
+## What the header shows: the game's name and icon, or GameSpice's when the game has no name or icon yet.
+func _sync_identity() -> void:
+	if _game_label == null:
+		return
+	var shown := TmcGameIdentity.display_name(_game_name, _game_id)
+	_game_label.text = shown if shown != "" else TmcGameIdentity.GS_NAME
+	var tex: Texture2D = _icons.get(_game_id) as Texture2D if _game_id != "" else null
+	if tex == null and _game_id != "":
+		tex = TmcGameIdentity.cached_icon(_game_id)
+		if tex != null:
+			_icons[_game_id] = tex
+	_game_icon.texture = tex if tex != null else TmcGameIdentity.shell_icon()
 
 
 ## The gradient over the picture that darkens it toward the text.
@@ -1054,6 +1148,9 @@ func describe() -> Dictionary:
 		"showing": _visible,
 		"reasons": _reasons.keys().map(func(r: StringName) -> String: return String(r)),
 		"game": _game_id,
+		"game_title": _game_label.text if _game_label != null else "",
+		"game_icon_is_shell": _game_icon != null and _game_icon.texture == TmcGameIdentity.shell_icon(),
+		"footer": _footer != null and _footer.get_child_count() >= 5,
 		"server": _server_name,
 		"title": _title.text if _title != null else "",
 		"status": _status.text if _status != null else "",

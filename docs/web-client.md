@@ -60,6 +60,16 @@ A mounted pack cannot be unmounted, so a client holding something wrong (a cache
 - `clear_pending()` runs first thing in `_ready`, before anything mounts: gs-cloud's `GSCloudStore.clear_all()` and the other cache directories.
 - Restart by capability (`GSPlatform.can_self_restart`). A browser reloads through `GSWeb.get_global("location").reload()` a second after asking IndexedDB to flush; **call `reload()` as a method, not `.call("reload")`**, which asks JavaScript for a method named `call`. A desktop build uses `OS.set_restart_on_exit(true, OS.get_cmdline_args())`; `--headless` is not passed on, so testing the relaunch needs a display.
 
+## Window and loading identity
+
+The shell boots as GameSpice: `application/boot_splash` is `client/branding/splash.png` (GameSpice and Godot logos) and the window is titled "GameSpice" with the GameSpice icon (`config/icon`). Once a game is known, `TmcGameIdentity` sets the OS window title and icon (`DisplayServer`) and the loading screen header shows the game's icon and name, over a "Powered by GameSpice / Made with Godot" footer; leaving the game or failing a join puts the GameSpice title back.
+
+What a game provides, in `game.yml` (read by `tools/pack.gd` into the pack manifest):
+- `name:` is the display name (`manifest.display_name`; the server sends the same with `game_changed`), for example "Fatal Contact", "Zee's Playlot", "Zee's Airdrift". A repository-like name (`mg-prop-hunt`) is refused and the window keeps the GameSpice title.
+- `icon:` is a pack-relative image (svg, png, webp, jpg; 2 MB at most) stamped as `manifest.metadata.icon`. Without it the packer uses the source project's `config/icon`, then `icon.svg`; with none the GameSpice icon shows. Solo games name it as `icon` in the solo descriptor.
+
+The first ever load of a game shows the GameSpice icon until the pack is mounted; the icon is then remembered in `user://tmc_game_icons`. The Godot logo is CC BY 4.0, see `client/branding/ATTRIBUTION.md`.
+
 ## The shell's look
 
 The shell's own screens (the menu, the loading screen, its dialogs, the standalone page `web/embed.html`) wear GameSpice's look: `client/tmc_shell_style.gd` (`TmcShellStyle`) holds the site's tokens (the `#f2542d` accent, the flame gradient, the warm near-black ground, glass panels with a hairline) and builds the Theme on top of GameSpice UI's `GSUiTheme`, which it does not change. Views that draw over a game (the admin menu, notices, ballots) take the same theme and plates, nothing more: no backdrop and no corner pill over play.
