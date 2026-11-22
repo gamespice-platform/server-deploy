@@ -1,7 +1,7 @@
 class_name AdminLoadingCover
 extends RefCounted
 
-## The loading screen's cover: its gate, its draw budget, its contract with a game and its fallback. Run by `admin_loading_selftest.gd`, which keeps the counters: every check goes through its `_check`.
+## The loading screen's cover: its gate, its draw budget, its contract with a game, its fallback and the busy panel a skipped cover leaves to the shell. Run by `admin_loading_selftest.gd`, which keeps the counters: every check goes through its `_check`.
 
 var t: Node
 
@@ -219,3 +219,37 @@ func _test_cover_fallback() -> void:
 		"and shown at the cap, never held for ever", "%d ms" % waited)
 	_cover_free(rig)
 	_done()
+
+
+## A fetch the cover skips is shown by the shared busy panel: the registered one is bound and begun, and none registered with no such class is a no-op.
+func _test_busy_bridge() -> void:
+	var stub := _BusyStub.new()
+	GSRegistry.register(TmcBusyBridge.SERVICE, stub)
+	var cloud := RefCounted.new()
+	TmcBusyBridge.begin(t, cloud, "Downloading map art")
+	_check(stub.bound == cloud, "a skipped cover binds the busy panel to the content client")
+	_check(stub.began == "content:Downloading map art", "and the panel says what is being fetched", stub.began)
+	TmcBusyBridge.end()
+	_check(stub.ended == "content", "the fetch ending ends that source")
+	GSRegistry.unregister_instance(TmcBusyBridge.SERVICE, stub)
+	stub.free()
+	var made := TmcBusyBridge.ensure(null, cloud)
+	_check(made == null, "with no panel registered and no host it does nothing instead of failing")
+	if made != null:
+		made.queue_free()
+	_check(GSRegistry.get_service(TmcBusyBridge.SERVICE) == null, "nothing is left registered")
+
+
+class _BusyStub extends Node:
+	var bound: Object = null
+	var began := ""
+	var ended := ""
+
+	func bind_cloud(c: Object) -> void:
+		bound = c
+
+	func begin(reason: StringName, text: String = "") -> void:
+		began = "%s:%s" % [reason, text]
+
+	func end(reason: StringName) -> void:
+		ended = String(reason)
