@@ -5,7 +5,12 @@
 # PINNED_LOCK names another lock (tools/check_shell_parse.sh passes the shell's cut-down one).
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SIB="${TMC_SIBLINGS:-$ROOT/..}"
+SIB="${TMC_SIBLINGS:-}"
+# A worktree (hv, ~/wt/<repo>-<task>) has no siblings beside it: use the ones beside the main clone.
+if [ -z "$SIB" ]; then
+  _common="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  if [ -n "$_common" ] && [ "$(dirname "$_common")" != "$ROOT" ]; then SIB="$(dirname "$(dirname "$_common")")"; else SIB="$ROOT/.."; fi
+fi
 OUT="${1:-$ROOT/addons}"
 mkdir -p "$OUT"
 bad=0

@@ -2,7 +2,7 @@
 # Every script the client shell carries must compile against the shell's own addons, and nothing else.
 #   tools/check_shell_parse.sh        builds the shell's addons from the addons.lock tags it exports
 #                                     (tools/shell_lock.sh lock), imports them alone, and parses them
-#   TMC_SIBLINGS=DIR                  where the addon clones are (default ..; CI: addons/.repos)
+#   TMC_SIBLINGS=DIR                  where the addon clones are (default: beside the main clone, else ..; CI: addons/.repos)
 #
 # Packs carry no addons, so an addon the shell's addons need and the shell does not carry is a parse
 # error on every player's machine. 2026-11-21: native shell 1.20261121.2113 carried gs-player-char
@@ -14,7 +14,12 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GODOT="${GODOT:-godot}"
-SIB="${TMC_SIBLINGS:-$ROOT/..}"
+SIB="${TMC_SIBLINGS:-}"
+# A worktree (hv, ~/wt/<repo>-<task>) has no siblings beside it: use the ones beside the main clone.
+if [ -z "$SIB" ]; then
+  _common="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  if [ -n "$_common" ] && [ "$(dirname "$_common")" != "$ROOT" ]; then SIB="$(dirname "$(dirname "$_common")")"; else SIB="$ROOT/.."; fi
+fi
 W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
 p="$W/shell"; mkdir -p "$p/addons"
 

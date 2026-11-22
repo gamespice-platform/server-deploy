@@ -1237,6 +1237,7 @@ func _connect_to(address: String) -> void:
 	_join_marks = {"start": Time.get_ticks_usec()}
 	loading.reset()
 	loading.set_server(target)
+	TmcGameIconHint.start(self, loading)
 	loading.begin(TmcLoadingScreen.REASON_GAME)
 	loading.set_progress(-1.0, _text("shell.loading.connecting", {"server": target}, "Connecting to %s…" % target))
 

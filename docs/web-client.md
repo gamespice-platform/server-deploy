@@ -68,7 +68,7 @@ What a game provides, in `game.yml` (read by `tools/pack.gd` into the pack manif
 - `name:` is the display name (`manifest.display_name`; the server sends the same with `game_changed`), for example "Fatal Contact", "Zee's Playlot", "Zee's Airdrift". A repository-like name (`mg-prop-hunt`) is refused and the window keeps the GameSpice title.
 - `icon:` is a pack-relative image (svg, png, webp, jpg; 2 MB at most) stamped as `manifest.metadata.icon`. Without it the packer uses the source project's `config/icon`, then `icon.svg`; with none the GameSpice icon shows. Solo games name it as `icon` in the solo descriptor.
 
-The first ever load of a game shows the GameSpice icon until the pack is mounted; the icon is then remembered in `user://tmc_game_icons`. The Godot logo is CC BY 4.0, see `client/branding/ATTRIBUTION.md`.
+The first ever load of a game shows the GameSpice icon until the pack is mounted; the icon is then remembered in `user://tmc_game_icons`. To shrink that gap a launcher (game list, site, server page) can pass an icon URL: `?icon=<https url>` on the web page or `--icon-url <url>` natively. `TmcGameIconHint` fetches it (512 KB at most, http(s) only, private hosts refused on desktop), shows it on the loading screen and as the window icon until the game's own icon replaces it, and it is never applied to another game. The Godot logo is CC BY 4.0, see `client/branding/ATTRIBUTION.md`.
 
 ## The shell's look
 

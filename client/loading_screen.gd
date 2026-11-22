@@ -132,6 +132,9 @@ var _game_label: Label = null
 ## "Powered by GameSpice" and "Made with Godot", bottom-centre.
 var _footer: HBoxContainer = null
 var _icons: Dictionary = {}
+## An icon a launch link named (TmcGameIconHint) for the first game this connection shows, used until the game's own is known. [member _hint_game] is the game it was first shown for; another game drops it.
+var _hint_icon: Texture2D = null
+var _hint_game := ""
 var _status: Label = null
 var _detail: Label = null
 var _bar: ProgressBar = null
@@ -210,6 +213,8 @@ func reset() -> void:
 	_game_name = ""
 	_server_name = ""
 	_icons.clear()
+	_hint_icon = null
+	_hint_game = ""
 	_sync_identity()
 	# The next server's media is the next server's budget. Kept: what has ARRIVED, which
 	# costs nothing to keep and is the same picture if the next server names it too.
@@ -1073,6 +1078,12 @@ func set_game_icon(game_id: String, tex: Texture2D) -> void:
 	_sync_identity()
 
 
+## The icon a launch link named, shown until the game's own is known (the first load of a game has none on this device).
+func set_hint_icon(tex: Texture2D) -> void:
+	_hint_icon = tex
+	_sync_identity()
+
+
 ## What the header shows: the game's name and icon, or GameSpice's when the game has no name or icon yet.
 func _sync_identity() -> void:
 	if _game_label == null:
@@ -1084,6 +1095,11 @@ func _sync_identity() -> void:
 		tex = TmcGameIdentity.cached_icon(_game_id)
 		if tex != null:
 			_icons[_game_id] = tex
+	if tex == null and _hint_icon != null:
+		if _hint_game == "" and _game_id != "":
+			_hint_game = _game_id
+		if _hint_game == "" or _hint_game == _game_id:
+			tex = _hint_icon
 	_game_icon.texture = tex if tex != null else TmcGameIdentity.shell_icon()
 
 

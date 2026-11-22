@@ -2,7 +2,7 @@ extends Node
 
 ## What the shell shows as the game: its name and icon on the loading screen and on the OS window, GameSpice's before and after, and "Powered by GameSpice / Made with Godot" under both. No server and no pack download.
 
-const CHECKS := 26
+const CHECKS := 38
 
 var _passed := 0
 var _failed := 0
@@ -80,6 +80,29 @@ func _run() -> void:
 	screen.begin(TmcLoadingScreen.REASON_GAME, "mg-prop-hunt", "mg-prop-hunt", true)
 	_check(screen.describe()["game_title"] == "GameSpice", "a repository name is never shown as the title")
 	screen.free()
+
+	print("first-load icon hint")
+	_check(TmcGameIconHint.refuse("https://example.com/i.png", false) == "", "an https URL is fetched")
+	_check(TmcGameIconHint.refuse("ftp://example.com/i.png", false) != "", "a non-http URL is refused")
+	_check(TmcGameIconHint.refuse("javascript:alert(1)", true) != "", "a script URL is refused")
+	_check(TmcGameIconHint.refuse("http://127.0.0.1/i.png", false) != "", "a loopback address is refused on a desktop")
+	_check(TmcGameIconHint.refuse("http://192.168.1.4/i.png", false) != "", "a private address is refused on a desktop")
+	_check(TmcGameIconHint.refuse("http://localhost:8080/i.png", true) == "", "a browser leaves local addresses to itself")
+	var svg := FileAccess.get_file_as_bytes("res://client/branding/gamespice-icon.svg")
+	var hinted := TmcGameIconHint.texture_of(svg, PackedStringArray(["Content-Type: image/svg+xml"]))
+	_check(hinted != null, "an svg body by content type becomes a texture")
+	_check(TmcGameIconHint.texture_of(svg) != null, "an svg body with no content type is sniffed")
+	_check(TmcGameIconHint.texture_of(PackedByteArray([1, 2, 3, 4, 5, 6, 7, 8])) == null, "bytes that are no image give null")
+	_check(TmcGameIconHint.texture_of(PackedByteArray()) == null, "an empty body gives null")
+	var hs := TmcLoadingScreen.new()
+	hs.in_game_fn = func() -> bool: return true
+	add_child(hs)
+	hs.set_hint_icon(hinted)
+	hs.begin(TmcLoadingScreen.REASON_GAME, "airdrift", "Zee's Airdrift", true)
+	_check(hs.describe()["game_icon_is_shell"] == false and hs._game_icon.texture == hinted, "the hinted icon shows before the game's own is known")
+	hs.begin(TmcLoadingScreen.REASON_GAME, "playlot", "Zee's Playlot", true)
+	_check(hs._game_icon.texture != hinted, "another game does not inherit the hint")
+	hs.free()
 
 	TmcGameIdentity.title_fn = Callable()
 	TmcGameIdentity.icon_fn = Callable()
