@@ -19,7 +19,7 @@ const NOT_PREFETCHED := {
 	# (`g2g: fetching a map this build does not have`), as a server does.
 	"game-airdrift": "one large pack per map, fetched by the game when it changes to it",
 	"game-fatal-contact": "39 combat surf packs, lazy delivery like game-airdrift: fetched when the game changes to a map",
-	"game-arena": "39 combat surf packs, lazy delivery like game-airdrift: fetched when the game changes to a map",
+	"game-fatal-contact": "39 combat surf packs, lazy delivery like game-airdrift: fetched when the game changes to a map",
 }
 
 var _passed := 0
@@ -428,19 +428,19 @@ func _test_requires_reader() -> void:
 
 
 ## The newest published pack of a game addon must hold the directory the game needs. Fatal Contact 0.1.70 needs fc_weapons and the
-## only published fc-weapons (1.4.50) held the legacy arena_weapons: the shell fetched it, the overlay refused it as "not an addon pack",
+## only published fc-weapons (1.4.50) held the legacy fc_weapons: the shell fetched it, the overlay refused it as "not an addon pack",
 ## and an online join went on to GameSpice Cloud's "needs a newer version of the client". Now it is named as unpublished, up front.
 func _test_pack_holds_dir() -> void:
 	_section("a published addon pack is taken only when it holds the directory the game needs")
 	var shell := load("res://client/tmc_shell_solo.gd") as GDScript
-	var legacy := PackedStringArray(["LICENSE", "addons/arena_weapons/plugin.cfg", "addons/arena_weapons/arena_weapons_api.gd", "_imported/a.scn"])
+	var legacy := PackedStringArray(["LICENSE", "addons/fc_weapons/plugin.cfg", "addons/fc_weapons/fc_weapons_api.gd", "_imported/a.scn"])
 	var current := PackedStringArray(["LICENSE", "addons/fc_weapons/plugin.cfg", "addons/fc_weapons/fc_weapons_api.gd", "addons/gs_sim/plugin.cfg"])
 	var why: String = shell.pack_holds_dir("fc_weapons", "gamemann/fc-weapons", "1.4.50", legacy)
-	_check(why.contains("addons/arena_weapons") and why.contains("addons/fc_weapons") and why.contains("1.4.50"),
-		"fc-weapons 1.4.50 (legacy arena_weapons) does not supply fc_weapons, and the reason names both and the version", why)
+	_check(why.contains("addons/fc_weapons") and why.contains("addons/fc_weapons") and why.contains("1.4.50"),
+		"fc-weapons 1.4.50 (legacy fc_weapons) does not supply fc_weapons, and the reason names both and the version", why)
 	_check(shell.pack_holds_dir("fc_weapons", "gamemann/fc-weapons", "1.4.52", current) == "",
 		"fc-weapons 1.4.52 (fc_weapons) supplies it: a game met by its addon's overlay is not refused")
-	_check(shell.pack_holds_dir("arena_weapons", "gamemann/fc-weapons", "1.4.50", legacy) == "",
+	_check(shell.pack_holds_dir("fc_weapons", "gamemann/fc-weapons", "1.4.50", legacy) == "",
 		"a game that still needs the legacy directory takes the tag that holds it")
 	_check(shell.pack_holds_dir("gs_trail", "gamemann/gs-trail", "0.1.6", PackedStringArray(["plugin.cfg", "trail.gd"])) == "",
 		"a pack that is the addon itself (plugin.cfg at its root) supplies any directory")
@@ -449,7 +449,7 @@ func _test_pack_holds_dir() -> void:
 	# The same rule the overlay mounts by, so the two cannot drift apart.
 	var overlay := load("res://addons/gs_cloud/addon_set/gs_cloud_addon_set_overlay.gd") as GDScript
 	var agree := true
-	for case: Array in [["fc_weapons", legacy], ["fc_weapons", current], ["arena_weapons", legacy], ["x", PackedStringArray(["plugin.cfg"])]]:
+	for case: Array in [["fc_weapons", legacy], ["fc_weapons", current], ["fc_weapons", legacy], ["x", PackedStringArray(["plugin.cfg"])]]:
 		var manifest := GSCloudManifest.new()
 		for path: String in case[1]:
 			var f := GSCloudFile.new()
@@ -489,10 +489,10 @@ func _test_overlay_blocked() -> void:
 	shell.set("attempt_storage", storage)
 	shell.set("shell_build", "20261113-0522")
 
-	var wanted := {"zee_weapons": {"version": "0.1.62"}, "arena_weapons": {"version": "1.4.46"}}
+	var wanted := {"zee_weapons": {"version": "0.1.62"}, "fc_weapons": {"version": "1.4.46"}}
 	var target := "solo:gamemann/game-playlot"
 	var attempt: String = shell.call("_attempt_key", target, wanted)
-	_check(attempt == "solo:gamemann/game-playlot|arena_weapons@1.4.46,zee_weapons@0.1.62", "the attempt key names the game and its addon set", attempt)
+	_check(attempt == "solo:gamemann/game-playlot|fc_weapons@1.4.46,zee_weapons@0.1.62", "the attempt key names the game and its addon set", attempt)
 
 	GSCloudAddonSet.forget()
 	_check(not shell.call("_overlay_blocked", attempt, wanted), "a fresh tab builds the overlay")
@@ -543,7 +543,7 @@ func _test_overlay_blocked() -> void:
 
 
 ## A fresh visit must not restart the page (on PLAYLOT a first visit fetched the shell, built zee_weapons and
-## arena_weapons into an overlay, then reloaded and fetched the shell again). An overlay that only adds addons is mounted in this
+## fc_weapons into an overlay, then reloaded and fetched the shell again). An overlay that only adds addons is mounted in this
 ## process and its classes resolve; one that would replace an addon, or come after another overlay, still restarts.
 func _test_overlay_in_place() -> void:
 	_section("a solo game's or a server's addons that only add to this process are mounted without a restart")

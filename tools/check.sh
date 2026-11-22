@@ -563,6 +563,13 @@ echo
 echo "the shell's download line, localised"
 "$GODOT" --headless --path . res://examples/shell_progress_locale.tscn < /dev/null || fails=$((fails + 1))
 
+# The download watch (client/tmc_download_watch.gd): windowed rate and ETA that fall to zero when bytes stop,
+# a stall reported once, plus live checks against tools/fake_content_server.mjs (429 + Retry-After, a body that
+# goes silent, a slow body that is not a stall). The live half needs node and skips with a note without it.
+echo
+echo "the shell's download watch"
+"$GODOT" --headless --path . res://examples/download_watch_check.tscn < /dev/null || fails=$((fails + 1))
+
 # Solo play (client/tmc_solo.gd): what a page may name, the shell's game.yml reader against
 # TmcYaml on every game, client/solo.json against cfg.example/server/content/overrides.yml, and the session a
 # solo game reads its map packs and its way back from. Armed: an id check that accepts

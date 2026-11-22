@@ -11,9 +11,9 @@ n=0
 # TmcGameCfgDirs.RETIRED_DIRS is the same list, and the selftest compares them.)
 # The list includes the legacy ids of the retired names, so a cfg dir written under them is moved.
 for tier in game; do
-    for pair in game-arena:game-fatal-contact game-final-contact:game-fatal-contact arena:game-fatal-contact \
-        game-g2gfast:game-airdrift game-g2gfast01:game-airdrift g2gfast:game-airdrift \
-        game-playground:game-playlot playground:game-playlot; do
+    for pair in game-fatal-contact:game-fatal-contact game-final-contact:game-fatal-contact arena:game-fatal-contact \
+        game-airdrift:game-airdrift game-g2gfast01:game-airdrift airdrift:game-airdrift \
+        game-playlot:game-playlot playground:game-playlot; do
         old="${pair%%:*}"; new="${pair##*:}"
         if [ -d "$CFG/$tier/$old" ] && [ ! -e "$CFG/$tier/$new" ]; then
             mv "$CFG/$tier/$old" "$CFG/$tier/$new" && printf '    ~    cfg/%s/%s is now cfg/%s/%s (the game was renamed)\n' "$tier" "$old" "$tier" "$new"

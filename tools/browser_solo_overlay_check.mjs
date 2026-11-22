@@ -2,7 +2,7 @@
 //
 //   node tools/browser_solo_overlay_check.mjs --url <embed.html?solo=...> --state fresh|counter2|failed \
 //       [--serve <web export dir> --port 8098 --content https://content.gamespice.net] [--lock addons.lock | --fp HEX] \
-//       [--addons arena_weapons@1.4.46,zee_weapons@0.1.62] [--expect started,blocked] [--secs 240] [--shot out.png]
+//       [--addons fc_weapons@1.4.46,zee_weapons@0.1.62] [--expect started,blocked] [--secs 240] [--shot out.png]
 //       [--map <slug>] [--linger <secs>] [--map-loaded <regex>] [--max-loads N] [--threads 1|0]
 //
 // The bug it was written for (2026-11-13): a tab that had restarted twice for PLAYLOT's weapon addons gave up and started
@@ -59,7 +59,7 @@ const state = opt('state', 'fresh');
 const serve = opt('serve', '');
 const port = +opt('port', '8098');
 const upstream = opt('content', 'https://content.gamespice.net').replace(/\/$/, '');
-const addonsArg = opt('addons', 'arena_weapons@1.4.46,zee_weapons@0.1.62');
+const addonsArg = opt('addons', 'fc_weapons@1.4.46,zee_weapons@0.1.62');
 const expect = opt('expect', 'started,blocked').split(',');
 const secs = +opt('secs', '240');
 const shot = opt('shot', path.join(os.tmpdir(), `browser_solo_overlay_${state}.png`));
@@ -198,7 +198,7 @@ try {
     if (BROKEN.some(r => r.test(text))) return 'broken';
     if (/solo game started/.test(text)) return 'started';
     if (/not starting it without them|did not start in this tab/.test(text)) return 'blocked';
-    // The content store has no pack holding an addon the game needs (2026-11-17: fc-weapons 1.4.50 held only arena_weapons).
+    // The content store has no pack holding an addon the game needs (2026-11-17: fc-weapons 1.4.50 held only fc_weapons).
     if (/not published in a pack that holds it/.test(text)) return 'unpublished';
     // gs-cloud's requirement check refused the game: the overlay did not supply an addon it needs.
     if (/tmc\.build\.mismatch|client_behind|does not have it\./.test(text)) return 'client_behind';

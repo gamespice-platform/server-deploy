@@ -104,10 +104,10 @@ func _test_template() -> void:
 ## described twice: once in its repository (travels in the pack a site publishes) and once under
 ## content/ here (for `./server pack`).
 const REPOSITORIES := {
-	"game-arena": "fatalcontact",
+	"game-fatal-contact": "fatalcontact",
 	# legacy id: the old repository names
-	"game-playground": "playlot",
-	"game-g2gfast": "airdrift",
+	"game-playlot": "playlot",
+	"game-airdrift": "airdrift",
 	"game-hungario": "hungry_classic",
 	"mg-smash-copter": "smash",
 	"mg-buses-from-hell": "buses",

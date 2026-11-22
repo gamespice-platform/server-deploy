@@ -53,6 +53,12 @@ func _start_solo(content_id: String, version: String = "", map: String = "") -> 
 	if shell._solo_button != null:
 		shell._solo_button.disabled = false
 
+	# Retry / Start without maps (the maps choice is already kept): go again, once, from the top.
+	if not started.ok and shell._dl_guard != null and shell._dl_guard.requested != "":
+		GSLog.info(shell.CHANNEL, "restarting the solo launch", {"why": shell._dl_guard.requested})
+		_start_solo.call_deferred(content_id, version, map)
+		return
+
 	if not started.ok:
 		shell._end_solo_session()
 		shell._fail(shell._text("shell.solo.failed", {"reason": shell._explain(started.error)},
@@ -85,6 +91,8 @@ func _forget_solo_retry() -> void:
 func _load_solo(content_id: String, version: String) -> GSResult:
 	shell._cloud.begin_job("launch")
 	shell._launch_job = true
+	if shell._dl_guard != null:
+		shell._dl_guard.begin(not TmcSolo.skip_maps(content_id) and not TmcSolo.map_packs(content_id).is_empty())
 	shell._solo_key_cache = {}
 	shell._solo_map_packs_memo = null
 	shell._deferred_workshop = false
@@ -92,6 +100,8 @@ func _load_solo(content_id: String, version: String) -> GSResult:
 	shell._launch_job = false
 	shell._job = {}
 	shell._solo_pack_label = ""
+	if shell._dl_guard != null:
+		shell._dl_guard.end()
 	shell._cloud.end_job()
 	return res
 
@@ -131,7 +141,7 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 	shell._solo_version = wanted
 	GSLog.info(shell.CHANNEL, "starting solo", {"content": content_id, "version": wanted})
 
-	# The game addons its pack requires (zee_weapons for Prop Hunt, fc_weapons for Fatal Contact; arena_weapons up to fc-weapons v1.4.51) are not in this shell: fetched as the overlay a server would announce, then a restart into it. Asked of the store before the pack is fetched, because the pack's own requirement check refuses it while one is missing. Returns only when nothing is missing or it cannot be had. Subscriptions are asked first (their downloads only registered): a game that accepts addon packs gets the subscribed ones in the same overlay, so one restart covers both.
+	# The game addons its pack requires (zee_weapons for Prop Hunt, fc_weapons for Fatal Contact; fc_weapons up to fc-weapons v1.4.51) are not in this shell: fetched as the overlay a server would announce, then a restart into it. Asked of the store before the pack is fetched, because the pack's own requirement check refuses it while one is missing. Returns only when nothing is missing or it cannot be had. Subscriptions are asked first (their downloads only registered): a game that accepts addon packs gets the subscribed ones in the same overlay, so one restart covers both.
 	var subscribed: Array = await shell._solo_packs._solo_workshop_plan(content_id, wanted)
 	var overlay: int = await _solo_overlay(content_id, await _solo_needs(content_id, wanted), subscribed)
 	if overlay == SoloOverlay.RESTARTING:
@@ -151,6 +161,9 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 
 	# Everything is registered and fetched first, so the total is fixed before a byte moves; mounting follows.
 	await shell._solo_packs._prefetch_solo(content_id, wanted)
+	# The player pressed Retry or Start without maps: the transfer was cancelled, so do not go on to fetch it again here; _start_solo starts over.
+	if shell._dl_guard != null and shell._dl_guard.requested != "":
+		return GSResult.fail(GSError.CODE_CANCELLED, "The download was stopped.")
 	shell._cloud.job_begin_unpack()
 
 	# "*" asks for every download group (GameSpice Cloud 22): a solo host serves any map. Older GameSpice Cloud reads it as
@@ -201,14 +214,16 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 ## game is running.
 func _enter_solo_game(session: TmcSoloSession, packed: PackedScene, desc: Dictionary, path: String) -> GSResult:
 	var content_id := session.content_id
+	# Before the session goes in, so a refusal leaves nothing behind (instantiate runs no _ready).
+	var instance := packed.instantiate()
+	if instance == null:
+		return GSResult.fail(GSError.CODE_INVALID, shell.GAME_DID_NOT_COMPILE, path)
 	shell.add_child(session)
 	shell._solo_session = session
 	GSRegistry.register(TmcSolo.MAPS_SERVICE, session)
 
 	if not shell.get_tree().node_added.is_connected(shell._on_solo_node_added):
 		shell.get_tree().node_added.connect(shell._on_solo_node_added)
-
-	var instance := packed.instantiate()
 
 	# A client that announces Leave rather than acting on it (`leave_requested`: "what leave
 	# means belongs to whatever loaded this client") is answered here, as a server's game is
@@ -374,10 +389,13 @@ func _load_sim_child() -> GSResult:
 	if not (packed is PackedScene):
 		return GSResult.fail(GSError.CODE_IO, "The game's client scene would not load.", path)
 
+	var instance := (packed as PackedScene).instantiate()
+	if instance == null:
+		return GSResult.fail(GSError.CODE_INVALID, shell.GAME_DID_NOT_COMPILE, path)
 	shell.add_child(session)
 	shell._solo_session = session
 	GSRegistry.register(TmcSolo.MAPS_SERVICE, session)
-	shell._game_root.add_child((packed as PackedScene).instantiate())
+	shell._game_root.add_child(instance)
 	GSLog.info(shell.CHANNEL, "solo server process started its game", {
 		"content": "%s@%s" % [content_id, version], "packs": session.pack_keys.size(), "maps": session.map_keys.size(),
 	})
@@ -446,7 +464,7 @@ func _collect_solo_announce(content_id: String, needs: Dictionary, subscribed: A
 		# A retired id resolves to the one it moved to, whose name is the repo [GSCloudAddonSet] checks.
 		var id := str(latest.value["id"])
 		var version := str(latest.value["version"])
-		# The newest published version must hold `addons/<dir>`: fc-weapons up to v1.4.51 holds the legacy arena_weapons, so
+		# The newest published version must hold `addons/<dir>`: fc-weapons up to v1.4.51 holds the legacy fc_weapons, so
 		# Fatal Contact 0.1.70 (fc_weapons 32) fetched 1.4.50, which [GSCloudAddonSet] refused as "not an addon pack".
 		var manifest: GSResult = await shell._cloud.resolve_manifest(StringName(id), version)
 		if manifest.ok:

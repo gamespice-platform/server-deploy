@@ -126,16 +126,16 @@ cmd_check() {
         name="${repo//-/_}"
         [ "$repo" = "zee-gs-weapons" ] && name="zee_weapons"
         [ "$repo" = "zed-gs-weapons" ] && name="zed_weapons"
-        # fc-weapons moved addons/arena_weapons to addons/fc_weapons: whichever setup.sh linked
+        # fc-weapons moved addons/fc_weapons to addons/fc_weapons: whichever setup.sh linked
         # (it follows the checkout's ref) is checked; the legacy one is deprecated and said so.
         if [ "$repo" = "fc-weapons" ]; then
-            if [ -e "$ROOT/addons/fc_weapons" ] && [ -e "$ROOT/addons/arena_weapons" ]; then
-                echo "  !!    $repo: both addons/fc_weapons and the legacy addons/arena_weapons are here; remove the one $ref does not hold"
+            if [ -e "$ROOT/addons/fc_weapons" ] && [ -e "$ROOT/addons/fc_weapons" ]; then
+                echo "  !!    $repo: both addons/fc_weapons and the legacy addons/fc_weapons are here; remove the one $ref does not hold"
                 bad=1
                 continue
             fi
-            [ -e "$ROOT/addons/arena_weapons" ] && name="arena_weapons" \
-                && echo "  WRN   $repo: addons/arena_weapons is a legacy directory (deprecated; $repo $ref still holds it, a newer tag holds addons/fc_weapons)"
+            [ -e "$ROOT/addons/fc_weapons" ] && name="fc_weapons" \
+                && echo "  WRN   $repo: addons/fc_weapons is a legacy directory (deprecated; $repo $ref still holds it, a newer tag holds addons/fc_weapons)"
         fi
         dir="$ROOT/addons/$name"
 

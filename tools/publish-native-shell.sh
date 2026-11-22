@@ -54,7 +54,11 @@ for row in "${rows[@]}"; do
         url=$(jq -r .put.url <<<"$begun")
         hh=()
         while IFS= read -r line; do hh+=(-H "$line"); done < <(jq -r '.put.headers|to_entries[]|"\(.key): \(.value)"' <<<"$begun")
-        curl -sS -f --max-time 1800 -X PUT "${hh[@]}" --upload-file "$file" -o /dev/null "$url"
+        curl -sS -f --max-time 1800 -X PUT "${hh[@]}" --upload-file "$file" -o /dev/null "$url" || {
+            # Cloudflare caps one upload near 100 MB and the macOS zip is bigger; the other platforms are already out.
+            [ "$platform" = MACOS_UNIVERSAL ] && { echo "::warning::macOS upload failed (size cap?); linux and windows were published" >&2; continue; }
+            exit 1
+        }
     else
         echo "  already in storage, skipping the upload"
     fi

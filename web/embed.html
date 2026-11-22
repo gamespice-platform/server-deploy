@@ -358,6 +358,12 @@
     new URLSearchParams(location.search).get("threads") !== "0";
   // Read by the browser checks (tools/browser_check.mjs) and by anybody asking "which one?".
   window.__TMC_ENGINE__ = threaded ? "threads" : "single";
+  // Which engine, and when it is the single-threaded one, why. A host without COOP/COEP lands here by design.
+  console.log("tmc engine: " + window.__TMC_ENGINE__ +
+    (threaded ? "" : " (" + (!ENGINE_MT ? "no threaded twin in this export"
+      : NATIVE_LIBS_MT.length !== NATIVE_LIBS.length ? "a native module has no threads build"
+      : self.crossOriginIsolated !== true ? "page is not cross-origin isolated: crossOriginIsolated=" + self.crossOriginIsolated
+      : typeof SharedArrayBuffer !== "function" ? "no SharedArrayBuffer" : "?threads=0") + ")"));
 
   /*
    * NATIVE MODULES. A dlink export (the Web preset's Extensions Support) lists the

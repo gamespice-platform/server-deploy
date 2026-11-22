@@ -170,7 +170,7 @@ static func addon_set_from(lock_text: String, dirs: PackedStringArray) -> Array:
 
 		var repo := addon_repo(dir)
 
-		# An older lock may still name a renamed repository by its old name (fc-weapons was arena-weapons).
+		# An older lock may still name a renamed repository by its old name (fc-weapons was fc-weapons).
 		for old: String in TmcAddonNamespaces.PUBLISHED_AS:
 			if TmcAddonNamespaces.PUBLISHED_AS[old] == repo and not versions.has(repo) and versions.has(old):
 				repo = old
@@ -178,7 +178,7 @@ static func addon_set_from(lock_text: String, dirs: PackedStringArray) -> Array:
 		if not versions.has(repo):
 			continue
 
-		# The directory is what the installed ref holds; the legacy one (arena_weapons) is announced as it is, and said so.
+		# The directory is what the installed ref holds; the legacy one (fc_weapons) is announced as it is, and said so.
 		# A legacy directory the locked version no longer holds (fc-weapons 1.4.52+ ships only fc_weapons) is a stale leftover
 		# of an older install: announcing it makes every client's overlay fail ("not an addon pack"), so it is skipped, loudly.
 		if TmcAddonNamespaces.is_legacy_dir(dir):

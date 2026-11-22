@@ -10,11 +10,13 @@
 # gs-* addon, or when addons.lock names a gs-* addon this list does not (add it here when the shell should carry it).
 gs-2d
 gs-achievements
+gs-animation
 gs-audio
 gs-auth
 gs-bot
 gs-bot-record
 gs-browser
+gs-camera
 gs-chat
 gs-cloud
 gs-combat
