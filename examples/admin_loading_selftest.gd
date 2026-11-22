@@ -2,7 +2,7 @@ extends Node
 
 ## The admin menu and the loading screen, both halves, without a server.
 
-const CHECKS := 226
+const CHECKS := 231
 
 var _passed := 0
 var _failed := 0
@@ -971,6 +971,8 @@ func _test_loading_client() -> void:
 	_check(TmcLoadingScreen.may_block_live_game(false, true, true), "but the launch (not live yet) is covered")
 	_check(TmcLoadingScreen.may_block_live_game(true, false, false), "and an online map change keeps its screen")
 
+	_check_busy_bridge()
+
 	# Every reason that starts is timed for its begin/end log line.
 	screen.begin(TmcLoadingScreen.REASON_WARM, "", "", true)
 	_check(screen._reason_at.has(TmcLoadingScreen.REASON_WARM), "a reason that began is timed")
@@ -1293,3 +1295,37 @@ func _until_frames(condition: Callable, frames: int) -> void:
 		if bool(condition.call()):
 			return
 		await get_tree().process_frame
+
+
+## A fetch the cover skips is shown by the shared busy panel: the registered one is bound and begun, and none registered with no such class is a no-op.
+func _check_busy_bridge() -> void:
+	var stub := _BusyStub.new()
+	GSRegistry.register(TmcBusyBridge.SERVICE, stub)
+	var cloud := RefCounted.new()
+	TmcBusyBridge.begin(self, cloud, "Downloading map art")
+	_check(stub.bound == cloud, "a skipped cover binds the busy panel to the content client")
+	_check(stub.began == "content:Downloading map art", "and the panel says what is being fetched", stub.began)
+	TmcBusyBridge.end()
+	_check(stub.ended == "content", "the fetch ending ends that source")
+	GSRegistry.unregister_instance(TmcBusyBridge.SERVICE, stub)
+	stub.free()
+	var made := TmcBusyBridge.ensure(null, cloud)
+	_check(made == null, "with no panel registered and no host it does nothing instead of failing")
+	if made != null:
+		made.queue_free()
+	_check(GSRegistry.get_service(TmcBusyBridge.SERVICE) == null, "nothing is left registered")
+
+
+class _BusyStub extends Node:
+	var bound: Object = null
+	var began := ""
+	var ended := ""
+
+	func bind_cloud(c: Object) -> void:
+		bound = c
+
+	func begin(reason: StringName, text: String = "") -> void:
+		began = "%s:%s" % [reason, text]
+
+	func end(reason: StringName) -> void:
+		ended = String(reason)

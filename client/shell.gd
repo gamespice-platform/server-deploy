@@ -942,6 +942,7 @@ func _on_cloud_phase(phase: int, text: String) -> void:
 		match phase:
 			GSCloudClient.Phase.IDLE, GSCloudClient.Phase.READY, GSCloudClient.Phase.FAILED:
 				loading.end(TmcLoadingScreen.REASON_CONTENT)
+				TmcBusyBridge.end()
 			_:
 				# A solo game, or the suggested packs fetched after the scene is up, never
 				# walls the live game off: the game covers its own map change with its gate.
@@ -949,7 +950,9 @@ func _on_cloud_phase(phase: int, text: String) -> void:
 					loading.begin(TmcLoadingScreen.REASON_CONTENT)
 					loading.set_progress(-1.0, text)
 				else:
-					GSLog.info(CHANNEL, "[TMC] cover skipped: content fetch during live play", {"phase": phase, "text": text})
+					# No cover, so the shared busy panel says what is going on (bytes, pack n of m, a quota failure).
+					TmcBusyBridge.begin(self, _cloud, text)
+					GSLog.info(CHANNEL, "[TMC] cover skipped: content fetch during live play; busy panel instead", {"phase": phase, "text": text})
 
 	if phase == GSCloudClient.Phase.IDLE or phase == GSCloudClient.Phase.READY or phase == GSCloudClient.Phase.FAILED:
 		_job = {}
