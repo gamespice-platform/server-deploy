@@ -135,6 +135,8 @@ var _icons: Dictionary = {}
 ## An icon a launch link named (TmcGameIconHint) for the first game this connection shows, used until the game's own is known. [member _hint_game] is the game it was first shown for; another game drops it.
 var _hint_icon: Texture2D = null
 var _hint_game := ""
+## game id -> the icon the server's loading document named for it (an `icon` URL in the game's entry).
+var _doc_icons: Dictionary = {}
 var _status: Label = null
 var _detail: Label = null
 var _bar: ProgressBar = null
@@ -174,6 +176,7 @@ func adopt(data: Dictionary) -> void:
 		_prefetch_entry(_doc["default"])
 		for id in (_doc["games"] as Dictionary).keys():
 			_prefetch_entry(_doc["games"][id])
+			_fetch_game_icon(str(id), _doc["games"][id])
 		# A first join puts the screen up before this arrives, with nothing to read: take
 		# the document up now rather than at the next show, which is a game change away.
 		# Only when there was nothing, so a screen already showing tips does not reshuffle.
@@ -192,6 +195,7 @@ func adopt(data: Dictionary) -> void:
 		}
 		_next_at = _now()
 		_prefetch_entry(_next["entry"])
+		_fetch_game_icon(str(_next["game"]), _next["entry"])
 		if _visible:
 			_apply_entry()
 
@@ -679,6 +683,8 @@ func _clean_entry(raw: Variant) -> Dictionary:
 	var title := GSNotice.sanitised_string(d.get("title", ""), 64)
 	if title != "":
 		out["title"] = title
+	if is_safe_url(str(d.get("icon", ""))):
+		out["icon"] = str(d["icon"])
 	if d.has("volume") and (d["volume"] is float or d["volume"] is int):
 		out["volume"] = clampf(float(d["volume"]), 0.0, 1.0)
 	return out
@@ -1079,6 +1085,18 @@ func set_game_icon(game_id: String, tex: Texture2D) -> void:
 
 
 ## The icon a launch link named, shown until the game's own is known (the first load of a game has none on this device).
+func _fetch_game_icon(game_id: String, entry: Dictionary) -> void:
+	var url := str(entry.get("icon", ""))
+	if game_id == "" or url == "" or _doc_icons.has(game_id):
+		return
+	TmcGameIconHint.fetch_to(self, url, func(tex: Texture2D) -> void:
+		_doc_icons[game_id] = tex
+		_sync_identity()
+		if game_id == _game_id and TmcGameIdentity.cached_icon(game_id) == null:
+			TmcGameIdentity.apply_window("", tex)
+	)
+
+
 func set_hint_icon(tex: Texture2D) -> void:
 	_hint_icon = tex
 	_sync_identity()
@@ -1095,6 +1113,8 @@ func _sync_identity() -> void:
 		tex = TmcGameIdentity.cached_icon(_game_id)
 		if tex != null:
 			_icons[_game_id] = tex
+	if tex == null and _game_id != "":
+		tex = _doc_icons.get(_game_id) as Texture2D
 	if tex == null and _hint_icon != null:
 		if _hint_game == "" and _game_id != "":
 			_hint_game = _game_id

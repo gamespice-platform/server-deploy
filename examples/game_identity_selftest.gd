@@ -2,7 +2,7 @@ extends Node
 
 ## What the shell shows as the game: its name and icon on the loading screen and on the OS window, GameSpice's before and after, and "Powered by GameSpice / Made with Godot" under both. No server and no pack download.
 
-const CHECKS := 38
+const CHECKS := 42
 
 var _passed := 0
 var _failed := 0
@@ -103,6 +103,23 @@ func _run() -> void:
 	hs.begin(TmcLoadingScreen.REASON_GAME, "playlot", "Zee's Playlot", true)
 	_check(hs._game_icon.texture != hinted, "another game does not inherit the hint")
 	hs.free()
+
+	print("icon from the loading document")
+	var ds := TmcLoadingScreen.new()
+	ds.in_game_fn = func() -> bool: return true
+	add_child(ds)
+	ds.adopt({"v": 1, "games": {
+		"airdrift": {"icon": "http://127.0.0.1:9/i.png", "tips": ["a"]},
+		"playlot": {"icon": "javascript:alert(1)"},
+	}})
+	_check(ds._doc["games"]["airdrift"].get("icon", "") == "http://127.0.0.1:9/i.png", "an icon URL in a game's entry is kept")
+	_check(not (ds._doc["games"]["playlot"] as Dictionary).has("icon"), "an unsafe icon URL is dropped")
+	ds._doc_icons["airdrift"] = hinted
+	ds.begin(TmcLoadingScreen.REASON_GAME, "airdrift", "Zee's Airdrift", true)
+	_check(ds._game_icon.texture == hinted, "the document's icon shows for its game")
+	ds.begin(TmcLoadingScreen.REASON_GAME, "playlot", "Zee's Playlot", true)
+	_check(ds._game_icon.texture != hinted, "and not for another game")
+	ds.free()
 
 	TmcGameIdentity.title_fn = Callable()
 	TmcGameIdentity.icon_fn = Callable()

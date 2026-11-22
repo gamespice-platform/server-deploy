@@ -188,8 +188,13 @@ func entry_from(raw: Dictionary, where: String, prefix: String) -> Dictionary:
 		if t != "":
 			out["title"] = t
 
+	if raw.has("icon"):
+		var icon := _urls(_list(raw["icon"]), "%s: icon" % where)
+		if not icon.is_empty():
+			out["icon"] = icon[0]
+
 	for key in raw.keys():
-		if not String(key) in ["image", "images", "music", "music_volume", "done_sound", "tips", "title", "enabled", "show_delay_sec"]:
+		if not String(key) in ["image", "images", "music", "music_volume", "done_sound", "tips", "title", "icon", "enabled", "show_delay_sec"]:
 			problems.append("%s: unknown key '%s%s'" % [where, prefix, String(key)])
 
 	return out

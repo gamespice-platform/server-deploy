@@ -10,7 +10,9 @@ const EXIT_FAILED := 2
 ## Where an assembled pack is built before it is published. `user://` rather than beside `dist/`, so
 ## an interrupted run cannot leave a directory that looks like a published content id, and so this
 ## works on a read-only checkout.
-const STAGING := "user://pack_staging"
+# One staging tree per process: several packs/checks run at once under the same user dir (fleet boxes, CI), and a shared
+# tree was emptied by whichever finished first ("cannot write .../pack_staging/requires/x.json (File not found)").
+static var STAGING := "user://pack_staging_%d" % OS.get_process_id()
 
 ## Directories under `content/` that are not content anybody publishes. `global` IS publishable --
 ## it is content every game loads and is exactly the sort of thing a server delivers rather than

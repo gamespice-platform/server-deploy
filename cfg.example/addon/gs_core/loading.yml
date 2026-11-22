@@ -13,6 +13,9 @@
 #   done_sound  played once when loading finishes.
 #   tips        lines shown one at a time.
 #   title       a heading over the game's own name.
+#   icon        a game's icon URL (PNG, WebP, JPEG or SVG, 512 KB at most) for the loading
+#               screen header and the window, shown on a player's first ever load of that
+#               game, before its pack is mounted. Per game (`loading_games`).
 #
 # Console: `loading_screen` (what is configured), `loading_screen_reload` (read this
 # file again and send it to everybody playing).

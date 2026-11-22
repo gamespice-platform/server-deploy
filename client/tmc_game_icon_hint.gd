@@ -23,16 +23,22 @@ static func start(parent: Node, loading: TmcLoadingScreen) -> void:
 	var raw := requested().strip_edges()
 	if raw == "" or loading == null:
 		return
+	fetch_to(parent, raw, func(texture: Texture2D) -> void:
+		loading.set_hint_icon(texture)
+		TmcGameIdentity.apply_window("", texture)
+	)
+
+
+## Calls [param on_icon] with the icon at [param raw]: now when this session already fetched it, else when it arrives. A URL that is refused or an icon that cannot be read calls nothing. Shared by the page's `?icon=` and by the server's loading document (an `icon` in a game's entry).
+static func fetch_to(parent: Node, raw: String, on_icon: Callable) -> void:
 	if _fetched.has(raw):
-		loading.set_hint_icon(_fetched[raw])
-		TmcGameIdentity.apply_window("", _fetched[raw])
+		on_icon.call(_fetched[raw])
 		return
 	var hint := TmcGameIconHint.new()
 	parent.add_child(hint)
 	hint.icon_ready.connect(func(texture: Texture2D) -> void:
 		_fetched[raw] = texture
-		loading.set_hint_icon(texture)
-		TmcGameIdentity.apply_window("", texture)
+		on_icon.call(texture)
 		hint.queue_free()
 	)
 	if not hint.fetch(raw):

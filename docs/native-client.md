@@ -65,3 +65,5 @@ The shell downloads a game and (unless "Download this game's maps" is off) its m
 - **Not in the shell**: the 429 / Retry-After backoff, parallelism and cancel live in the gs-cloud addon. It has no idle timeout (only a 600 s whole-file one) and no mid-file resume; filed on the nightly board.
 
 `examples/download_watch_check.tscn` covers the watch and, against `tools/fake_content_server.mjs`, a 429 with Retry-After, a body that goes silent and a slow body that is not a stall.
+
+**Running the checks from a worktree.** `tools/check.sh`, `check-pinned.sh` and the parse checks find the sibling addon checkouts through `TMC_SIBLINGS`; unset, they use the parent of the main checkout (so a worktree under `~/wt` works without it). To set it anyway under the fleet wrapper: `hv <worktree> local env TMC_SIBLINGS=/home/gamedev/godot tools/check.sh` (`hv local` is `heavy -- "$@"`, so `env` reaches the command; the `hv` script itself is outside this repo and is not changed here). `tools/pack.gd` stages in `user://pack_staging_<pid>`, so concurrent runs no longer remove each other's staging.

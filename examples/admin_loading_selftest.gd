@@ -2,7 +2,7 @@ extends Node
 
 ## The admin menu and the loading screen, both halves, without a server.
 
-const CHECKS := 224
+const CHECKS := 226
 
 var _passed := 0
 var _failed := 0
@@ -670,6 +670,10 @@ func _test_review_fixes() -> void:
 	var hint := loading._hint({"game": "fc"}, loading.games["fc"], true)
 	_check(TmcLoading.encoded_size(hint) <= TmcLoading.MAX_DOC_BYTES and hint.get("show", false),
 		"an oversized game screen is cut to fit, and keeps the show that matters (%d bytes)" % TmcLoading.encoded_size(hint))
+	var with_icon := TmcLoading.new().configure({"loading_games": {"fc": {"icon": "https://cdn.example.com/fc.png", "tips": ["t"]}, "bad": {"icon": "javascript:alert(1)"}}})
+	_check(with_icon.games.get("fc", {}).get("icon", "") == "https://cdn.example.com/fc.png" and with_icon.document().get("games", {}).get("fc", {}).get("icon", "") == "https://cdn.example.com/fc.png",
+		"a game's icon URL is kept and sent in the loading document")
+	_check(not with_icon.games.get("bad", {}).has("icon") and not with_icon.problems.is_empty(), "an unsafe icon URL is dropped with a problem")
 	_check(Array(loading.problems).any(func(p: String) -> bool: return p.contains("too big to send whole")),
 		"and the owner is told at boot")
 	loading.free()

@@ -2,7 +2,7 @@
 // shows an icon named by ?icon= before any pack is mounted, and once the game is known document.title and the favicon are
 // the game's (Godot's web DisplayServer writes both, so this proves the web path has the same behaviour as the desktop).
 //
-//   node tools/browser_identity_check.mjs --serve web/build [--game gamemann/game-hungario] [--secs 240] [--out DIR]
+//   node tools/browser_identity_check.mjs --serve web/build [--game gamemann/game-hungario] [--version 0.1.27] [--secs 240] [--out DIR]
 //   gpu.sh cdp-run ... -- node tools/browser_identity_check.mjs ...     (a real GPU; GPU_CDP_URL is honoured)
 //
 // The ?icon= URL is answered by the check itself (a solid 64x64 PNG of a colour GameSpice's icon does not have), so it also
@@ -45,7 +45,8 @@ function solidPng(w, h, [r, g, b]) {
 }
 
 const ICON_URL = 'https://icons.example.test/first-load.png';
-const q = `?solo=${game}&icon=${encodeURIComponent(ICON_URL)}`;
+const soloVersion = opt('version', '');
+const q = `?solo=${game}${soloVersion ? `&solo_version=${soloVersion}` : ''}&icon=${encodeURIComponent(ICON_URL)}`;
 const buildId = '20261122-0000';
 const srv = await serveShell({ dir, port, buildId, upstream, givenUrl: `http://x/${q}`, coi: true });
 const cdp = process.env.GPU_CDP_URL ? await chromium.connectOverCDP(process.env.GPU_CDP_URL) : null;
