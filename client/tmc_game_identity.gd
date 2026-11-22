@@ -163,3 +163,19 @@ static func cached_icon(content_id: String) -> Texture2D:
 	if content_id == "" or not FileAccess.file_exists(path):
 		return null
 	return texture_from_bytes(FileAccess.get_file_as_bytes(path), "png")
+
+
+## The window's title and icon and [param loading]'s icon for the game named, from the pack once it is mounted and from the device's memory of it before. Safe to call again as more becomes known.
+static func show_game(game_id: String, content_id: String, name_raw: String, cloud: Object, loading: TmcLoadingScreen) -> void:
+	var title := display_name(name_raw, content_id)
+	var manifest := manifest_of(cloud, content_id)
+	if title == "" and manifest != null:
+		title = display_name(manifest.display_name, content_id)
+	var icon: Texture2D = icon_of_manifest(manifest)
+	if icon != null:
+		cache_icon(content_id, icon)
+	else:
+		icon = cached_icon(content_id)
+	apply_window(title, icon if icon != null else shell_icon())
+	if loading != null:
+		loading.set_game_icon(game_id, icon)

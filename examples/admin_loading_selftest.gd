@@ -668,14 +668,11 @@ func _test_review_fixes() -> void:
 		(big["tips"] as Array).append("ヒント".repeat(50))
 	var loading := TmcLoading.new().configure({"loading_games": {"fc": big}})
 	var hint := loading._hint({"game": "fc"}, loading.games["fc"], true)
-	_check(TmcLoading.encoded_size(hint) <= TmcLoading.MAX_DOC_BYTES and hint.get("show", false),
-		"an oversized game screen is cut to fit, and keeps the show that matters (%d bytes)" % TmcLoading.encoded_size(hint))
+	_check(TmcLoading.encoded_size(hint) <= TmcLoading.MAX_DOC_BYTES and hint.get("show", false), "an oversized game screen is cut to fit, and keeps the show that matters (%d bytes)" % TmcLoading.encoded_size(hint))
 	var with_icon := TmcLoading.new().configure({"loading_games": {"fc": {"icon": "https://cdn.example.com/fc.png", "tips": ["t"]}, "bad": {"icon": "javascript:alert(1)"}}})
-	_check(with_icon.games.get("fc", {}).get("icon", "") == "https://cdn.example.com/fc.png" and with_icon.document().get("games", {}).get("fc", {}).get("icon", "") == "https://cdn.example.com/fc.png",
-		"a game's icon URL is kept and sent in the loading document")
+	_check(with_icon.games.get("fc", {}).get("icon", "") == "https://cdn.example.com/fc.png" and with_icon.document().get("games", {}).get("fc", {}).get("icon", "") == "https://cdn.example.com/fc.png", "a game's icon URL is kept and sent in the loading document")
 	_check(not with_icon.games.get("bad", {}).has("icon") and not with_icon.problems.is_empty(), "an unsafe icon URL is dropped with a problem")
-	_check(Array(loading.problems).any(func(p: String) -> bool: return p.contains("too big to send whole")),
-		"and the owner is told at boot")
+	_check(Array(loading.problems).any(func(p: String) -> bool: return p.contains("too big to send whole")), "and the owner is told at boot")
 	loading.free()
 
 	# 2. The content delay holds across phases.
@@ -692,20 +689,18 @@ func _test_review_fixes() -> void:
 	# 3. A decode bomb is refused from its header.
 	var small := Image.create(4, 4, false, Image.FORMAT_RGBA8)
 	var png := small.save_png_to_buffer()
-	_check(TmcLoadingScreen.declared_size(png) == Vector2i(4, 4), "a PNG's declared size is read from its header")
+	_check(TmcImageHeader.declared(png) == Vector2i(4, 4), "a PNG's declared size is read from its header")
 	var bomb := png.duplicate()
 	for i in 4:
 		bomb[16 + i] = [0, 0, 0x40, 0][i]
 		bomb[20 + i] = [0, 0, 0x40, 0][i]
 	var refused_before := TmcLoadingScreen.refused_oversized
-	_check(TmcLoadingScreen.declared_size(bomb) == Vector2i(16384, 16384) and TmcLoadingScreen.decode(bomb) == null
-			and TmcLoadingScreen.refused_oversized == refused_before + 1,
+	_check(TmcImageHeader.declared(bomb) == Vector2i(16384, 16384) and TmcLoadingScreen.decode(bomb) == null and TmcLoadingScreen.refused_oversized == refused_before + 1,
 		"one that declares 16384 x 16384 is refused for its size, before a decoder sees it")
 	var jpg := Image.create(37, 21, false, Image.FORMAT_RGB8).save_jpg_to_buffer()
-	_check(TmcLoadingScreen.declared_size(jpg) == Vector2i(37, 21), "and a JPEG's, from its frame header",
-		str(TmcLoadingScreen.declared_size(jpg)))
+	_check(TmcImageHeader.declared(jpg) == Vector2i(37, 21), "and a JPEG's, from its frame header", str(TmcImageHeader.declared(jpg)))
 	var webp := Image.create(33, 17, false, Image.FORMAT_RGBA8).save_webp_to_buffer(true)
-	_check(TmcLoadingScreen.declared_size(webp) == Vector2i(33, 17), "and a WebP's", str(TmcLoadingScreen.declared_size(webp)))
+	_check(TmcImageHeader.declared(webp) == Vector2i(33, 17), "and a WebP's", str(TmcImageHeader.declared(webp)))
 
 	# 3b. Nobody's own network.
 	var private := ["http://127.0.0.1/x.png", "http://localhost:8080/x.png", "https://192.168.1.1/a", "http://10.0.0.5/a",

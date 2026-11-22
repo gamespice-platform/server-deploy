@@ -126,17 +126,8 @@ var _powered_by: TmcPoweredBy = null
 var _backdrop: ColorRect = null
 var _image: TextureRect = null
 var _title: Label = null
-## The game's identity above the words: its icon and name (the GameSpice icon until the game's is known).
-var _game_icon: TextureRect = null
-var _game_label: Label = null
-## "Powered by GameSpice" and "Made with Godot", bottom-centre.
-var _footer: HBoxContainer = null
-var _icons: Dictionary = {}
-## An icon a launch link named (TmcGameIconHint) for the first game this connection shows, used until the game's own is known. [member _hint_game] is the game it was first shown for; another game drops it.
-var _hint_icon: Texture2D = null
-var _hint_game := ""
-## game id -> the icon the server's loading document named for it (an `icon` URL in the game's entry).
-var _doc_icons: Dictionary = {}
+## The game's icon and name above the words, and the credit footer.
+var _identity := TmcLoadingIdentityHeader.new()
 var _status: Label = null
 var _detail: Label = null
 var _bar: ProgressBar = null
@@ -216,9 +207,7 @@ func reset() -> void:
 	_game_id = ""
 	_game_name = ""
 	_server_name = ""
-	_icons.clear()
-	_hint_icon = null
-	_hint_game = ""
+	_identity.forget()
 	_sync_identity()
 	# The next server's media is the next server's budget. Kept: what has ARRIVED, which
 	# costs nothing to keep and is the same picture if the next server names it too.
@@ -851,7 +840,7 @@ static func decode_data(body: PackedByteArray) -> Variant:
 	# bounds what is downloaded, not what it decodes to: a 1 MB PNG can declare 16384 x 16384 and the
 	# decoder allocates a gigabyte before the resize below runs.
 	if is_png or is_jpg or is_webp:
-		var size := declared_size(body)
+		var size := TmcImageHeader.declared(body)
 		if size.x <= 0 or size.y <= 0 or size.x * size.y > MAX_DECODE_PIXELS:
 			refused_oversized += 1
 			return null
@@ -883,49 +872,19 @@ static func decode_data(body: PackedByteArray) -> Variant:
 	return image
 
 
-## The width and height a PNG, JPEG or WebP header declares, or (0, 0) when it cannot be
-## read. Header bytes only: nothing is decoded.
-static func declared_size(body: PackedByteArray) -> Vector2i:
-	var n := body.size()
-	# PNG: IHDR is the first chunk, width and height big-endian at 16 and 20.
-	if n >= 24 and body[0] == 0x89 and body[1] == 0x50:
-		return Vector2i(_be32(body, 16), _be32(body, 20))
-	# WebP: the first chunk after "WEBP" decides where the size is.
-	if n >= 30 and body.slice(8, 12).get_string_from_ascii() == "WEBP":
-		var chunk := body.slice(12, 16).get_string_from_ascii()
-		if chunk == "VP8X":
-			return Vector2i(1 + (body[24] | body[25] << 8 | body[26] << 16), 1 + (body[27] | body[28] << 8 | body[29] << 16))
-		if chunk == "VP8 ":
-			return Vector2i((body[26] | body[27] << 8) & 0x3FFF, (body[28] | body[29] << 8) & 0x3FFF)
-		if chunk == "VP8L" and body[20] == 0x2F:
-			var bits := body[21] | body[22] << 8 | body[23] << 16 | body[24] << 24
-			return Vector2i(1 + (bits & 0x3FFF), 1 + ((bits >> 14) & 0x3FFF))
-		return Vector2i.ZERO
-	# JPEG: walk the markers to the first start-of-frame.
-	if n >= 4 and body[0] == 0xFF and body[1] == 0xD8:
-		var i := 2
-		while i + 9 < n:
-			if body[i] != 0xFF:
-				return Vector2i.ZERO
-			var marker := body[i + 1]
-			if marker == 0xFF:
-				i += 1
-				continue
-			if marker == 0xD8 or marker == 0x01 or (marker >= 0xD0 and marker <= 0xD7):
-				i += 2
-				continue
-			var length := body[i + 2] << 8 | body[i + 3]
-			if marker >= 0xC0 and marker <= 0xCF and marker != 0xC4 and marker != 0xC8 and marker != 0xCC:
-				return Vector2i(body[i + 7] << 8 | body[i + 8], body[i + 5] << 8 | body[i + 6])
-			if length < 2:
-				return Vector2i.ZERO
-			i += 2 + length
-	return Vector2i.ZERO
-
-
-static func _be32(b: PackedByteArray, at: int) -> int:
-	return b[at] << 24 | b[at + 1] << 16 | b[at + 2] << 8 | b[at + 3]
-
+## The corner label naming the music key.
+func _build_hint() -> void:
+	_hint = Label.new()
+	_hint.anchor_left = 1.0
+	_hint.anchor_right = 1.0
+	_hint.offset_left = -220.0
+	_hint.offset_right = -24.0
+	_hint.offset_top = 20.0
+	_hint.offset_bottom = 44.0
+	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_hint.modulate = Color(1, 1, 1, 0.6)
+	_root.add_child(_hint)
+	_update_hint()
 
 
 func _build_view() -> void:
@@ -970,17 +929,7 @@ func _build_view() -> void:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.add_child(box)
 
-	var identity := HBoxContainer.new()
-	identity.add_theme_constant_override("separation", 14)
-	identity.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(identity)
-	_game_icon = _logo(TmcGameIdentity.shell_icon(), 72.0)
-	identity.add_child(_game_icon)
-	_game_label = Label.new()
-	_game_label.add_theme_font_size_override("font_size", 36)
-	_game_label.add_theme_font_override("font", TmcShellStyle.bold(0.8))
-	_game_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	identity.add_child(_game_label)
+	_identity.build_header(box)
 
 	box.add_child(TmcShellStyle.eyebrow("Loading"))
 
@@ -1009,118 +958,37 @@ func _build_view() -> void:
 	_detail.add_theme_color_override("font_color", Color(TmcShellStyle.MUTED, 0.8))
 	box.add_child(_detail)
 
-	_hint = Label.new()
-	_hint.anchor_left = 1.0
-	_hint.anchor_right = 1.0
-	_hint.offset_left = -220.0
-	_hint.offset_right = -24.0
-	_hint.offset_top = 20.0
-	_hint.offset_bottom = 44.0
-	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_hint.modulate = Color(1, 1, 1, 0.6)
-	_root.add_child(_hint)
-	_update_hint()
+	_build_hint()
 
 	# Which client this is, for a bug report that says "the loading screen" and nothing else.
 	_version = TmcShellVersion.add_corner_label(_root)
 	_powered_by = TmcPoweredBy.add_to(_root, site_url)
-	_build_footer()
+	_identity.build_footer(_root)
 	_sync_identity()
 	_build_audio()
-
-
-## A logo of [param side] pixels square, kept in proportion.
-func _logo(tex: Texture2D, side: float) -> TextureRect:
-	var rect := TextureRect.new()
-	rect.texture = tex
-	rect.custom_minimum_size = Vector2(side, side)
-	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return rect
-
-
-## "Powered by GameSpice" and "Made with Godot" along the bottom edge, each a logo and its words. The Godot logo is CC BY 4.0, credited in client/branding/ATTRIBUTION.md.
-func _build_footer() -> void:
-	_footer = HBoxContainer.new()
-	_footer.name = "Footer"
-	_footer.anchor_left = 0.5
-	_footer.anchor_right = 0.5
-	_footer.anchor_top = 1.0
-	_footer.anchor_bottom = 1.0
-	_footer.offset_top = -30.0
-	_footer.offset_bottom = -6.0
-	_footer.offset_left = -220.0
-	_footer.offset_right = 220.0
-	_footer.alignment = BoxContainer.ALIGNMENT_CENTER
-	_footer.add_theme_constant_override("separation", 8)
-	_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_footer.modulate = Color(1, 1, 1, 0.75)
-	_root.add_child(_footer)
-	var parts: Array = [
-		[TmcGameIdentity.GS_ICON, "Powered by GameSpice"],
-		[TmcGameIdentity.GODOT_LOGO, "Made with Godot"],
-	]
-	for i in parts.size():
-		if i > 0:
-			var gap := Control.new()
-			gap.custom_minimum_size = Vector2(18.0, 0.0)
-			gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			_footer.add_child(gap)
-		var tex: Texture2D = load(parts[i][0]) as Texture2D
-		_footer.add_child(_logo(tex, 22.0))
-		var words := Label.new()
-		words.text = parts[i][1]
-		words.add_theme_font_size_override("font_size", 13)
-		words.add_theme_color_override("font_color", TmcShellStyle.MUTED)
-		_footer.add_child(words)
 
 
 ## The game's icon for [param game_id], from the pack once it is mounted or from the device's memory of it. The screen shows it in place of the GameSpice icon.
 func set_game_icon(game_id: String, tex: Texture2D) -> void:
 	if game_id == "" or tex == null:
 		return
-	_icons[game_id] = tex
+	_identity.icons[game_id] = tex
 	_sync_identity()
 
 
-## The icon a launch link named, shown until the game's own is known (the first load of a game has none on this device).
+## The icon the server's document named for a game, shown until the game's own is known.
 func _fetch_game_icon(game_id: String, entry: Dictionary) -> void:
-	var url := str(entry.get("icon", ""))
-	if game_id == "" or url == "" or _doc_icons.has(game_id):
-		return
-	TmcGameIconHint.fetch_to(self, url, func(tex: Texture2D) -> void:
-		_doc_icons[game_id] = tex
-		_sync_identity()
-		if game_id == _game_id and TmcGameIdentity.cached_icon(game_id) == null:
-			TmcGameIdentity.apply_window("", tex)
-	)
+	_identity.fetch_doc_icon(self, game_id, entry)
 
 
 func set_hint_icon(tex: Texture2D) -> void:
-	_hint_icon = tex
+	_identity.hint_icon = tex
 	_sync_identity()
 
 
-## What the header shows: the game's name and icon, or GameSpice's when the game has no name or icon yet.
+## Refreshes the header for the game this screen is about.
 func _sync_identity() -> void:
-	if _game_label == null:
-		return
-	var shown := TmcGameIdentity.display_name(_game_name, _game_id)
-	_game_label.text = shown if shown != "" else TmcGameIdentity.GS_NAME
-	var tex: Texture2D = _icons.get(_game_id) as Texture2D if _game_id != "" else null
-	if tex == null and _game_id != "":
-		tex = TmcGameIdentity.cached_icon(_game_id)
-		if tex != null:
-			_icons[_game_id] = tex
-	if tex == null and _game_id != "":
-		tex = _doc_icons.get(_game_id) as Texture2D
-	if tex == null and _hint_icon != null:
-		if _hint_game == "" and _game_id != "":
-			_hint_game = _game_id
-		if _hint_game == "" or _hint_game == _game_id:
-			tex = _hint_icon
-	_game_icon.texture = tex if tex != null else TmcGameIdentity.shell_icon()
+	_identity.sync(_game_id, _game_name)
 
 
 ## The gradient over the picture that darkens it toward the text.
@@ -1184,9 +1052,9 @@ func describe() -> Dictionary:
 		"showing": _visible,
 		"reasons": _reasons.keys().map(func(r: StringName) -> String: return String(r)),
 		"game": _game_id,
-		"game_title": _game_label.text if _game_label != null else "",
-		"game_icon_is_shell": _game_icon != null and _game_icon.texture == TmcGameIdentity.shell_icon(),
-		"footer": _footer != null and _footer.get_child_count() >= 5,
+		"game_title": _identity.label.text if _identity.label != null else "",
+		"game_icon_is_shell": _identity.icon != null and _identity.icon.texture == TmcGameIdentity.shell_icon(),
+		"footer": _identity.footer != null and _identity.footer.get_child_count() >= 5,
 		"server": _server_name,
 		"title": _title.text if _title != null else "",
 		"status": _status.text if _status != null else "",

@@ -7,6 +7,10 @@ const CHECKS := 42
 var _passed := 0
 var _failed := 0
 var _failures := PackedStringArray()
+## The window's titles and icons the checks saw, and the icon the hint section fetched for the document section.
+var titles: Array = []
+var icons: Array = []
+var hinted: Texture2D = null
 
 
 func _ready() -> void:
@@ -25,11 +29,20 @@ func _check(condition: bool, what: String, detail: String = "") -> void:
 
 func _run() -> void:
 	print("game identity")
-	var titles: Array = []
-	var icons: Array = []
 	TmcGameIdentity.title_fn = func(t: String) -> void: titles.append(t)
 	TmcGameIdentity.icon_fn = func(i: Image) -> void: icons.append(i)
+	_test_names()
+	_test_window()
+	_test_loading_screen()
+	_test_icon_hint()
+	_test_document_icon()
 
+	TmcGameIdentity.title_fn = Callable()
+	TmcGameIdentity.icon_fn = Callable()
+	_report()
+
+
+func _test_names() -> void:
 	print("names")
 	_check(TmcGameIdentity.display_name("Fatal Contact") == "Fatal Contact", "a display name passes")
 	_check(TmcGameIdentity.display_name("Zee's Playlot", "mg-playlot") == "Zee's Playlot", "an apostrophe and spaces pass")
@@ -45,15 +58,17 @@ func _run() -> void:
 	_check(TmcGameIdentity.icon_rel({"icon": "../../secret.png"}) == "", "an unsafe path is refused")
 
 	print("icon from a mount")
-	var shell_icon := TmcGameIdentity.shell_icon()
-	_check(shell_icon != null, "the GameSpice icon loads")
+	_check(TmcGameIdentity.shell_icon() != null, "the GameSpice icon loads")
 	_check(TmcGameIdentity.icon_from_mount("res://client/branding", "gamespice-icon.svg") != null, "an svg in a mount loads")
 	_check(TmcGameIdentity.icon_from_mount("res://client/branding", "nothing.svg") == null, "a pack with no icon gives null")
 	_check(TmcGameIdentity.icon_from_mount("res://client/branding", "") == null, "an empty path gives null")
 	_check(TmcGameIdentity.icon_of_manifest(null) == null, "no manifest gives null")
 
+
+
+func _test_window() -> void:
 	print("window")
-	TmcGameIdentity.apply_window("Fatal Contact", shell_icon)
+	TmcGameIdentity.apply_window("Fatal Contact", TmcGameIdentity.shell_icon())
 	_check(titles == ["Fatal Contact"], "the window takes the game's name", str(titles))
 	_check(icons.size() == 1 and (icons[0] as Image).get_width() <= TmcGameIdentity.ICON_SIDE, "and a window-sized icon")
 	_check((icons[0] as Image).get_format() == Image.FORMAT_RGBA8, "in RGBA")
@@ -62,6 +77,9 @@ func _run() -> void:
 	TmcGameIdentity.apply_shell()
 	_check(titles[2] == "GameSpice" and icons.size() == 2, "apply_shell restores title and icon")
 
+
+
+func _test_loading_screen() -> void:
 	print("loading screen")
 	var screen := TmcLoadingScreen.new()
 	screen.in_game_fn = func() -> bool: return true
@@ -81,6 +99,9 @@ func _run() -> void:
 	_check(screen.describe()["game_title"] == "GameSpice", "a repository name is never shown as the title")
 	screen.free()
 
+
+
+func _test_icon_hint() -> void:
 	print("first-load icon hint")
 	_check(TmcGameIconHint.refuse("https://example.com/i.png", false) == "", "an https URL is fetched")
 	_check(TmcGameIconHint.refuse("ftp://example.com/i.png", false) != "", "a non-http URL is refused")
@@ -89,7 +110,7 @@ func _run() -> void:
 	_check(TmcGameIconHint.refuse("http://192.168.1.4/i.png", false) != "", "a private address is refused on a desktop")
 	_check(TmcGameIconHint.refuse("http://localhost:8080/i.png", true) == "", "a browser leaves local addresses to itself")
 	var svg := FileAccess.get_file_as_bytes("res://client/branding/gamespice-icon.svg")
-	var hinted := TmcGameIconHint.texture_of(svg, PackedStringArray(["Content-Type: image/svg+xml"]))
+	hinted = TmcGameIconHint.texture_of(svg, PackedStringArray(["Content-Type: image/svg+xml"]))
 	_check(hinted != null, "an svg body by content type becomes a texture")
 	_check(TmcGameIconHint.texture_of(svg) != null, "an svg body with no content type is sniffed")
 	_check(TmcGameIconHint.texture_of(PackedByteArray([1, 2, 3, 4, 5, 6, 7, 8])) == null, "bytes that are no image give null")
@@ -99,11 +120,14 @@ func _run() -> void:
 	add_child(hs)
 	hs.set_hint_icon(hinted)
 	hs.begin(TmcLoadingScreen.REASON_GAME, "airdrift", "Zee's Airdrift", true)
-	_check(hs.describe()["game_icon_is_shell"] == false and hs._game_icon.texture == hinted, "the hinted icon shows before the game's own is known")
+	_check(hs.describe()["game_icon_is_shell"] == false and hs._identity.icon.texture == hinted, "the hinted icon shows before the game's own is known")
 	hs.begin(TmcLoadingScreen.REASON_GAME, "playlot", "Zee's Playlot", true)
-	_check(hs._game_icon.texture != hinted, "another game does not inherit the hint")
+	_check(hs._identity.icon.texture != hinted, "another game does not inherit the hint")
 	hs.free()
 
+
+
+func _test_document_icon() -> void:
 	print("icon from the loading document")
 	var ds := TmcLoadingScreen.new()
 	ds.in_game_fn = func() -> bool: return true
@@ -114,15 +138,16 @@ func _run() -> void:
 	}})
 	_check(ds._doc["games"]["airdrift"].get("icon", "") == "http://127.0.0.1:9/i.png", "an icon URL in a game's entry is kept")
 	_check(not (ds._doc["games"]["playlot"] as Dictionary).has("icon"), "an unsafe icon URL is dropped")
-	ds._doc_icons["airdrift"] = hinted
+	ds._identity.doc_icons["airdrift"] = hinted
 	ds.begin(TmcLoadingScreen.REASON_GAME, "airdrift", "Zee's Airdrift", true)
-	_check(ds._game_icon.texture == hinted, "the document's icon shows for its game")
+	_check(ds._identity.icon.texture == hinted, "the document's icon shows for its game")
 	ds.begin(TmcLoadingScreen.REASON_GAME, "playlot", "Zee's Playlot", true)
-	_check(ds._game_icon.texture != hinted, "and not for another game")
+	_check(ds._identity.icon.texture != hinted, "and not for another game")
 	ds.free()
 
-	TmcGameIdentity.title_fn = Callable()
-	TmcGameIdentity.icon_fn = Callable()
+
+
+func _report() -> void:
 	print("")
 	print("%d passed, %d failed" % [_passed, _failed])
 	for line in _failures:

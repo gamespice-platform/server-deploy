@@ -226,24 +226,7 @@ func _ready() -> void:
 	# A portrait phone sees the cover fitted, not letterboxed; it is handed back as the game takes over.
 	loading.cover_changed.connect(func(_up: bool) -> void: _menu_ui._fit_menu())
 
-	radio_link = TmcRadioLink.new()
-	radio_link.name = "RadioLink"
-	add_child(radio_link)
-	trail_link = TmcTrailLink.new()
-	trail_link.name = "TrailLink"
-	trail_link.site_fn = _workshop_site
-	trail_link.token_fn = _workshop_token
-	trail_link.cloud_fn = func() -> Object:
-		_ensure_cloud()
-		return _cloud
-	add_child(trail_link)
-	inventory_link = TmcInventoryLink.new()
-	inventory_link.name = "InventoryLink"
-	inventory_link.origins = _configured_inventory_origins()
-	inventory_link.cloud_fn = trail_link.cloud_fn
-	inventory_link.clear_fn = request_clear
-	add_child(inventory_link)
-	inventory_link.start()
+	TmcShellLinks.build(self)
 
 	# Claims the covering job for every GSLoadGate a game makes under the game root, so
 	# only the loading screen shows, never the gate's own cover as well.
@@ -1215,6 +1198,20 @@ func _configured_content_urls() -> PackedStringArray:
 	return out
 
 
+## Connects the signals of a link built for [param target].
+func _wire_link(session: GSClientLink, target: String) -> void:
+	session.phase_changed.connect(_on_link_phase)
+	session.download_progress.connect(_on_link_download)
+	session.game_changed.connect(_on_game_changed)
+	session.spawned.connect(_on_spawned)
+	session.disconnected.connect(_on_disconnected)
+	# The first thing a server says, and it says which addon versions it runs.
+	session.server_info.connect(_on_server_info.bind(target))
+	# The server's HUD lines. Connected per link rather than once, because the link is
+	# rebuilt on every connection -- see [method _drop_link].
+	session.notice_received.connect(_on_notice)
+
+
 func _connect_to(address: String) -> void:
 	var target := address.strip_edges()
 
@@ -1282,16 +1279,7 @@ func _connect_to(address: String) -> void:
 	link.game_root_ref = GSNodeRef.of_path(_game_root.get_path())
 	add_child(link)
 
-	link.phase_changed.connect(_on_link_phase)
-	link.download_progress.connect(_on_link_download)
-	link.game_changed.connect(_on_game_changed)
-	link.spawned.connect(_on_spawned)
-	link.disconnected.connect(_on_disconnected)
-	# The first thing a server says, and it says which addon versions it runs.
-	link.server_info.connect(_on_server_info.bind(target))
-	# The server's HUD lines. Connected per link rather than once, because the link is
-	# rebuilt on every connection -- see [method _drop_link].
-	link.notice_received.connect(_on_notice)
+	_wire_link(link, target)
 
 	var connecting: GSResult = await link.connect_to_server(target)
 
@@ -2016,7 +2004,7 @@ func is_solo() -> bool:
 ## The old game comes down here, not in `_on_spawned`: `GSClientLink._unload_scene` frees only a scene *it* built, so built-in games would stack, each with its own netcode manager.
 func _on_game_changed(game_id: String, content_id: String, display_name: String) -> void:
 	_join_marks["game_changed"] = Time.get_ticks_usec()
-	_show_game_identity(game_id, content_id, display_name, _cloud)
+	TmcGameIdentity.show_game(game_id, content_id, display_name, _cloud, loading)
 	if _joining and display_name != "":
 		loading.set_progress(-1.0, _text("shell.loading.game", {"game": display_name}, "Loading %s…" % display_name))
 	if _has_spawned or _joining:
@@ -2032,26 +2020,10 @@ func _on_game_changed(game_id: String, content_id: String, display_name: String)
 	_say("Loading %s…" % (display_name if display_name != "" else game_id))
 
 
-## The window's title and icon and the loading screen's icon for the game named, from the pack once it is mounted and from the device's memory of it before. Safe to call again as more becomes known.
-func _show_game_identity(game_id: String, content_id: String, display_name: String, cloud: Object) -> void:
-	var title := TmcGameIdentity.display_name(display_name, content_id)
-	var manifest := TmcGameIdentity.manifest_of(cloud, content_id)
-	if title == "" and manifest != null:
-		title = TmcGameIdentity.display_name(manifest.display_name, content_id)
-	var icon: Texture2D = TmcGameIdentity.icon_of_manifest(manifest)
-	if icon != null:
-		TmcGameIdentity.cache_icon(content_id, icon)
-	else:
-		icon = TmcGameIdentity.cached_icon(content_id)
-	TmcGameIdentity.apply_window(title, icon if icon != null else TmcGameIdentity.shell_icon())
-	if loading != null:
-		loading.set_game_icon(game_id, icon)
-
-
 ## Signon finished. Put the game on screen.
 func _on_spawned() -> void:
 	if link != null:
-		_show_game_identity(link.server_game_id, link.server_content_id, link.server_game_name, _cloud)
+		TmcGameIdentity.show_game(link.server_game_id, link.server_content_id, link.server_game_name, _cloud, loading)
 	_log_join()
 	_joining = false
 	_set_busy(false)

@@ -478,6 +478,24 @@ static func game_icon(source: String, named: String) -> String:
 	return ""
 
 
+## What a game that is also delivered says in its `game.yml`: its id, version, name, client scene and icon go into [param meta], read through the server's own YAML reader rather than a second one. Succeeds with the game's kind, "" when there is no `game.yml`. Not a pack.json key: it is the GAME's nature, and a pack descriptor claiming to be builtin would be claiming something about code it does not contain.
+func _apply_game_yml(game_yml: String, id: String, meta: Dictionary) -> GSResult:
+	if not FileAccess.file_exists(game_yml):
+		return GSResult.success("")
+	# [b]`parse` returns a GSResult, not the tree.[/b] The first version of this read it as `var
+	# tree: Variant = TmcYaml.parse(...)` and then asked `tree is Dictionary`, which is never true.
+	var read := TmcYaml.parse_file(game_yml)
+	if not read.ok:
+		return read.wrap("could not read %s" % game_yml)
+	var tree: Dictionary = read.value
+	meta["id"] = str(TmcYaml.at(tree, "content_id", id))
+	meta["version"] = str(TmcYaml.at(tree, "version", "0.0.0"))
+	meta["name"] = str(TmcYaml.at(tree, "name", ""))
+	meta["entry"] = str(TmcYaml.at(tree, "client_scene", ""))
+	meta["icon"] = str(TmcYaml.at(tree, "icon", ""))
+	return GSResult.success(str(TmcYaml.at(tree, "kind", "builtin")))
+
+
 ## Everything the publisher needs, from `pack.json`, then `game.yml`, then defaults.
 func _read_spec(dir: String, id: String) -> GSResult:
 	var meta := {
@@ -499,30 +517,10 @@ func _read_spec(dir: String, id: String) -> GSResult:
 		"addon": {},
 	}
 
-	# Not a pack.json key: it is the GAME's nature, and a pack descriptor claiming to be
-	# builtin would be claiming something about code it does not contain.
-	var kind := ""
-
-	# A game that is also delivered names its version and its client scene in the file it
-	# already has, read through the server's own YAML reader rather than a second one.
-	var game_yml := dir.path_join("game.yml")
-
-	if FileAccess.file_exists(game_yml):
-		# [b]`parse` returns a GSResult, not the tree.[/b] The first version of this read it as `var
-		# tree: Variant = TmcYaml.parse(...)` and then asked `tree is Dictionary`, which is never true.
-		var read := TmcYaml.parse_file(game_yml)
-
-		if not read.ok:
-			return read.wrap("could not read %s" % game_yml)
-
-		var tree: Dictionary = read.value
-
-		meta["id"] = str(TmcYaml.at(tree, "content_id", id))
-		meta["version"] = str(TmcYaml.at(tree, "version", "0.0.0"))
-		meta["name"] = str(TmcYaml.at(tree, "name", ""))
-		meta["entry"] = str(TmcYaml.at(tree, "client_scene", ""))
-		meta["icon"] = str(TmcYaml.at(tree, "icon", ""))
-		kind = str(TmcYaml.at(tree, "kind", "builtin"))
+	var applied := _apply_game_yml(dir.path_join("game.yml"), id, meta)
+	if not applied.ok:
+		return applied
+	var kind := str(applied.value)
 
 	var pack_json := dir.path_join("pack.json")
 
