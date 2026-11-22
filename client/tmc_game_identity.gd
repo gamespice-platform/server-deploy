@@ -52,12 +52,12 @@ static func icon_rel(metadata: Dictionary) -> String:
 	var rel := str(metadata.get("icon", DEFAULT_ICON)).strip_edges()
 	if rel == "":
 		rel = DEFAULT_ICON
-	var safe := DotPaths.safe_relative(rel)
+	var safe := GSPaths.safe_relative(rel)
 	return rel if safe.ok else ""
 
 
 ## The manifest [param cloud] acquired for [param content_id], whatever its version, or null.
-static func manifest_of(cloud: Object, content_id: String) -> DotCloudManifest:
+static func manifest_of(cloud: Object, content_id: String) -> GSCloudManifest:
 	if cloud == null or content_id == "":
 		return null
 	for key in cloud.acquired_keys():
@@ -66,7 +66,7 @@ static func manifest_of(cloud: Object, content_id: String) -> DotCloudManifest:
 	return null
 
 
-## The icon of the pack mounted at [param prefix] (`res://dot_cloud/<id>/<version>`), or null when it has none. Tries the imported resource first and the raw file after: a pack published before an import has only the second.
+## The icon of the pack mounted at [param prefix] (`res://gs_cloud/<id>/<version>`), or null when it has none. Tries the imported resource first and the raw file after: a pack published before an import has only the second.
 static func icon_from_mount(prefix: String, rel: String) -> Texture2D:
 	if rel == "":
 		return null
@@ -101,7 +101,7 @@ static func texture_from_bytes(bytes: PackedByteArray, ext: String) -> Texture2D
 
 
 ## The icon [param manifest] names, mounted or not: null when the pack has none.
-static func icon_of_manifest(manifest: DotCloudManifest) -> Texture2D:
+static func icon_of_manifest(manifest: GSCloudManifest) -> Texture2D:
 	if manifest == null:
 		return null
 	return icon_from_mount(manifest.mount_prefix(), icon_rel(manifest.metadata))

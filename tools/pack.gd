@@ -473,7 +473,7 @@ static func game_icon(source: String, named: String) -> String:
 				candidates.append(configured)
 	candidates.append("icon.svg")
 	for rel in candidates:
-		if DotPaths.safe_relative(rel).ok and FileAccess.file_exists(source.path_join(rel)):
+		if GSPaths.safe_relative(rel).ok and FileAccess.file_exists(source.path_join(rel)):
 			return rel
 	return ""
 

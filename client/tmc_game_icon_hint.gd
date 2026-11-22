@@ -42,7 +42,7 @@ static func fetch_to(parent: Node, raw: String, on_icon: Callable) -> void:
 		hint.queue_free()
 	)
 	if not hint.fetch(raw):
-		DotLog.info("shell", "icon URL not used", {"why": hint.refusal})
+		GSLog.info("shell", "icon URL not used", {"why": hint.refusal})
 		hint.queue_free()
 
 
@@ -52,8 +52,8 @@ static func requested() -> String:
 	var index := args.find("--icon-url")
 	if index >= 0 and index + 1 < args.size():
 		return args[index + 1]
-	if DotPlatform.is_web():
-		return DotWeb.query_param("icon")
+	if GSPlatform.is_web():
+		return GSWeb.query_param("icon")
 	return ""
 
 
@@ -70,7 +70,7 @@ static func refuse(raw: String, web: bool) -> String:
 
 
 ## Starts the fetch of [param raw]. False (and [member refusal] says why) when it is not one to fetch.
-func fetch(raw: String, web: bool = DotPlatform.is_web()) -> bool:
+func fetch(raw: String, web: bool = GSPlatform.is_web()) -> bool:
 	url = raw.strip_edges()
 	refusal = refuse(url, web)
 	if refusal != "":
