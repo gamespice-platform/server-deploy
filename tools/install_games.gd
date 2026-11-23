@@ -133,7 +133,7 @@ func _init() -> void:
 		var one := TmcGameRef.parse(raw)
 		wants.append(one)
 
-		# A retired id (game-final-contact, game-arena, ...) is installed as the id it is published as
+		# A retired id (game-final-contact, game-arena, ...) is installed as the id it is published as  gs-rename: keep
 		# now, and said once here, so a panel still configured with the old name keeps working.
 		if str(one["retired"]) != "":
 			GSLog.warn(CHANNEL, "the config names a retired game id; installing the current one, change it", {

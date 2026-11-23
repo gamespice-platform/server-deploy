@@ -668,7 +668,7 @@ func _test_game_cfg_dirs() -> void:
 	for descriptor in content.games:
 		names[TmcGameConfig.cfg_id(descriptor)] = descriptor.game_id
 
-	_check(names.has("game-fatal-contact") and not names.has("game-arena") and not names.has("fatalcontact"),
+	_check(names.has("game-fatal-contact") and not names.has("game-arena") and not names.has("fatalcontact"),  # gs-rename: keep (legacy id, see audit_old_names.allow)
 		"Fatal Contact's config directory is game-fatal-contact", str(names.keys()))
 	_check(names.size() == content.games.size(), "no two games share a config directory", "%d dirs for %d games" % [names.size(), content.games.size()])
 
@@ -717,21 +717,21 @@ func _retired_cfg_dirs(content: TmcContent, root: String) -> void:
 	# A retired directory moves, whole, and is still the game's settings.
 	var old := ProjectSettings.globalize_path("user://selftest_game_cfg_old")
 	GSPaths.remove_tree(old)
-	DirAccess.make_dir_recursive_absolute(old + "/game/game-arena")
+	DirAccess.make_dir_recursive_absolute(old + "/game/game-arena")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	DirAccess.make_dir_recursive_absolute(old + "/server/game/game-final-contact/sub")
 	DirAccess.make_dir_recursive_absolute(old + "/game/game-fatal-contact")
-	_put(old + "/game/game-arena/server.yml", "max_players: 9\n")
-	_put(old + "/game/game-arena/extra.yml", "kept: 1\n")
+	_put(old + "/game/game-arena/server.yml", "max_players: 9\n")  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	_put(old + "/game/game-arena/extra.yml", "kept: 1\n")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	_put(old + "/game/game-fatal-contact/server.yml", "max_players: 5\n")
 	_put(old + "/server/game/game-final-contact/server.yml", "max_players: 11\n")
 	_put(old + "/server/game/game-final-contact/sub/a.yml", "a: 1\n")
 	var lines := TmcGameCfgDirs.migrate_retired_dirs(old)
 	_check(lines.size() == 2, "one line per migrated directory", str(lines))
-	_check(not DirAccess.dir_exists_absolute(old + "/game/game-arena")
+	_check(not DirAccess.dir_exists_absolute(old + "/game/game-arena")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 		and FileAccess.get_file_as_string(old + "/game/game-fatal-contact/extra.yml") == "kept: 1\n",
 		"a file the current directory lacks is moved into it")
 	_check(FileAccess.get_file_as_string(old + "/game/game-fatal-contact/server.yml") == "max_players: 5\n"
-		and FileAccess.get_file_as_string(old + "/game/game-fatal-contact/server.yml.from-game-arena") == "max_players: 9\n",
+		and FileAccess.get_file_as_string(old + "/game/game-fatal-contact/server.yml.from-game-arena") == "max_players: 9\n",  # gs-rename: keep (legacy id, see audit_old_names.allow)
 		"a differing file is kept beside it, not lost and not replacing it")
 	_check(FileAccess.get_file_as_string(old + "/server/game/game-fatal-contact/server.yml") == "max_players: 11\n"
 		and FileAccess.file_exists(old + "/server/game/game-fatal-contact/sub/a.yml"),
@@ -741,10 +741,10 @@ func _retired_cfg_dirs(content: TmcContent, root: String) -> void:
 	# Until migrated, the old name still reaches the game.
 	var cvars := TmcGameConfig.new()
 	var fc := content.find("fatalcontact")
-	var legacy := {"game-arena": {"marker": 1}}
+	var legacy := {"game-arena": {"marker": 1}}  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	_check(fc != null and TmcGameConfig.section_in(legacy, fc).get("marker", 0) == 1,
-		"a section still under game-arena applies to Fatal Contact until it is migrated")
-	_check(cvars != null and fc != null and TmcGameConfig.section_in({"game-fatal-contact": {"marker": 2}, "game-arena": {"marker": 1}}, fc).get("marker", 0) == 2,
+		"a section still under game-arena applies to Fatal Contact until it is migrated")  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	_check(cvars != null and fc != null and TmcGameConfig.section_in({"game-fatal-contact": {"marker": 2}, "game-arena": {"marker": 1}}, fc).get("marker", 0) == 2,  # gs-rename: keep (legacy id, see audit_old_names.allow)
 		"and the section under the current name wins")
 
 	# The shell migration in tools/cfg_sync.sh names the same directories.
@@ -1107,8 +1107,8 @@ func _game_ref_entries() -> void:
 		"a pin on a retired id is dropped (the old id published no versions) and the old id is kept to log")
 	_check(TmcGameRef.parse("gamemann/game-fatal-contact")["retired"] == "",
 		"a current id is not marked retired")
-	_check(TmcGameRef.dirs_in("gamemann/game-arena, gamemann/game-airdrift@1.2.0, game-arena")
-			== PackedStringArray(["gamemann/game-fatal-contact", "gamemann/game-airdrift", "game-arena"]),
+	_check(TmcGameRef.dirs_in("gamemann/game-arena, gamemann/game-airdrift@1.2.0, game-arena")  # gs-rename: keep (legacy id, see audit_old_names.allow)
+			== PackedStringArray(["gamemann/game-fatal-contact", "gamemann/game-airdrift", "game-arena"]),  # gs-rename: keep (legacy id, see audit_old_names.allow)
 		"the host's filter aliases the same ids the installer does; a bare local name is left alone")
 	_check(TmcGameRef.qualify_map("gamemann/fc-dm-maps/*", "")["collection"] == "gamemann/fc-dm-maps",
 		"a retired collection wildcard reads the current collection")

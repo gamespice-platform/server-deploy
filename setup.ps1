@@ -229,7 +229,7 @@ function Get-AddonRepo([string]$name) {
     switch ($name) {
         'zee_weapons' { return 'zee-gs-weapons' }
         'fc_weapons'    { return 'fc-weapons' }
-        'arena_weapons' { return 'fc-weapons' }
+        'arena_weapons' { return 'fc-weapons' }  # gs-rename: keep (legacy id, see audit_old_names.allow)
         default       { return ($name -replace '_', '-') }
     }
 }
@@ -241,15 +241,15 @@ $missing = @()
 foreach ($name in $addons) {
     $repo   = Get-AddonRepo $name
     $source = Join-Path $Root "..\$repo\addons\$name"
-    # fc-weapons moved addons\arena_weapons to addons\fc_weapons; its tags up to v1.4.51 hold
+    # fc-weapons moved addons\arena_weapons to addons\fc_weapons; its tags up to v1.4.51 hold  gs-rename: keep
     # the legacy name. The checkout decides which one is linked (setup.sh: settle_renamed_dirs).
     if ($name -eq 'fc_weapons' -and -not (Test-Path -LiteralPath $source -PathType Container)) {
-        $legacy = Join-Path $Root "..\$repo\addons\arena_weapons"
+        $legacy = Join-Path $Root "..\$repo\addons\arena_weapons"  # gs-rename: keep (legacy id, see audit_old_names.allow)
         if (Test-Path -LiteralPath $legacy -PathType Container) {
             $ref = (& git -C (Join-Path $Root "..\$repo") describe --tags --always 2>$null)
             if (-not $ref) { $ref = '?' }
-            Warn "addons\arena_weapons is a legacy directory (deprecated): $repo at $ref still holds it; a newer tag holds addons\fc_weapons"
-            $name = 'arena_weapons'; $source = $legacy
+            Warn "addons\arena_weapons is a legacy directory (deprecated): $repo at $ref still holds it; a newer tag holds addons\fc_weapons"  # gs-rename: keep (legacy id, see audit_old_names.allow)
+            $name = 'arena_weapons'; $source = $legacy  # gs-rename: keep (legacy id, see audit_old_names.allow)
         }
     }
     $link   = Join-Path $Root "addons\$name"

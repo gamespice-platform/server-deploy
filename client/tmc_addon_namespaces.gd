@@ -5,19 +5,19 @@ extends RefCounted
 
 ## The organisation's (both its ids), and the game addons published under their author (the weapons packs, natural-disasters).
 ## A shell carries none of those (it is gs-* addons only), so these are what it fetches them under when a server announces them.
-## `modcommunity/` and `gamemann/arena-weapons` (fc-weapons' old id) stay for servers that still announce the old ids.
-const DEFAULTS: PackedStringArray = ["gamespice-platform/", "modcommunity/", "gamemann/zee-gs-weapons", "gamemann/zz-modern-weapons", "gamemann/fc-weapons", "gamemann/arena-weapons", "gamemann/natural-disasters", "gamemann/gs-trail", "gamemann/gs-radio"]
+## `modcommunity/` and `gamemann/arena-weapons` (fc-weapons' old id) stay for servers that still announce the old ids.  gs-rename: keep
+const DEFAULTS: PackedStringArray = ["gamespice-platform/", "modcommunity/", "gamemann/zee-gs-weapons", "gamemann/zz-modern-weapons", "gamemann/fc-weapons", "gamemann/arena-weapons", "gamemann/natural-disasters", "gamemann/gs-trail", "gamemann/gs-radio"]  # gs-rename: keep (legacy id, see audit_old_names.allow)
 
-## Old repository names a lock or content list may still use, to the current one (fc-weapons was arena-weapons).
-const PUBLISHED_AS := {"arena-weapons": "fc-weapons"}
+## Old repository names a lock or content list may still use, to the current one (fc-weapons was arena-weapons).  gs-rename: keep
+const PUBLISHED_AS := {"arena-weapons": "fc-weapons"}  # gs-rename: keep (legacy id, see audit_old_names.allow)
 
 ## The `gs-*` addons that are their author's, not the organisation's: published as `gamemann/<repo>` (the repository name, `gs-` kept), like the weapons packs.
 const AUTHOR_GS_ADDONS: PackedStringArray = ["gs-trail", "gs-radio"]
 
-## Addon directories a repository has renamed, current to legacy. fc-weapons (Fatal Contact's weapons) holds `addons/fc_weapons`; its tags up to [constant LEGACY_LAST] hold the legacy `addons/arena_weapons`. The legacy name is used only where the ref holds it, and every use logs a deprecation warning naming that ref.
+## Addon directories a repository has renamed, current to legacy. fc-weapons (Fatal Contact's weapons) holds `addons/fc_weapons`; its tags up to [constant LEGACY_LAST] hold the legacy `addons/arena_weapons`. The legacy name is used only where the ref holds it, and every use logs a deprecation warning naming that ref.  gs-rename: keep
 ## A game naming one while its ref holds the other is an error, never an alias: `res://` paths name the directory.
 ## `tools/check-pinned.sh` reads the pinned ref's own tree, and `setup.sh` links what the checkout holds; move [constant LEGACY_LAST] only with the tag that first holds `addons/fc_weapons`.
-const LEGACY_DIRS := {"fc_weapons": "arena_weapons"}
+const LEGACY_DIRS := {"fc_weapons": "arena_weapons"}  # gs-rename: keep (legacy id, see audit_old_names.allow)
 
 ## The last version of each renamed repository whose tree still holds its legacy directory.
 const LEGACY_LAST := {"fc-weapons": "1.4.51"}
@@ -104,7 +104,7 @@ static func load_shell() -> PackedStringArray:
 
 
 ## The repository an addon directory comes from, as setup.sh and addons.lock name it: underscores become dashes, bar the weapons packs
-## (`fc_weapons` and its legacy `arena_weapons` are both fc-weapons).
+## (`fc_weapons` and its legacy `arena_weapons` are both fc-weapons).  gs-rename: keep
 static func lock_repo(dir: String) -> String:
 	if dir == "zee_weapons":
 		return "zee-gs-weapons"
@@ -137,7 +137,7 @@ static func holds_legacy(repo: String, version: String) -> bool:
 
 
 ## [param announced] without a legacy directory its announced version no longer holds. A server-deploy older than
-## the host's own skip announces a stale `arena_weapons` left by an older install as `fc-weapons@1.4.52+`, which holds
+## the host's own skip announces a stale `arena_weapons` left by an older install as `fc-weapons@1.4.52+`, which holds  gs-rename: keep
 ## only `addons/fc_weapons`: the all-or-nothing overlay then fails ("not an addon pack") and the game is refused.
 static func without_stale_legacy(announced: Array) -> Array:
 	var out: Array = []
@@ -158,7 +158,7 @@ static func without_stale_legacy(announced: Array) -> Array:
 	return out
 
 
-## Whether [param dir] is a renamed repository's legacy directory (`arena_weapons`).
+## Whether [param dir] is a renamed repository's legacy directory (`arena_weapons`).  gs-rename: keep
 static func is_legacy_dir(dir: String) -> bool:
 	return LEGACY_DIRS.values().has(dir)
 

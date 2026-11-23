@@ -8,17 +8,17 @@ extends RefCounted
 ## Ids a game or pack was configured under before it was renamed, and the id it is published as now. [b]Here, not only on the origin[/b]: a renamed id that was never published (game-final-contact) has no `latest.json` to carry `moved_to`, and the host's filter must agree with the installer's directory, or the game is installed and then hidden. Exact `<owner>/<name>` ids only: a bare name is a local directory on a developer's box and is left alone.
 const RETIRED_IDS := {
 	"gamemann/game-final-contact": "gamemann/game-fatal-contact",
-	"gamemann/game-arena": "gamemann/game-fatal-contact",
-	"gamemann/arena-weapons": "gamemann/fc-weapons",
-	"gamemann/arena-dm-maps": "gamemann/fc-dm-maps",
-	"gamemann/arena-surf-dm-maps": "gamemann/fc-surf-dm-maps",
+	"gamemann/game-arena": "gamemann/game-fatal-contact",  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	"gamemann/arena-weapons": "gamemann/fc-weapons",  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	"gamemann/arena-dm-maps": "gamemann/fc-dm-maps",  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	"gamemann/arena-surf-dm-maps": "gamemann/fc-surf-dm-maps",  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	# legacy id: published under these names; the origin and live server.yml files still say them.
-	"gamemann/game-g2gfast": "gamemann/game-airdrift",
+	"gamemann/game-g2gfast": "gamemann/game-airdrift",  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	"gamemann/game-g2gfast01": "gamemann/game-airdrift",
-	"gamemann/game-playground": "gamemann/game-playlot",
+	"gamemann/game-playground": "gamemann/game-playlot",  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	"gamemann/playground-maps": "gamemann/playlot-maps",
 	# PLAYLOT's published game.yml still names its maps by this id; the CDN moved it to playlot-maps.
-	"gamemann/game-playground-maps": "gamemann/playlot-maps",
+	"gamemann/game-playground-maps": "gamemann/playlot-maps",  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	# Published as game-deathrun now; the CDN's mg-deathrun says moved_to, and a server.yml that names it got "not installed".
 	"gamemann/mg-deathrun": "gamemann/game-deathrun",
 	# Never published under this name (the repository is mg-buses-from-hell), but a live server.yml says it.

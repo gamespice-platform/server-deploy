@@ -126,16 +126,16 @@ cmd_check() {
         ref="$(awk -v r="$repo" '$1 == r { print $2 }' "$LOCK")"
         name="${repo//-/_}"
         [ "$repo" = "zee-gs-weapons" ] && name="zee_weapons"
-        # fc-weapons moved addons/arena_weapons to addons/fc_weapons: whichever setup.sh linked
+        # fc-weapons moved addons/arena_weapons to addons/fc_weapons: whichever setup.sh linked  gs-rename: keep
         # (it follows the checkout's ref) is checked; the legacy one is deprecated and said so.
         if [ "$repo" = "fc-weapons" ]; then
-            if [ -e "$ROOT/addons/fc_weapons" ] && [ -e "$ROOT/addons/arena_weapons" ]; then
-                echo "  !!    $repo: both addons/fc_weapons and the legacy addons/arena_weapons are here; remove the one $ref does not hold"
+            if [ -e "$ROOT/addons/fc_weapons" ] && [ -e "$ROOT/addons/arena_weapons" ]; then  # gs-rename: keep (legacy id, see audit_old_names.allow)
+                echo "  !!    $repo: both addons/fc_weapons and the legacy addons/arena_weapons are here; remove the one $ref does not hold"  # gs-rename: keep (legacy id, see audit_old_names.allow)
                 bad=1
                 continue
             fi
             [ -e "$ROOT/addons/arena_weapons" ] && name="arena_weapons" \
-                && echo "  WRN   $repo: addons/arena_weapons is a legacy directory (deprecated; $repo $ref still holds it, a newer tag holds addons/fc_weapons)"
+                && echo "  WRN   $repo: addons/arena_weapons is a legacy directory (deprecated; $repo $ref still holds it, a newer tag holds addons/fc_weapons)"  # gs-rename: keep (legacy id, see audit_old_names.allow)
         fi
         dir="$ROOT/addons/$name"
 

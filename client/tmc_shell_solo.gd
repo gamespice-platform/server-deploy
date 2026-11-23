@@ -203,7 +203,7 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 	if not refused.ok:
 		return refused
 
-	# The game addons its pack requires (zee_weapons for Prop Hunt, fc_weapons for Fatal Contact; arena_weapons up to fc-weapons v1.4.51) are not in this shell: fetched as the overlay a server would announce, then a restart into it. Asked of the store before the pack is fetched, because the pack's own requirement check refuses it while one is missing. Returns only when nothing is missing or it cannot be had. Subscriptions are asked first (their downloads only registered): a game that accepts addon packs gets the subscribed ones in the same overlay, so one restart covers both.
+	# The game addons its pack requires (zee_weapons for Prop Hunt, fc_weapons for Fatal Contact; arena_weapons up to fc-weapons v1.4.51) are not in this shell: fetched as the overlay a server would announce, then a restart into it. Asked of the store before the pack is fetched, because the pack's own requirement check refuses it while one is missing. Returns only when nothing is missing or it cannot be had. Subscriptions are asked first (their downloads only registered): a game that accepts addon packs gets the subscribed ones in the same overlay, so one restart covers both.  gs-rename: keep
 	var subscribed: Array = await shell._solo_packs._solo_workshop_plan(content_id, wanted)
 	var overlay: int = await _solo_overlay(content_id, await _solo_needs(content_id, wanted), subscribed)
 	if overlay == SoloOverlay.RESTARTING:
@@ -537,7 +537,7 @@ func _collect_solo_announce(content_id: String, needs: Dictionary, subscribed: A
 		# A retired id resolves to the one it moved to, whose name is the repo [GSCloudAddonSet] checks.
 		var id := str(latest.value["id"])
 		var version := str(latest.value["version"])
-		# The newest published version must hold `addons/<dir>`: fc-weapons up to v1.4.51 holds the legacy arena_weapons, so
+		# The newest published version must hold `addons/<dir>`: fc-weapons up to v1.4.51 holds the legacy arena_weapons, so  gs-rename: keep
 		# Fatal Contact 0.1.70 (fc_weapons 32) fetched 1.4.50, which [GSCloudAddonSet] refused as "not an addon pack".
 		var manifest: GSResult = await shell._cloud.resolve_manifest(StringName(id), version)
 		if manifest.ok:

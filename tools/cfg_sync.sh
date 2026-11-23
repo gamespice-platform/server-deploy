@@ -13,7 +13,7 @@ n=0
 for tier in game; do
     for pair in game-arena:game-fatal-contact game-final-contact:game-fatal-contact arena:game-fatal-contact \
         game-g2gfast:game-airdrift game-g2gfast01:game-airdrift g2gfast:game-airdrift \
-        game-playground:game-playlot playground:game-playlot; do
+        game-playground:game-playlot playground:game-playlot; do  # gs-rename: keep (legacy id, see audit_old_names.allow)
         old="${pair%%:*}"; new="${pair##*:}"
         if [ -d "$CFG/$tier/$old" ] && [ ! -e "$CFG/$tier/$new" ]; then
             mv "$CFG/$tier/$old" "$CFG/$tier/$new" && printf '    ~    cfg/%s/%s is now cfg/%s/%s (the game was renamed)\n' "$tier" "$old" "$tier" "$new"

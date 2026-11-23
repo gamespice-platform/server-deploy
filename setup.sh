@@ -990,7 +990,7 @@ ADDONS_LOCK="$ROOT/addons.lock"
 lock_ref() {
     [ "${TMC_ADDONS_LOCK:-on}" != "off" ] || return 1
     local pin a p2
-    # Either name of a renamed repository finds its pin (fc-weapons was arena-weapons).
+    # Either name of a renamed repository finds its pin (fc-weapons was arena-weapons).  gs-rename: keep
     a="$(repo_alias "$1")" || a="$1"
     pin="$(content_list addons "$ROOT/cfg" 2>/dev/null | awk -F'\t' -v r="$1" -v a="$a" '($2 == r || $2 == a) && $3 != "" { print $3; exit }')"
     # An `addons:` entry in server.yml that names a version is the operator's word over the shipped list and the lock.
@@ -1502,8 +1502,8 @@ ADDONS_ALL=()
 while IFS= read -r _repo; do
     case "$_repo" in
         zee-gs-weapons) ADDONS_ALL+=(zee_weapons) ;;
-        # fc_weapons, or the legacy arena_weapons where the locked ref still holds it: settle_renamed_dirs.
-        fc-weapons|arena-weapons) ADDONS_ALL+=(fc_weapons) ;;
+        # fc_weapons, or the legacy arena_weapons where the locked ref still holds it: settle_renamed_dirs.  gs-rename: keep
+        fc-weapons|arena-weapons) ADDONS_ALL+=(fc_weapons) ;;  # gs-rename: keep (legacy id, see audit_old_names.allow)
         *)               ADDONS_ALL+=("${_repo//-/_}") ;;
     esac
 done < <(content_addon_repos "$ROOT/cfg") || die "cfg/content/addons.yml: could not be read" 5
@@ -1516,7 +1516,7 @@ while IFS=$'\t' read -r _repo _pin; do
     [ -n "$_repo" ] || continue
     case "$_repo" in
         zee-gs-weapons) _dir=zee_weapons ;;
-        fc-weapons|arena-weapons) _dir=arena_weapons ;;
+        fc-weapons|arena-weapons) _dir=arena_weapons ;;  # gs-rename: keep (legacy id, see audit_old_names.allow)
         *) _dir="${_repo//-/_}" ;;
     esac
     case " ${ADDONS_ALL[*]} " in *" $_dir "*) ;; *) ADDONS_ALL+=("$_dir") ;; esac
@@ -1619,8 +1619,8 @@ if [ ${#DROPPED_GAMES[@]} -gt 0 ] && [ "${PUBLISHED_GAMES:-0}" -ne 1 ]; then
         # would then be short by exactly this name with nothing printing it.
         unlisted=""
         for a in "${ADDONS[@]}"; do
-            # A game still on the legacy arena_weapons is listed as fc_weapons.
-            [ "$a" = arena_weapons ] && continue
+            # A game still on the legacy arena_weapons is listed as fc_weapons.  gs-rename: keep
+            [ "$a" = arena_weapons ] && continue  # gs-rename: keep (legacy id, see audit_old_names.allow)
             case " ${ADDONS_ALL[*]} " in *" $a "*) ;; *) unlisted="$unlisted $a" ;; esac
         done
         [ -n "$unlisted" ] && warn "declared by a game and missing from ADDONS_ALL:$unlisted
@@ -1691,7 +1691,7 @@ addon_repo() {
     case "$1" in
         zee_weapons) printf 'zee-gs-weapons\n' ;;
         fc_weapons)    printf 'fc-weapons\n' ;;
-        arena_weapons) printf 'fc-weapons\n' ;;
+        arena_weapons) printf 'fc-weapons\n' ;;  # gs-rename: keep (legacy id, see audit_old_names.allow)
         *)           printf '%s\n' "${1//_/-}" ;;
     esac
 }
@@ -1700,8 +1700,8 @@ addon_repo() {
 ## server's existing clone under addons/.repos/, may still use the old one.
 repo_alias() {
     case "$1" in
-        fc-weapons)    printf 'arena-weapons\n' ;;
-        arena-weapons) printf 'fc-weapons\n' ;;
+        fc-weapons)    printf 'arena-weapons\n' ;;  # gs-rename: keep (legacy id, see audit_old_names.allow)
+        arena-weapons) printf 'fc-weapons\n' ;;  # gs-rename: keep (legacy id, see audit_old_names.allow)
         *) return 1 ;;
     esac
 }
@@ -1794,19 +1794,19 @@ git_root_of() {
     return 1
 }
 
-## fc-weapons moved its addon from addons/arena_weapons to addons/fc_weapons; its tags up
+## fc-weapons moved its addon from addons/arena_weapons to addons/fc_weapons; its tags up  gs-rename: keep
 ## to v1.4.51 hold the legacy one. The other name of a renamed addon directory, or nothing.
 renamed_dir_other() {
     case "$1" in
-        fc_weapons)    printf 'arena_weapons\n' ;;
-        arena_weapons) printf 'fc_weapons\n' ;;
+        fc_weapons)    printf 'arena_weapons\n' ;;  # gs-rename: keep (legacy id, see audit_old_names.allow)
+        arena_weapons) printf 'fc_weapons\n' ;;  # gs-rename: keep (legacy id, see audit_old_names.allow)
         *) return 1 ;;
     esac
 }
 
 ## Each renamed addon is wired in under the directory its checkout (at the locked ref)
 ## holds, decided by that tree and never by a fallback. The list's fc_weapons becomes the
-## legacy arena_weapons where the checkout still holds that; every legacy use prints a
+## legacy arena_weapons where the checkout still holds that; every legacy use prints a  gs-rename: keep
 ## deprecation warning naming the ref. A game that declares one name while the checkout
 ## holds the other is an error, not an alias: its res:// paths name the directory.
 ## A checkout holding neither is left to the clone step (it is missing).
@@ -1821,14 +1821,14 @@ settle_renamed_dirs() {
             [ "${ADDONS_FROM_GAMES:-0}" -eq 1 ] && die "A game here declares addons/$name, but $(addon_repo "$name") at $ref holds addons/$other.
 
     Move the game and the addons.lock pin to the same side of the rename:
-    tags up to v1.4.51 hold the legacy addons/arena_weapons, newer ones addons/fc_weapons." 5
+    tags up to v1.4.51 hold the legacy addons/arena_weapons, newer ones addons/fc_weapons." 5  # gs-rename: keep (legacy id, see audit_old_names.allow)
             ADDONS[$i]="$other"
             name="$other"
             addon_source "$name"
         fi
-        if [ "$name" = arena_weapons ]; then
+        if [ "$name" = arena_weapons ]; then  # gs-rename: keep (legacy id, see audit_old_names.allow)
             root="$(git_root_of "$SRC")" && ref="$(git -C "$root" describe --tags --always 2>/dev/null)" || ref="?"
-            warn "addons/arena_weapons is a legacy directory (deprecated): $(addon_repo "$name") at $ref still holds it; a newer tag holds addons/fc_weapons"
+            warn "addons/arena_weapons is a legacy directory (deprecated): $(addon_repo "$name") at $ref still holds it; a newer tag holds addons/fc_weapons"  # gs-rename: keep (legacy id, see audit_old_names.allow)
         fi
     done
 }

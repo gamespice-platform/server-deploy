@@ -24,29 +24,29 @@ func _check(condition: bool, what: String, detail: String = "") -> bool:
 
 func _test_addon_announce() -> void:
 	_section("the addon set a server announces")
-	var lock := "arena-weapons\tv1.4.10\ngs-core\tv0.1.30\n"
-	var out := TmcAddonSet.addon_set_from(lock, PackedStringArray(["arena_weapons", "gs_core"]))
+	var lock := "arena-weapons\tv1.4.10\ngs-core\tv0.1.30\n"  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	var out := TmcAddonSet.addon_set_from(lock, PackedStringArray(["arena_weapons", "gs_core"]))  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	_check(out.size() == 2 and out[0]["id"] == "gamemann/fc-weapons" and out[0]["repo"] == "fc-weapons" and out[0]["version"] == "1.4.10", "a game addon's pack is announced under its author and published name, at the lock's version")
-	var renamed := TmcAddonSet.addon_set_from("fc-weapons\tv1.4.11\n", PackedStringArray(["arena_weapons"]))
+	var renamed := TmcAddonSet.addon_set_from("fc-weapons\tv1.4.11\n", PackedStringArray(["arena_weapons"]))  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	_check(renamed.size() == 1 and renamed[0]["id"] == "gamemann/fc-weapons" and renamed[0]["version"] == "1.4.11", "a lock under the renamed repository's name announces the same pack")
-	_check(TmcAddonNamespaces.lock_repo("arena_weapons") == "fc-weapons" and TmcAddonNamespaces.lock_repo("fc_weapons") == "fc-weapons", "fc_weapons and its legacy arena_weapons are both locked as fc-weapons")
-	_check(TmcAddonNamespaces.dir_for("fc-weapons") == "fc_weapons" and TmcAddonNamespaces.dir_for("arena-weapons") == "fc_weapons", "fc-weapons, by either repository name, installs to fc_weapons")
-	_check(TmcAddonNamespaces.dir_for("fc-weapons", "1.4.51") == "arena_weapons" and TmcAddonNamespaces.dir_for("arena-weapons", "v1.4.10") == "arena_weapons", "a version up to the last legacy tag (1.4.51) holds the legacy arena_weapons")
+	_check(TmcAddonNamespaces.lock_repo("arena_weapons") == "fc-weapons" and TmcAddonNamespaces.lock_repo("fc_weapons") == "fc-weapons", "fc_weapons and its legacy arena_weapons are both locked as fc-weapons")  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	_check(TmcAddonNamespaces.dir_for("fc-weapons") == "fc_weapons" and TmcAddonNamespaces.dir_for("arena-weapons") == "fc_weapons", "fc-weapons, by either repository name, installs to fc_weapons")  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	_check(TmcAddonNamespaces.dir_for("fc-weapons", "1.4.51") == "arena_weapons" and TmcAddonNamespaces.dir_for("arena-weapons", "v1.4.10") == "arena_weapons", "a version up to the last legacy tag (1.4.51) holds the legacy arena_weapons")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	_check(TmcAddonNamespaces.dir_for("fc-weapons", "1.4.52") == "fc_weapons" and TmcAddonNamespaces.dir_for("fc-weapons", "1.5.0") == "fc_weapons", "a newer version holds fc_weapons")
-	_check(TmcAddonNamespaces._warned.has("arena_weapons@fc-weapons@1.4.51") and not TmcAddonNamespaces._warned.has("fc_weapons@fc-weapons@1.5.0"), "the legacy dir is warned about, naming the ref; the current one is not")
+	_check(TmcAddonNamespaces._warned.has("arena_weapons@fc-weapons@1.4.51") and not TmcAddonNamespaces._warned.has("fc_weapons@fc-weapons@1.5.0"), "the legacy dir is warned about, naming the ref; the current one is not")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	var current := TmcAddonSet.addon_set_from("fc-weapons\tv1.5.0\n", PackedStringArray(["fc_weapons"]))
 	_check(current.size() == 1 and current[0]["dir"] == "fc_weapons" and current[0]["id"] == "gamemann/fc-weapons" and current[0]["version"] == "1.5.0", "an installed fc_weapons is announced as fc-weapons")
-	var stale := TmcAddonSet.addon_set_from("fc-weapons\tv1.4.52\nzee-gs-weapons\tv0.1.66\n", PackedStringArray(["arena_weapons", "fc_weapons", "zee_weapons"]))
-	_check(stale.size() == 2 and stale[0]["dir"] == "fc_weapons" and stale[1]["dir"] == "zee_weapons", "a leftover legacy arena_weapons the locked fc-weapons (1.4.52+) no longer holds is not announced", str(stale))
-	var heard := TmcAddonNamespaces.without_stale_legacy([{"dir": "arena_weapons", "id": "gamemann/fc-weapons", "version": "1.4.52"}, {"dir": "fc_weapons", "id": "gamemann/fc-weapons", "version": "1.4.52"}, {"dir": "arena_weapons", "id": "gamemann/fc-weapons", "version": "1.4.51"}])
-	_check(heard.size() == 2 and heard[0]["dir"] == "fc_weapons" and heard[1]["version"] == "1.4.51", "the client drops an announced legacy arena_weapons its version (1.4.52+) no longer holds, and keeps one it does", str(heard))
-	var stale_only := TmcAddonSet.addon_set_from("fc-weapons\tv1.4.54\n", PackedStringArray(["arena_weapons"]))
+	var stale := TmcAddonSet.addon_set_from("fc-weapons\tv1.4.52\nzee-gs-weapons\tv0.1.66\n", PackedStringArray(["arena_weapons", "fc_weapons", "zee_weapons"]))  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	_check(stale.size() == 2 and stale[0]["dir"] == "fc_weapons" and stale[1]["dir"] == "zee_weapons", "a leftover legacy arena_weapons the locked fc-weapons (1.4.52+) no longer holds is not announced", str(stale))  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	var heard := TmcAddonNamespaces.without_stale_legacy([{"dir": "arena_weapons", "id": "gamemann/fc-weapons", "version": "1.4.52"}, {"dir": "fc_weapons", "id": "gamemann/fc-weapons", "version": "1.4.52"}, {"dir": "arena_weapons", "id": "gamemann/fc-weapons", "version": "1.4.51"}])  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	_check(heard.size() == 2 and heard[0]["dir"] == "fc_weapons" and heard[1]["version"] == "1.4.51", "the client drops an announced legacy arena_weapons its version (1.4.52+) no longer holds, and keeps one it does", str(heard))  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	var stale_only := TmcAddonSet.addon_set_from("fc-weapons\tv1.4.54\n", PackedStringArray(["arena_weapons"]))  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	_check(stale_only.is_empty(), "a stale legacy dir alone announces nothing, so no client builds an overlay from a pack that lacks it", str(stale_only))
-	_check(TmcAddonNamespaces._warned.has("arena_weapons@fc-weapons@1.4.11"), "an installed legacy arena_weapons is announced with a warning naming the locked ref")
+	_check(TmcAddonNamespaces._warned.has("arena_weapons@fc-weapons@1.4.11"), "an installed legacy arena_weapons is announced with a warning naming the locked ref")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	_check(out[1]["id"] == "modcommunity/gs-core" and out[1]["repo"] == "gs-core" and out[1]["version"] == "0.1.30", "a gs-* addon is announced under its old id, which every shell takes, at the lock's version")
 	var core := TmcAddonNamespaces.pack_for("gs_core")
 	_check(core["id"] == "gamespice-platform/core" and core["repo"] == "core" and core["old_id"] == "modcommunity/gs-core", "a gs-* addon's pack is gamespice-platform/<name>, with the modcommunity alias as its old id")
-	_check(TmcAddonNamespaces.dir_for_id("gamespice-platform/core") == "gs_core" and TmcAddonNamespaces.dir_for_id("modcommunity/gs-core") == "gs_core" and TmcAddonNamespaces.dir_for_id("gamemann/fc-weapons") == "fc_weapons" and TmcAddonNamespaces.dir_for_id("gamemann/fc-weapons", "1.4.40") == "arena_weapons", "both of an addon's ids find its dir, a renamed one's by version")
+	_check(TmcAddonNamespaces.dir_for_id("gamespice-platform/core") == "gs_core" and TmcAddonNamespaces.dir_for_id("modcommunity/gs-core") == "gs_core" and TmcAddonNamespaces.dir_for_id("gamemann/fc-weapons") == "fc_weapons" and TmcAddonNamespaces.dir_for_id("gamemann/fc-weapons", "1.4.40") == "arena_weapons", "both of an addon's ids find its dir, a renamed one's by version")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	_check(TmcAddonNamespaces.covers(TmcAddonNamespaces.DEFAULTS, "gamespice-platform/core") and TmcAddonNamespaces.covers(TmcAddonNamespaces.DEFAULTS, "modcommunity/gs-core"), "the shell takes the organisation's packs under the new and the old id")
 	_check(TmcAddonSet.addon_set_from(lock, PackedStringArray(["natural_disasters"])).is_empty(), "an addon the lock does not name is not announced")
 
@@ -60,7 +60,7 @@ func _test_addon_announce() -> void:
 	cfg = TmcAddonsConfig.new()
 	_check(cfg.read({"overlays": ["gamemann/zee-gs-weapons@0.1.63", "gamemann/fc-weapons@1.4.40"]}).ok, "a default owner's game-addon overlay is read")
 	var games := cfg.overlay_set()
-	_check(games[0]["dir"] == "zee_weapons" and games[1]["dir"] == "arena_weapons" and games[1]["repo"] == "fc-weapons", "a game-addon overlay names the dir its pack carries, not its repository's (fc-weapons 1.4.40: the legacy one)")
+	_check(games[0]["dir"] == "zee_weapons" and games[1]["dir"] == "arena_weapons" and games[1]["repo"] == "fc-weapons", "a game-addon overlay names the dir its pack carries, not its repository's (fc-weapons 1.4.40: the legacy one)")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	cfg = TmcAddonsConfig.new()
 	_check(cfg.read({"overlays": ["gamemann/fc-weapons@1.5.0"]}).ok and cfg.overlay_set()[0]["dir"] == "fc_weapons", "an fc-weapons overlay past the rename names fc_weapons")
 	var swapped := TmcAddonSet.merge_overlays(out, games)
@@ -77,7 +77,7 @@ func _test_addon_announce() -> void:
 	_check(TmcAddonsConfig.addon_ref("gamemann/gs-radio", spaces0, {"gs-radio": "v0.1.4"}).value["version"] == "0.1.4", "an addons: entry without a version takes the lock's")
 	_check(not TmcAddonsConfig.addon_ref("gamemann/gs-radio", spaces0).ok, "an addons: entry with no version anywhere is refused")
 	_check(not TmcAddonsConfig.addon_ref("mallory/gs-radio@1.0.0", spaces0).ok, "an addons: entry from an untrusted owner is refused")
-	_check(TmcAddonsConfig.addon_ref("gamemann/fc-weapons", spaces0, {"fc-weapons": "v1.4.51"}).value["dir"] == "arena_weapons" and TmcAddonsConfig.addon_ref("gamemann/fc-weapons@1.5.0", spaces0).value["dir"] == "fc_weapons", "an addons: fc-weapons entry takes the dir its version holds (legacy arena_weapons up to 1.4.51)")
+	_check(TmcAddonsConfig.addon_ref("gamemann/fc-weapons", spaces0, {"fc-weapons": "v1.4.51"}).value["dir"] == "arena_weapons" and TmcAddonsConfig.addon_ref("gamemann/fc-weapons@1.5.0", spaces0).value["dir"] == "fc_weapons", "an addons: fc-weapons entry takes the dir its version holds (legacy arena_weapons up to 1.4.51)")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	var listed := TmcAddonSet.addons_from_list(PackedStringArray(["gamemann/gs-trail@0.1.5", "gamemann/gs-radio@0.1.4", "mallory/x@1.0.0", "gamemann/gs-radio"]), spaces0, "", PackedStringArray(["gs_trail"]))
 	_check(listed["entries"].size() == 1 and listed["errors"].size() == 3, "addons_from_list announces the installed trusted ones and reports each of the rest")
 	var hc := TmcConfig.new()
@@ -86,7 +86,7 @@ func _test_addon_announce() -> void:
 	var spaces := TmcAddonNamespaces.resolve(PackedStringArray(["alice/", "bad entry", "modcommunity/"]))
 	_check(spaces.size() == TmcAddonNamespaces.DEFAULTS.size() + 1 and TmcAddonNamespaces.covers(spaces, "alice/gs-x") and not TmcAddonNamespaces.covers(spaces, "alicia/gs-x"), "operator namespaces extend the defaults; owner prefix needs the slash")
 	_check(TmcAddonNamespaces.parse_lines("# c\nalice/ # me\n\n") == PackedStringArray(["alice/"]), "the namespaces file is one entry per line with comments")
-	_check(TmcAddonNamespaces.covers(TmcAddonNamespaces.DEFAULTS, "gamemann/arena-weapons") and not TmcAddonNamespaces.covers(TmcAddonNamespaces.DEFAULTS, "gamemann/arena-weapons-evil"), "the defaults keep their exact-id entries exact")
+	_check(TmcAddonNamespaces.covers(TmcAddonNamespaces.DEFAULTS, "gamemann/arena-weapons") and not TmcAddonNamespaces.covers(TmcAddonNamespaces.DEFAULTS, "gamemann/arena-weapons-evil"), "the defaults keep their exact-id entries exact")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	for dir: String in ["fc_weapons", "zee_weapons", "zz_modern_weapons", "natural_disasters"]:
 		var id := str(TmcAddonNamespaces.pack_for(dir)["id"])
 		_check(str(TmcAddonNamespaces.pack_for(dir)["repo"]) == id.get_file(), "%s's pack repo is its id's name, as the addon set requires" % dir)
@@ -104,8 +104,8 @@ func _test_addon_announce() -> void:
 
 ## `addons_announce: game`: the framework's addons plus what the game's requires.json names; unknown needs announce everything.
 func _addon_announce_scope(out: Array) -> void:
-	var only := TmcAddonSet.scoped(out, {"arena_weapons": 1})
-	_check(only.size() == 2 and only[0]["dir"] == "arena_weapons" and only[1]["dir"] == "gs_core", "a game that needs fc-weapons is announced it and the framework")
+	var only := TmcAddonSet.scoped(out, {"arena_weapons": 1})  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	_check(only.size() == 2 and only[0]["dir"] == "arena_weapons" and only[1]["dir"] == "gs_core", "a game that needs fc-weapons is announced it and the framework")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	var bare := TmcAddonSet.scoped(out, {})
 	_check(bare.size() == 1 and bare[0]["dir"] == "gs_core", "a game that needs no game addon is announced the framework only")
 	_check(TmcAddonSet.scoped(out, null).size() == out.size(), "a game whose needs are not known is announced everything, the old behaviour")
@@ -127,14 +127,14 @@ func _addon_announce_scope(out: Array) -> void:
 ## Download groups: the game names them per dir, the shell unions what it is about to build.
 func _addon_download_groups(out: Array) -> void:
 	# Download groups: the game names them per dir, the shell unions what it is about to build.
-	var named := TmcAddonSet.with_groups(out, TmcAddonSet.sanitize_groups({"arena_weapons": PackedStringArray(["weapon-b", "weapon-a"]), "gs_nowhere": ["x"], "gs_core": [3]}))
+	var named := TmcAddonSet.with_groups(out, TmcAddonSet.sanitize_groups({"arena_weapons": PackedStringArray(["weapon-b", "weapon-a"]), "gs_nowhere": ["x"], "gs_core": [3]}))  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	_check(named[0]["groups"] == ["weapon-b", "weapon-a"] and not named[1].has("groups") and not out[0].has("groups"), "the game's groups ride its dir's entry only, on a copy; a malformed list is dropped")
 	var server := [
-		{"dir": "arena_weapons", "groups": ["weapon-rifle", "weapon-awp"]}, {"dir": "gs_ui"}, {"dir": "zee_weapons", "groups": ["weapon-awp", "weapon-x"]},
+		{"dir": "arena_weapons", "groups": ["weapon-rifle", "weapon-awp"]}, {"dir": "gs_ui"}, {"dir": "zee_weapons", "groups": ["weapon-awp", "weapon-x"]},  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	]
-	_check(TmcAddonGroups.needed_groups(server, {"arena_weapons": {}, "gs_ui": {}}) == PackedStringArray(["weapon-awp", "weapon-rifle"]), "an entry without groups adds none to the union")
+	_check(TmcAddonGroups.needed_groups(server, {"arena_weapons": {}, "gs_ui": {}}) == PackedStringArray(["weapon-awp", "weapon-rifle"]), "an entry without groups adds none to the union")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	_check(TmcAddonGroups.needed_groups(server, {"gs_ui": {}}) == PackedStringArray(["*"]), "nothing named is everything")
 	_check(TmcAddonGroups.needed_groups([{"dir": "a", "groups": ["*"]}, {"dir": "b", "groups": ["g"]}], {"a": {}, "b": {}}) == PackedStringArray(["*"]) and TmcAddonGroups.needed_groups([{"dir": "a", "groups": "g"}], {"a": {}}) == PackedStringArray(["*"]), "a wildcard or a malformed field is everything")
-	_check(TmcAddonGroups.wanted_groups(server, {"arena_weapons": {}, "zee_weapons": {}}, {"groups": ["weapon-knife"]}) == PackedStringArray(["weapon-awp", "weapon-knife", "weapon-rifle", "weapon-x"]), "never narrower than the running overlay")
-	_check(TmcAddonGroups.wanted_groups(server, {"arena_weapons": {}}, {"addons": {}}) == PackedStringArray(["*"]), "a plan from before groups took everything, and keeps it")
+	_check(TmcAddonGroups.wanted_groups(server, {"arena_weapons": {}, "zee_weapons": {}}, {"groups": ["weapon-knife"]}) == PackedStringArray(["weapon-awp", "weapon-knife", "weapon-rifle", "weapon-x"]), "never narrower than the running overlay")  # gs-rename: keep (legacy id, see audit_old_names.allow)
+	_check(TmcAddonGroups.wanted_groups(server, {"arena_weapons": {}}, {"addons": {}}) == PackedStringArray(["*"]), "a plan from before groups took everything, and keeps it")  # gs-rename: keep (legacy id, see audit_old_names.allow)
 	_check(TmcAddonGroups.covers(PackedStringArray(["a", "b"]), PackedStringArray(["b"])) and not TmcAddonGroups.covers(PackedStringArray(["a"]), PackedStringArray(["a", "b"])) and not TmcAddonGroups.covers(PackedStringArray(["a"]), PackedStringArray(["*"])) and TmcAddonGroups.covers(PackedStringArray(["*"]), PackedStringArray(["z"])), "an overlay covers a server only with every group it needs")
