@@ -4,7 +4,8 @@
 #   1. addons.lock is not fully pinned (addons-lock.sh check-pins),
 #   2. the build stamp (client/build_stamp.gd) is missing or says -dirty: the shell was
 #      built from a tree that is not a commit,
-#   3. a pinned addon's CI for its pinned tag is red (addons-lock.sh check-ci, gh API).
+#   3. client/content.json (trusted keys) or addons.lock differs from HEAD,
+#   4. a pinned addon's CI for its pinned tag is red (addons-lock.sh check-ci, gh API).
 # Why: v0.1.150 was tagged over a failing check-pins, and a shell built from an
 # uncommitted tree broke the prod solo manifest path (2026-11-22 outage).
 #
@@ -29,6 +30,12 @@ else
         "") refuse "build stamp $STAMP has no COMMIT" ;;
         *-dirty*) refuse "build stamp says '$commit': the shell was built from an uncommitted tree; commit, then rebuild" ;;
     esac
+fi
+
+# The stamp is written at export; a trust anchor edited after it (a dev or smoke key left in
+# client/content.json, which the shell would then TRUST) is invisible to it. Checked on the tree itself.
+if git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 && ! git -C "$REPO" diff --quiet HEAD -- client/content.json addons.lock 2>/dev/null; then
+    refuse "client/content.json or addons.lock differs from HEAD: a trusted key or pin that is not committed would ship in the shell (git diff HEAD -- client/content.json addons.lock)"
 fi
 
 if ! out=$(cd "$REPO" && bash tools/addons-lock.sh check-ci 2>&1); then

@@ -26,6 +26,10 @@ done
 [ -f "$key" ] || { echo "error: dev pack key $key missing" >&2; exit 1; }
 case $backbone in *moddingcommunity.com*) echo "error: refusing the production site in a dev shell" >&2; exit 1 ;; esac
 
+# An aborted earlier run (kill -9 skips the trap) leaves the dev key in the tracked file; copying that as the "original" would make it permanent.
+if ! git diff --quiet HEAD -- client/content.json 2>/dev/null; then
+    echo "error: client/content.json differs from HEAD (a previous dev-shell/smoke run left a key in it); git checkout client/content.json first" >&2; exit 1
+fi
 keep=$(mktemp -d)
 cp client/content.json "$keep/content.json"
 if [ -f client/auth.json ]; then cp client/auth.json "$keep/auth.json"; fi

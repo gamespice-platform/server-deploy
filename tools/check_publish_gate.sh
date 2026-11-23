@@ -37,6 +37,18 @@ red="$(awk -F'\t' '!/^#/ && NF {print $1; exit}' "$T/addons.lock")"
 out="$(gate env GH_RED="$red")"; rc=$?
 [ "$rc" != 0 ] && grep -q "RED" <<<"$out" && ok "red addon CI ($red) is refused" || bad "red CI passed: $out"
 
+# A trusted key left in client/content.json after the stamp was written: the stamp is clean, the tree is not.
+git -C "$T" init -q && cp "$ROOT/client/content.json" "$T/client/content.json" \
+    && git -C "$T" add client/content.json addons.lock \
+    && git -C "$T" -c user.email=t@t -c user.name=t commit -qm base
+stamp abc1234
+out="$(gate env)"; rc=$?
+[ "$rc" = 0 ] && ok "committed client/content.json and addons.lock publish" || bad "committed tree refused: $out"
+printf '{"trusted_keys":{"smoke-extra":"x"}}' > "$T/client/content.json"
+out="$(gate env)"; rc=$?
+[ "$rc" != 0 ] && grep -q "differs from HEAD" <<<"$out" && ok "modified client/content.json is refused" || bad "modified content.json passed: $out"
+git -C "$T" checkout -q client/content.json
+
 # An unpinned lock: a yml pin that disagrees with addons.lock.
 pin_repo="$(awk '/^[[:space:]]*-[[:space:]]*repo:/ { r = $NF; next } /^[[:space:]]*pin:/ && r != "" { print r; exit }' "$T/content-lists/addons.yml")"
 if [ -n "$pin_repo" ]; then

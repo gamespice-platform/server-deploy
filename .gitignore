@@ -108,3 +108,7 @@ cfg.suites-aside.*/
 
 # Local dated backups of the addons tree.
 /addons.bak-*/
+
+# Generated or stray, never part of a commit (they made the shell stamp say -dirty).
+/export_presets.cfg.bak*
+/examples/fixtures/*/game/
