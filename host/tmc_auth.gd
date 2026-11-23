@@ -152,6 +152,8 @@ static func build(auth: Dictionary, config_dir: String, data_dir: String = "") -
 	if cfg.strategy == GSAuthConfig.Strategy.INTROSPECT:
 		node.scoped_only = bool(auth.get("introspect_scoped", true))
 
+	apply_guest_profiles(auth, cfg.allow_guests)
+
 	GSLog.info(CHANNEL, "authentication is on", {
 		"strategy": named,
 		"server_id": cfg.server_id if cfg.server_id != "" else "(from the site)",
@@ -161,6 +163,20 @@ static func build(auth: Dictionary, config_dir: String, data_dir: String = "") -
 	})
 
 	return GSResult.success(node)
+
+
+## Whether guests get stored profiles: auth.yml `guest_profiles`, defaulting to [param allow_guests]. A server that admits guests
+## and then refuses each one's profile ("Guest profiles are not enabled on this server") logs that on every join for nothing.
+static func guest_profiles_wanted(auth: Dictionary, allow_guests: bool) -> bool:
+	return bool(auth.get("guest_profiles", allow_guests))
+
+
+## Hands [method guest_profiles_wanted] to the profile manager (`GS_USER_ALLOW_GUEST_PROFILES`), unless the operator already set that variable.
+static func apply_guest_profiles(auth: Dictionary, allow_guests: bool) -> void:
+	if OS.get_environment("GS_USER_ALLOW_GUEST_PROFILES") != "":
+		return
+	if guest_profiles_wanted(auth, allow_guests):
+		OS.set_environment("GS_USER_ALLOW_GUEST_PROFILES", "true")
 
 
 ## The auth.yml files that exist under [param config_dir], lowest tier first.

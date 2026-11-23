@@ -27,7 +27,14 @@ cp "$PROJECT/cfg.example/server/addon/gs_map/maps.yml" "$A/gs_map/maps.yml"   # 
 echo 'password: old' > "$A/dot_console/rcon.yml"
 echo 'password: edited' > "$A/gs_console/rcon.yml"                          # an operator's own edit
 
+# a console/rcon.yml boot seeded with a generated password: the dot_ file (the password in use) takes its place
+mkdir -p "$PROJECT/cfg.example/server/addon/gs_console" "$A/dot_console2"
+printf 'port: 1\nrcon_password: ""\n' > "$PROJECT/cfg.example/server/addon/gs_console/rcon2.yml"
+printf 'port: 1\nrcon_password: "generated"\n' > "$A/gs_console/rcon2.yml"
+printf 'port: 1\nrcon_password: "inuse"\n' > "$A/dot_console/rcon2.yml"
+
 out="$(migrate_dot_addon_cfg 2>&1)"
+grep -q 'inuse' "$A/gs_console/rcon2.yml" && [ ! -e "$A/dot_console/rcon2.yml" ] && good "a boot-generated rcon_password gives way to the dot_ file's" || bad "the generated rcon_password kept over the dot_ file's"
 grep -q 'games.example' "$A/gs_auth/auth.yml" 2>/dev/null && good "dot_auth moves to gs_auth" || bad "dot_auth/auth.yml not moved"
 grep -q 'operator' "$A/gs_map/maps.yml" && good "an unedited template copy gives way" || bad "the template copy in gs_map kept"
 grep -q 'edited' "$A/gs_console/rcon.yml" && good "an edited gs_ file wins" || bad "an edited gs_console/rcon.yml was overwritten"

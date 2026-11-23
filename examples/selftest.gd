@@ -2385,6 +2385,12 @@ func _test_auth() -> void:
 		)
 		node.free()
 
+	_check(
+		TmcAuth.guest_profiles_wanted({}, true) and not TmcAuth.guest_profiles_wanted({}, false)
+			and not TmcAuth.guest_profiles_wanted({"guest_profiles": false}, true),
+		"guest profiles follow allow_guests unless auth.yml says guest_profiles"
+	)
+
 	# [b]Introspection here is scoped or refused.[/b] The site's avatar and profile routes resolve only
 	# the key it mints for this server's credential; a join let in through `/me` would be keyed by the
 	# account id instead.

@@ -2662,7 +2662,9 @@ migrate_dot_addon_cfg() {
         rel="${src#"$base"/dot_}"
         dst="$base/gs_$rel"
         tpl="$PROJECT/cfg.example/server/addon/gs_$rel"
-        if [ -f "$dst" ] && ! { [ -f "$tpl" ] && cmp -s "$tpl" "$dst"; }; then
+        # An unedited copy of the template gives way, and so does one that differs only in the rcon_password boot generated into it:
+        # that password was never anyone's choice, while the dot_ file's is the one the operator already uses.
+        if [ -f "$dst" ] && ! { [ -f "$tpl" ] && diff -q <(grep -v '^rcon_password:' "$tpl") <(grep -v '^rcon_password:' "$dst") >/dev/null; }; then
             if cmp -s "$src" "$dst"; then rm -f "$src"; continue; fi
             warn "cfg/server/addon/dot_$rel is not read (the addons were renamed) and differs from gs_$rel, which wins: merge it by hand, then delete it"
             continue
