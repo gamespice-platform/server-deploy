@@ -54,6 +54,7 @@ if [ ! -x server ] || [ tools/server.in -nt server ]; then
     sed "s|@GODOT@|${godot_bin:-$(command -v godot)}|g" tools/server.in > server && chmod +x server
 fi
 ./server export-web
+tools/check_web_export_assets.sh web/build
 echo "dev shell exported with backbone $backbone"
 # The export is still in web/build here, and the trap restores the key files only after this line.
 if [ "$publish" = 1 ]; then tools/dev-shell-publish.sh; fi
