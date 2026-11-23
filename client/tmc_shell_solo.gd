@@ -34,7 +34,6 @@ func _start_solo(content_id: String, version: String = "", map: String = "") -> 
 	shell._solo_version = version
 	shell._solo_map = map if TmcSolo.valid_map(map) else ""
 	shell._solo_retry = ""
-	shell._refresh_solo_maps_check()
 	shell._set_busy(true)
 	shell._join.text = "Connect"
 	shell._show_connect_form(false)
@@ -53,7 +52,7 @@ func _start_solo(content_id: String, version: String = "", map: String = "") -> 
 	if shell._solo_button != null:
 		shell._solo_button.disabled = false
 
-	# Retry / Start without maps (the maps choice is already kept): go again, once, from the top.
+	# Retry: go again, once, from the top.
 	if not started.ok and shell._dl_guard != null and shell._dl_guard.requested != "":
 		GSLog.info(shell.CHANNEL, "restarting the solo launch", {"why": shell._dl_guard.requested})
 		_start_solo.call_deferred(content_id, version, map)
@@ -114,7 +113,7 @@ func _load_solo(content_id: String, version: String) -> GSResult:
 	shell._cloud.begin_job("launch")
 	shell._launch_job = true
 	if shell._dl_guard != null:
-		shell._dl_guard.begin(not TmcSolo.skip_maps(content_id) and not TmcSolo.map_packs(content_id).is_empty())
+		shell._dl_guard.begin()
 	shell._solo_key_cache = {}
 	shell._solo_map_packs_memo = null
 	shell._deferred_workshop = false
@@ -217,7 +216,7 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 
 	# Everything is registered and fetched first, so the total is fixed before a byte moves; mounting follows.
 	await shell._solo_packs._prefetch_solo(content_id, wanted)
-	# The player pressed Retry or Start without maps: the transfer was cancelled, so do not go on to fetch it again here; _start_solo starts over.
+	# The player pressed Retry: the transfer was cancelled, so do not go on to fetch it again here; _start_solo starts over.
 	if shell._dl_guard != null and shell._dl_guard.requested != "":
 		return GSResult.fail(GSError.CODE_CANCELLED, "The download was stopped.")
 	shell._cloud.job_begin_unpack()
@@ -310,6 +309,8 @@ func _enter_solo_game(session: TmcSoloSession, packed: PackedScene, desc: Dictio
 	GSLog.info(shell.CHANNEL, "solo game started", {
 		"content": "%s@%s" % [content_id, session.version], "scene": path, "maps": session.map_keys.size(),
 	})
+	# The bulk map packs come after the game is up (the question, or the background download), never before.
+	shell._solo_maps.after_start.call_deferred(session)
 	return GSResult.success(instance)
 
 
@@ -353,22 +354,16 @@ func _solo_slice_keys(content_id: String, wanted: String, desc: Dictionary) -> A
 	return slice_keys
 
 
-## The map packs a server owner would name, from the stock list. One that will not
-## fetch is a map nobody can change to, not a game that will not start.
+## What the solo start fetches of the game's map packs before the game is shown: nothing, unless the player asked for a start map (`?map=`, `--solo-map`) that has a pack of its own, and then only that one-map pack, so the link opens on the map it names. The rest is [TmcSoloMaps]' job once the game is up, so the loading screen never waits for the bulk packs. One that will not fetch is a map nobody can change to, not a game that will not start.
 func _add_solo_map_packs(session: TmcSoloSession, content_id: String) -> void:
-	var skip_maps := TmcSolo.skip_maps(content_id)
-	if skip_maps:
-		GSLog.info(shell.CHANNEL, "the player skips this game's maps pack", {"content": content_id})
-	for key in (PackedStringArray() if skip_maps else await shell._solo_packs._solo_map_packs(content_id)):
+	for key in await shell._solo_packs._solo_start_map_packs(content_id):
 		var maps = await shell._solo_packs._ensure_solo_pack(key, true, TmcSolo.map_groups(GSPlatform.is_web(), shell._solo_map))
 		if not maps.ok:
 			GSLog.warn(shell.CHANNEL, "a solo map pack could not be fetched", {
 				"pack": key, "why": str(maps.error),
 			})
 			continue
-		session.map_keys.append(str(maps.value))
-		var parts := TmcSolo.split_key(str(maps.value))
-		session.map_roots.append(GSCloudClient.mount_prefix_for(StringName(parts["id"]), parts["version"]))
+		TmcSoloMaps.add_pack(session, str(maps.value))
 
 
 ## Subscribed packs, after the game's own and before its scene exists, so the scene's

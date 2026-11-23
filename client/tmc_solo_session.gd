@@ -18,6 +18,10 @@ var mount_root: String = ""
 var map_roots: PackedStringArray = PackedStringArray()
 var map_keys: PackedStringArray = PackedStringArray()
 
+## Emitted after map packs were mounted in the background, once the game was already running
+## ([TmcSoloMaps]): a game's map list or vote re-reads [method map_dirs] on it.
+signal maps_changed()
+
 ## The map the player asked to start on (`?map=`, `--solo-map`), &"" for the game's own first map.
 ## Only a request: the game checks it is a map it has or can fetch.
 var start_map: StringName = &""

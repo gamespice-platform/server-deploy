@@ -74,8 +74,7 @@
 		"downloading_title": "Downloading…",
 		"stalled_title": "Download stalled",
 		"stalled": "No data for {n} s. The server may be busy; it is still trying.",
-		"retry": "Retry",
-		"skip_maps": "Start without maps"
+		"retry": "Retry"
 	},
 	"progress": {
 		"file_of": "{n} of {total}"
@@ -90,6 +89,24 @@
 	"solo": {
 		"fetching": "Fetching maps: {name}…",
 		"have": "Maps: {name} (already downloaded)",
-		"fetching_size": "Fetching maps: {name} ({size})…"
+		"fetching_size": "Fetching maps: {name} ({size})…",
+		"maps_busy": "Downloading maps for {name}…",
+		"maps_ask": {
+			"title": "More maps",
+			"text": "Download the extra maps for {name}? They are added to the map list when done, and the game keeps running meanwhile.",
+			"yes": "Yes, download",
+			"no": "Not now"
+		},
+		"maps_status": {
+			"none": "This game has no map packs to download.",
+			"yes": "Map packs: on.",
+			"no": "Map packs: off. The game uses the maps built into it.",
+			"unasked": "Map packs: not chosen yet."
+		},
+		"maps_page": {
+			"title": "Maps",
+			"yes": "Download maps now",
+			"no": "Do not download maps"
+		}
 	}
 }

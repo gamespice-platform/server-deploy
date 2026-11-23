@@ -56,11 +56,11 @@ A game whose scripts do not compile on the shell's addons is refused with `GAME_
 
 ## When a solo download looks stuck
 
-The shell downloads a game and (unless "Download this game's maps" is off) its map packs as one job, so a slow or throttled host used to leave a frozen-looking bar. The download is asynchronous and never blocks the main thread; what was wrong was the figure: the addon's rate kept its last value while bytes stopped, so "a few seconds left" stayed on screen.
+The shell downloads a game (its map packs come after it starts, see web-client.md) as one job, so a slow or throttled host used to leave a frozen-looking bar. The download is asynchronous and never blocks the main thread; what was wrong was the figure: the addon's rate kept its last value while bytes stopped, so "a few seconds left" stayed on screen.
 
 - **Rate and ETA come from the shell** (`client/tmc_download_watch.gd`): bytes over the last 8 s, zero when nothing arrives, no estimate under 2 % done.
 - **A stall is 20 s without a new byte.** The status then reads "Download stalled" with "No data for N s", and a Retry button appears. Retry cancels the job and starts it again; finished packs are kept, so it resumes at pack level.
-- **"Start without maps"** is shown from the first byte while maps download. It stores the skip-maps choice for that game (user://tmc_solo.cfg, the same switch as the checkbox) and starts without them.
+- **There is no "Start without maps".** The map packs are no longer part of the launch (the game starts at once and asks in game), so there is nothing to skip. The old button did nothing in practice: gs-cloud `cancel()` stops only the downloaders running at that moment and the pool carried on with the next pack.
 - **Log lines** (channel `tmc.shell`, in Godot's log, `user://logs/godot.log`, info level): `solo download begins`, `solo job phase` and `solo pack finished` with elapsed time and bytes, `solo download stalled` (once per stall), `solo download ended`. A report of "stuck" is read from the gap between these.
 - **Not in the shell**: the 429 / Retry-After backoff, parallelism and cancel live in the gs-cloud addon. It has no idle timeout (only a 600 s whole-file one) and no mid-file resume; filed on the nightly board.
 

@@ -69,15 +69,15 @@ var _solo_retry: String = ""
 enum InPlace { RUNNING, REFUSED, STALE }
 ## Where GameSpice Cloud's boot script records the overlay it mounted ([method GSCloudAddonSet.mounted_this_boot] reads it).
 const OVERLAY_SETTING := "gs_cloud/addon_overlay"
-## Whether to fetch this game's maps pack in solo; see [method TmcSolo.skip_maps].
-var _solo_maps_check: CheckBox = null
+## What happens to a solo game's map packs once it is running: the pop-up, the background download, the Maps page.
+var _solo_maps := TmcSoloMaps.new(self)
 ## What the pack being fetched is, said in the status line over every cloud phase text.
 var _solo_pack_label: String = ""
 ## True while a solo launch holds one outer job: the total line replaces every per-pack text and the bar never restarts.
 var _launch_job := false
-var _dl_guard := TmcShellDownloadGuard.new(self)  # stall message, Retry, Start without maps
+var _dl_guard := TmcShellDownloadGuard.new(self)  # stall message and Retry
 var _solo_key_cache: Dictionary = {}
-## This launch's map packs ([method _solo_map_packs]), worked out once: null until then.
+## This launch's map packs ([method TmcShellSoloPacks._solo_start_map_packs]), worked out once: null until then.
 var _solo_map_packs_memo: Variant = null
 var _deferred_workshop := false
 var _late_sync := false
@@ -765,16 +765,6 @@ func _show_connect_form(shown: bool) -> void:
 	if not shown and _solo_button != null:
 		_solo_button.visible = true
 		_primary(_solo_button)
-		_refresh_solo_maps_check()
-
-
-## Shows the maps choice for the solo game this shell was opened for, as last kept.
-func _refresh_solo_maps_check() -> void:
-	if _solo_maps_check == null:
-		return
-	var has_maps := _solo_id != "" and not TmcSolo.map_packs(_solo_id).is_empty()
-	_solo_maps_check.visible = has_maps
-	_solo_maps_check.set_pressed_no_signal(not TmcSolo.skip_maps(_solo_id))
 
 
 ## Deferred grab_focus that re-checks at call time: by then the control may be freed or out
@@ -1965,6 +1955,7 @@ func _on_solo_node_added(node: Node) -> void:
 		if is_instance_valid(menu):
 			menu.apply_server_rules({"leave_text": "Back to menu"})
 			TmcWorkshopPanel.add_to_menu(menu, _make_workshop_panel)
+			_solo_maps.add_to_menu(menu)
 	).call_deferred()
 
 

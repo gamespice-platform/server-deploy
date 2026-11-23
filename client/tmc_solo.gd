@@ -9,6 +9,9 @@ const CHANNEL := "tmc.solo"
 ## the menu. A game looks it up by this name, duck-typed; nothing in a pack may name a
 ## shell class.
 const MAPS_SERVICE := &"gs_solo"
+## [method maps_answer] values.
+const ANSWER_YES := "yes"
+const ANSWER_NO := "no"
 
 ## The shell's copy of the stock per-game map packs. See the class description.
 const SOLO_CONFIG := "res://client/solo.json"
@@ -415,26 +418,38 @@ static func split_key(key: String) -> Dictionary:
 const PREFS := "user://tmc_solo.cfg"
 
 
-## Whether the player chose to skip [param content_id]'s maps pack in solo. The default is
-## false (fetch on Play), so a player who never touched the choice sees no change.
-static func skip_maps(content_id: String) -> bool:
+## The player's answer to "download this game's maps?" for [param content_id]: [constant ANSWER_YES], [constant ANSWER_NO], or "" when not asked yet. A choice made with the old loading-screen checkbox (`skip_maps`) reads as a no.
+static func maps_answer(content_id: String) -> String:
 	var cfg := ConfigFile.new()
 	if cfg.load(PREFS) != OK:
-		return false
-	return bool(cfg.get_value("skip_maps", content_id, false))
+		return ""
+	var answer := str(cfg.get_value("maps_answer", content_id, ""))
+	if answer == ANSWER_YES or answer == ANSWER_NO:
+		return answer
+	return ANSWER_NO if bool(cfg.get_value("skip_maps", content_id, false)) else ""
 
 
-## Keeps the choice. Only a skip is stored: fetching is the default, so clearing the key
-## returns to it and a later change of default needs no migration.
-static func set_skip_maps(content_id: String, skip: bool) -> void:
+## Keeps the answer; "" forgets it, so the pop-up asks again on the next start.
+static func set_maps_answer(content_id: String, answer: String) -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(PREFS)  # A missing file is the first choice; any other failure starts clean.
-	if skip:
-		cfg.set_value("skip_maps", content_id, true)
-	elif cfg.has_section_key("skip_maps", content_id):
+	if cfg.has_section_key("skip_maps", content_id):
 		cfg.erase_section_key("skip_maps", content_id)
+	if answer == ANSWER_YES or answer == ANSWER_NO:
+		cfg.set_value("maps_answer", content_id, answer)
+	elif cfg.has_section_key("maps_answer", content_id):
+		cfg.erase_section_key("maps_answer", content_id)
 	if cfg.save(PREFS) != OK:
 		GSLog.warn(CHANNEL, "could not keep the solo maps choice", {"path": PREFS})
 		return
 	# user:// in a browser is an IndexedDB mirror that is only written when asked.
 	GSWeb.sync_filesystem()
+
+
+## What the in-game session does about the maps once the game is up: "mount" (the player said yes, or the packs are already on the disk), "ask" (new player, never asked) or "none" (said no, or the game has no map pack).
+static func maps_plan(answer: String, has_packs: bool, on_disk: bool) -> String:
+	if not has_packs or answer == ANSWER_NO:
+		return "none"
+	if answer == ANSWER_YES or on_disk:
+		return "mount"
+	return "ask"

@@ -27,9 +27,8 @@ func _resolve_solo_key(key: String) -> GSResult:
 	return latest
 
 
-## The map packs this launch fetches: `client/solo.json`'s, except that a start map with a one-map
-## pack of its own ([method TmcSolo.per_map_key]) fetches only that, not the whole set.
-func _solo_map_packs(content_id: String) -> PackedStringArray:
+## The map packs a launch fetches before the game is shown: only the start map's one-map pack (see [method TmcSolo.per_map_key]), when a start map was asked for and has one. Empty otherwise; the bulk packs are [TmcSoloMaps]'.
+func _solo_start_map_packs(content_id: String) -> PackedStringArray:
 	if shell._solo_map_packs_memo is PackedStringArray:
 		return shell._solo_map_packs_memo
 	var out := PackedStringArray()
@@ -38,8 +37,6 @@ func _solo_map_packs(content_id: String) -> PackedStringArray:
 		if one != "" and (await _resolve_solo_key(one)).ok:
 			GSLog.info(shell.CHANNEL, "fetching only the start map's pack", {"map": shell._solo_map, "pack": one, "instead_of": key})
 			out.append(one)
-		else:
-			out.append(key)
 	shell._solo_map_packs_memo = out
 	return out
 
@@ -83,8 +80,7 @@ func _prefetch_solo(content_id: String, version: String) -> void:
 		var desc := TmcSolo.parse_descriptor((yml.value as PackedByteArray).get_string_from_utf8())
 		keys.append_array(desc["dependencies"] as PackedStringArray)
 		keys.append_array(desc["server_dependencies"] as PackedStringArray)
-		if not TmcSolo.skip_maps(content_id):
-			map_keys = await _solo_map_packs(content_id)
+		map_keys = await _solo_start_map_packs(content_id)
 
 	# Map packs take the groups the mount pass will ask for (TmcSolo.map_groups), so the total is what moves.
 	var passes: Array = [[await _solo_refs(keys), all_groups],

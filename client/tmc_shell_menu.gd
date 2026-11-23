@@ -148,16 +148,6 @@ func _build_actions(box: VBoxContainer) -> void:
 	shell._solo_button.pressed.connect(shell._solo_flow._on_solo_pressed)
 	box.add_child(shell._solo_button)
 
-	# The player's say over the maps pack a solo game fetches before it starts. On by
-	# default; shown with the solo button, because it only means something to a solo game.
-	shell._solo_maps_check = CheckBox.new()
-	shell._solo_maps_check.text = "Download this game's maps"
-	shell._solo_maps_check.tooltip_text = "Off: solo play starts with only the maps built into the game."
-	shell._solo_maps_check.button_pressed = true
-	shell._solo_maps_check.visible = false
-	shell._solo_maps_check.toggled.connect(func(on: bool) -> void: TmcSolo.set_skip_maps(shell._solo_id, not on))
-	box.add_child(shell._solo_maps_check)
-
 
 
 func _build_status_lines(box: VBoxContainer) -> void:
@@ -184,7 +174,7 @@ func _build_status_lines(box: VBoxContainer) -> void:
 	shell._detail.visible = false
 	box.add_child(shell._detail)
 
-	# Retry (once a download stalls) and Start without maps (while maps download): the ways out of a wait.
+	# Retry (once a download stalls): the way out of a wait.
 	shell._dl_guard.build(box)
 
 
@@ -253,7 +243,7 @@ func _add_corner_labels() -> void:
 func _wire_menu() -> void:
 	# Up and down walk the card in order with a keyboard or a gamepad's d-pad, including
 	# from a text field, where the engine's own guess skips past the field below.
-	_chain_focus([shell._name, shell._address, shell._join, shell._solo_button, shell._solo_maps_check, shell._clear])
+	_chain_focus([shell._name, shell._address, shell._join, shell._solo_button, shell._clear])
 
 	# A phone's window is scaled up around the card while the menu shows (see the method).
 	# Guarded so a suite can build the menu on a shell it never adds to the tree.

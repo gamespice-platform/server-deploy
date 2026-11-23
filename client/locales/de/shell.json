@@ -6,8 +6,7 @@
 		"downloading_title": "Herunterladen…",
 		"stalled_title": "Download hängt",
 		"stalled": "Seit {n} s keine Daten. Der Server ist vielleicht ausgelastet; es wird weiter versucht.",
-		"retry": "Erneut versuchen",
-		"skip_maps": "Ohne Karten starten"
+		"retry": "Erneut versuchen"
 	},
 	"progress": {
 		"file_of": "{n} von {total}"

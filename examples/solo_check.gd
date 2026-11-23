@@ -4,7 +4,7 @@ extends Node
 ## `game.yml` reader against the host's, the shell's map list against the stock server one, and the
 ## session a game reads its map packs from. godot --headless --path .
 
-const CHECKS := 129
+const CHECKS := 125
 
 ## Every game repository, beside this project or in games/: the repositories of cfg/content/games.yml (shipped content-lists/games.yml).
 
@@ -36,7 +36,6 @@ func _ready() -> void:
 	_test_first_party()
 	await _test_session()
 	await _test_offline_pin()
-	_test_skip_maps()
 	_test_sim_child_args()
 	_test_requires_reader()
 	_test_pack_holds_dir()
@@ -323,25 +322,6 @@ func _test_sim_child_args() -> void:
 	_check(not session.sim_child_args().is_empty(), "a Workshop sync that mounted none leaves the server process on")
 	session.free()
 	_done()
-
-
-func _test_skip_maps() -> void:
-	_section("the player's choice to skip a game's maps pack is kept, and defaults to fetching")
-
-	var id := "gamemann/solo-check-probe"
-	var before := FileAccess.get_file_as_bytes(TmcSolo.PREFS) if FileAccess.file_exists(TmcSolo.PREFS) else PackedByteArray()
-	TmcSolo.set_skip_maps(id, false)
-	_check(not TmcSolo.skip_maps(id), "with no choice made the maps pack is fetched")
-	TmcSolo.set_skip_maps(id, true)
-	_check(TmcSolo.skip_maps(id), "a skip is kept")
-	_check(not TmcSolo.skip_maps("gamemann/other"), "and is per game")
-	TmcSolo.set_skip_maps(id, false)
-	_check(not TmcSolo.skip_maps(id), "turning it back on returns to the default")
-
-	if before.is_empty():
-		DirAccess.remove_absolute(TmcSolo.PREFS)
-	_done()
-
 
 
 ## The games list's game repos; [param checked_out] keeps only those with a source here,
