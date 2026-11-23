@@ -94,6 +94,8 @@ func _forget_solo_retry() -> void:
 
 ## Everything [method _start_solo] does that can fail, so it has one way out.
 func _load_solo(content_id: String, version: String) -> GSResult:
+	if not shell._cloud.manifest_from_cache.is_connected(_on_manifest_from_cache):
+		shell._cloud.manifest_from_cache.connect(_on_manifest_from_cache)
 	shell._cloud.begin_job("launch")
 	shell._launch_job = true
 	if shell._dl_guard != null:
@@ -120,7 +122,7 @@ func _pin_solo_version(content_id: String, version: String) -> GSResult:
 		var latest: GSResult = await TmcSolo.resolve_latest(shell, content_id, shell._cloud.http_base_urls)
 		if not latest.ok:
 			# The pointer cannot be fetched (offline, CDN down): a game already on this machine still starts, from the newest manifest kept with it.
-			var kept: PackedStringArray = shell._cloud.cached_versions(StringName(content_id))
+			var kept: PackedStringArray = GSCloudManifestCache.versions(shell._cloud.config.cache_dir, content_id)
 			if kept.is_empty():
 				return latest
 			GSLog.warn(shell.CHANNEL, "latest.json unreachable; using the newest kept version",
@@ -157,8 +159,6 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 
 	shell._solo_id = content_id
 	shell._solo_version = wanted
-	if not shell._cloud.manifest_from_cache.is_connected(_on_manifest_from_cache):
-		shell._cloud.manifest_from_cache.connect(_on_manifest_from_cache)
 	GSLog.info(shell.CHANNEL, "starting solo", {"content": content_id, "version": wanted})
 	# An icon URL the launcher gave (?icon=) shows from here, before the pack is mounted.
 	TmcGameIconHint.start(shell, shell.loading)
