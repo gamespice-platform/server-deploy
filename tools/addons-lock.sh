@@ -197,10 +197,19 @@ cmd_check() {
 cmd_check_ci() {
     local repo ref slug out bad=0 gh=(${GS_GH:-gh}) n=0
     [ -f "$LOCK" ] || { echo "no addons.lock; run: tools/addons-lock.sh write" >&2; exit 2; }
+    local CI_CACHE="${GS_CHECK_CI_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/gs-check-ci}"
+    mkdir -p "$CI_CACHE" 2>/dev/null || CI_CACHE="$(mktemp -d)"
     command -v "${gh[0]}" >/dev/null || { echo "check-ci: no gh (GitHub CLI) to ask about the addons' CI" >&2; exit 2; }
     while IFS=$'\t' read -r repo ref; do
         case "$repo" in ''|'#'*) continue ;; esac
         slug="$(url_of "$repo" | sed -E 's#^https://github.com/##; s#\.git$##')"
+        # A finished green result for a tag is kept on disk and never asked again (tags are never rewritten):
+        # every gate and agent re-running this was ~78 API calls each and exhausted the shared 5000/hr quota.
+        # Red, unfinished or unreadable results are never cached.
+        ckey="$CI_CACHE/$(printf '%s@%s' "$slug" "$ref" | tr '/ ' '__')"
+        if [ -s "$ckey" ]; then
+            n=$((n + 1)); continue
+        fi
         out="$("${gh[@]}" api "repos/$slug/commits/$ref/check-runs?per_page=100" \
             --jq '[.check_runs[] | (.status + ":" + (.conclusion // "none"))] | join(" ")' 2>&1)" || {
             echo "  !!    $repo $ref: could not read its CI ($slug): $(printf '%s' "$out" | head -c 200)"
@@ -213,6 +222,8 @@ cmd_check_ci() {
             echo "  !!    $repo $ref: CI is RED on this tag's commit ($slug): $out"; bad=1
         elif grep -qE '(queued|in_progress|waiting|pending|requested):' <<<"$out"; then
             echo "  !!    $repo $ref: CI has not finished on this tag's commit ($slug): $out"; bad=1
+        else
+            printf '%s\n' "$out" > "$ckey" 2>/dev/null || true
         fi
     done < "$LOCK"
     if [ "$bad" -eq 0 ]; then
