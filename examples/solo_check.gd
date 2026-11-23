@@ -4,7 +4,7 @@ extends Node
 ## `game.yml` reader against the host's, the shell's map list against the stock server one, and the
 ## session a game reads its map packs from. godot --headless --path .
 
-const CHECKS := 116
+const CHECKS := 123
 
 ## Every game repository, beside this project or in games/: the repositories of cfg/content/games.yml (shipped content-lists/games.yml).
 
@@ -40,6 +40,7 @@ func _ready() -> void:
 	_test_sim_child_args()
 	_test_requires_reader()
 	_test_pack_holds_dir()
+	_test_client_refusal()
 	await _test_legacy_requirements()
 	_test_overlay_blocked()
 	# Last: it mounts a pack, which nothing unmounts.
@@ -453,6 +454,28 @@ func _test_legacy_requirements() -> void:
 	_check(dot_fetched.is_empty(), "no legacy dot_* requirement goes to the pack fetch", str(fetched))
 	_check(not shell.shell_carries("zzz_not_an_addon") and not shell.shell_carries("dot_zzz_not_an_addon"),
 		"an addon the shell lacks, legacy-named or not, is not carried")
+	_done()
+
+
+## Prod packs are gs_core API 37/38 and this client's OLDEST is 43: the pack is refused from its requires.json alone, before the 446 MiB maps pack.
+func _test_client_refusal() -> void:
+	_section("a game built for an API this client no longer runs is refused before any pack is fetched")
+	var api := GSAddonApi.new()
+	var oldest := api.oldest_of("gs_core")
+	var level := api.level_of("gs_core")
+	var old_text := '{"addons": {"dot_core": %d, "gs_ui": 1, "fc_weapons": 32}}' % (oldest - 1)
+	var why := TmcSolo.client_refusal(api, old_text)
+	_check(why.contains("republished for this client") and why.contains("gs_core>=%d" % (oldest - 1)),
+		"a legacy dot_core below OLDEST is refused with the republish message", why)
+	_check(TmcSolo.client_refusal(api, '{"addons": {"gs_core": %d}}' % (oldest - 1)) != "", "the same under its gs_ name")
+	_check(TmcSolo.client_refusal(api, '{"addons": {"gs_core": %d}}' % level) == "", "a game at this client's level runs")
+	_check(TmcSolo.client_refusal(api, '{"addons": {"gs_core": %d}}' % (level + 1)).contains("republished"), "a game newer than this client is refused too")
+	_check(TmcSolo.client_refusal(api, '{"addons": {"zzz_game_addon": 99, "gs_core": %d}}' % level) == "",
+		"a game addon the client does not carry is the overlay's business, not a refusal")
+	_check(TmcSolo.client_refusal(api, "not json") == "" and TmcSolo.client_refusal(api, "") == "", "an unreadable file is not a refusal (the pack's own check reports it)")
+	var wired := FileAccess.get_file_as_string("res://client/tmc_shell_solo.gd")
+	_check(wired.find("_solo_client_refusal(content_id, wanted)") < wired.find("_solo_workshop_plan(content_id, wanted)"),
+		"the refusal runs before the workshop sync and every pack fetch")
 	_done()
 
 

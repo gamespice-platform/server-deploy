@@ -163,6 +163,13 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 	# An icon URL the launcher gave (?icon=) shows from here, before the pack is mounted.
 	TmcGameIconHint.start(shell, shell.loading)
 
+	# Before the addon overlay, the workshop sync or any pack: a game this client cannot run must not download its maps first.
+	var refusal := await _solo_client_refusal(content_id, wanted)
+	if refusal != "":
+		GSLog.error(shell.CHANNEL, "this game's addon API is not one this client runs; nothing was downloaded",
+			{"content": content_id, "version": wanted, "why": refusal})
+		return GSResult.fail(GSError.CODE_VERSION, refusal)
+
 	# The game addons its pack requires (zee_weapons for Prop Hunt, fc_weapons for Fatal Contact; arena_weapons up to fc-weapons v1.4.51) are not in this shell: fetched as the overlay a server would announce, then a restart into it. Asked of the store before the pack is fetched, because the pack's own requirement check refuses it while one is missing. Returns only when nothing is missing or it cannot be had. Subscriptions are asked first (their downloads only registered): a game that accepts addon packs gets the subscribed ones in the same overlay, so one restart covers both.
 	var subscribed: Array = await shell._solo_packs._solo_workshop_plan(content_id, wanted)
 	var overlay: int = await _solo_overlay(content_id, await _solo_needs(content_id, wanted), subscribed)
@@ -424,6 +431,17 @@ func _load_sim_child() -> GSResult:
 		"content": "%s@%s" % [content_id, version], "packs": session.pack_keys.size(), "maps": session.map_keys.size(),
 	})
 	return GSResult.success(null)
+
+
+## [method TmcSolo.client_refusal] for the game's own `requires.json`, read alone from the store: "" when this client can run it (or the file cannot be read).
+func _solo_client_refusal(content_id: String, version: String) -> String:
+	var game: GSResult = await shell._cloud.resolve_manifest(StringName(content_id), version)
+	if not game.ok:
+		return ""
+	var read: GSResult = await shell._cloud.read_pack_file(game.value as GSCloudManifest, "requires.json")
+	if not read.ok:
+		return ""
+	return TmcSolo.client_refusal(shell._cloud.addon_api, (read.value as PackedByteArray).get_string_from_utf8())
 
 
 ## The addons a game's pack names (`addons` in its `requires.json` and `requires.floor.json`),

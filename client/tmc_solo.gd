@@ -41,6 +41,24 @@ static func valid_id(id: String) -> bool:
 	return re.search(id) != null
 
 
+## Why this client cannot run a game whose `requires.json` reads [param text], or "" when it can. Only the addons this client carries are judged
+## (legacy `dot_*` names read as `gs_*`): a game addon the shell lacks is the overlay's business. Asked before ANY pack of the game is fetched, so a
+## game published against an API this client no longer supports (below the addon's OLDEST) costs one small file, not a maps download.
+static func client_refusal(api: GSAddonApi, text: String) -> String:
+	var parsed := GSAddonApi.parse(text)
+	if not parsed.ok:
+		return ""
+	var carried := {}
+	var renamed := GSCloudLegacyRequirements.rename(parsed.value as Dictionary)
+	for addon: String in renamed:
+		if api.level_of(addon) > 0:
+			carried[addon] = renamed[addon]
+	var checked := api.check(carried, "client")
+	if checked.ok:
+		return ""
+	return "%s This game needs to be republished for this client (%s)." % [checked.error.message, checked.error.detail]
+
+
 ## Whether [param map] is a map id a solo game may be started on.
 static func valid_map(map: String) -> bool:
 	var re := RegEx.new()
