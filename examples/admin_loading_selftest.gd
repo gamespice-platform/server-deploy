@@ -922,7 +922,7 @@ func _test_loading_client() -> void:
 	in_game[0] = true
 	screen.begin(TmcLoadingScreen.REASON_GAME, "airdrift", "Surf")
 	_check(screen.is_showing(), "a game change shows it at once")
-	_check(covers == [true], "and says the cover went up, so the shell can fit a phone's window round it", str(covers))
+	_check(covers == [true] and bool(Engine.get_meta(&"gs_host_cover_up", false)), "and says the cover went up (shell fits a phone's window; gs-core's busy panel hides)", str(covers))
 	var block := screen.fit_card()
 	_check(block.x > 0.0 and block.y > 0.0 and block.y < 720.0, "its words and bar are what a window is fitted round", str(block))
 	var entry := screen.current_entry()
@@ -936,7 +936,7 @@ func _test_loading_client() -> void:
 
 	screen.end(TmcLoadingScreen.REASON_GAME)
 	_check(not screen.is_showing(), "and goes when the game has spawned")
-	_check(covers == [true, false], "saying so, so the shell hands the window back to the game", str(covers))
+	_check(covers == [true, false] and not bool(Engine.get_meta(&"gs_host_cover_up", false)), "saying so (window handed back; busy panel allowed again)", str(covers))
 	_check(screen.current_entry()["images"] == ["http://127.0.0.1:9/surf.jpg"],
 		"the map hint is forgotten once the change it was for is over")
 

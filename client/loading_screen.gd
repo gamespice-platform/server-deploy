@@ -404,7 +404,7 @@ func _show() -> void:
 	if _visible:
 		return
 	_visible = true
-	cover_changed.emit(true)
+	Engine.set_meta(&"gs_host_cover_up", true); cover_changed.emit(true)  # gs-core's busy panel hides under the cover
 	_shown_at = _now()
 	_shown_msec = Time.get_ticks_msec()
 	_last_activity = _shown_at
@@ -427,7 +427,7 @@ func _hide(finished: bool) -> void:
 	if not _visible:
 		return
 	_visible = false
-	cover_changed.emit(false)
+	Engine.set_meta(&"gs_host_cover_up", false); cover_changed.emit(false)
 	var shown_ms := Time.get_ticks_msec() - _shown_msec
 	GSLog.info(CHANNEL, "[TMC] cover down", {
 		"ms": shown_ms, "finished": finished, "status": _status.text if _status != null else ""})
