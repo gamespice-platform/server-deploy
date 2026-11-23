@@ -886,7 +886,7 @@ GIT_BASE="${TMC_GIT_BASE:-$GIT_BASE_DEFAULT}"
 ## Where one repository is cloned from, which is $GIT_BASE for all but one of them.
 ##
 ## [b]`mg-buses-from-hell` lived under a different GitHub owner AND a different name, and
-## nothing here could have known either.[/b] Every other repository in the family is `gamespice-platform/<name>` (the dot- prefix dropped), and
+## nothing here could have known either.[/b] Every other repository in the family is `gamespice-platform/<name>` (the gs- prefix dropped), and
 ## the rule that the repository name IS the directory name is what lets this script clone
 ## fifty-odd siblings without carrying a list of them. That rule holds; what does not is
 ## the OWNER, for exactly one game.

@@ -149,7 +149,7 @@ content_addon_repos() {
 #
 # An entry is `owner/repo` or `owner/repo@version`. The owner has to be trusted: the first-party owners, the author's
 # exact addon ids (the same list as client/tmc_addon_namespaces.gd DEFAULTS, and a test keeps them equal), or an owner/ or
-# owner/repo under `namespaces:` in cfg/content/addons.yml. `gamespice-platform/<name>` is the repository `dot-<name>`.
+# owner/repo under `namespaces:` in cfg/content/addons.yml. `gamespice-platform/<name>` is the repository `gs-<name>`.
 # Nothing is guessed: an id that does not parse or is not trusted fails, so a typo cannot install nothing quietly.
 _cl_trusted_ids="gamemann/zee-gs-weapons gamemann/zz-modern-weapons gamemann/fc-weapons gamemann/arena-weapons gamemann/natural-disasters gamemann/gs-trail gamemann/gs-radio"
 

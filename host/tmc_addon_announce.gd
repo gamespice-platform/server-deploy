@@ -26,7 +26,7 @@ const ADDONS_LOCK := "res://addons.lock"
 
 
 ## Tells every joining client which addon versions this server runs, so an addon release can skip the client build: an older shell fetches the newer addons as packs
-## (`modcommunity/dot-<name>@<version>`, the alias of `gamespice-platform/<name>`; [method TmcAddonNamespaces.announced_pack_for] says why), lays them over its own and restarts into them (GameSpice Cloud's `GSCloudAddonSet`).
+## (`modcommunity/gs-<name>@<version>`, the alias of `gamespice-platform/<name>`; [method TmcAddonNamespaces.announced_pack_for] says why), lays them over its own and restarts into them (GameSpice Cloud's `GSCloudAddonSet`).
 ## The lock, not a guess at the checkout: setup.sh puts every clone at the locked ref. `TMC_ADDONS_LOCK=off` advertises nothing, because then the lock is not true.
 func advertise() -> void:
 	if OS.get_environment("TMC_ADDONS_LOCK") == "off":

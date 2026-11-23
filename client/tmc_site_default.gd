@@ -2,7 +2,7 @@ class_name TmcSiteDefault
 extends RefCounted
 
 ## The site a hand-started shell lists servers from, when nobody named one. A game's server browser
-## lists a site only when `--browser-backbone-url` or `GS_BROWSER_BACKBONE_URL` names it (dot-
+## lists a site only when `--browser-backbone-url` or `GS_BROWSER_BACKBONE_URL` names it (gs-
 ## browser's layered config).
 
 const ENV_KEY := "GS_BROWSER_BACKBONE_URL"

@@ -324,7 +324,7 @@ func _test_the_client_builds_the_course() -> void:
 	_done()
 
 
-## net_stat in a delivered game, over a real socket: typed at the game's console (which is dot-
+## net_stat in a delivered game, over a real socket: typed at the game's console (which is gs-
 ## console's kit), drawn by the game's menu (GameSpice Menu), reading the link's meter (GameSpice Server's peer,
 ## wrapped by GameSpice Core).
 func _test_net_stat() -> void:

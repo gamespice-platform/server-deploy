@@ -1,6 +1,6 @@
 # Addon releases reach players by a restart
 
-**What this platform wants:** a fix to an addon reaches every player by a server restart; a new shell is needed only for the engine, the boot stage or security. Every addon tag is already a signed pack on the content origin (`gamespice-platform/<name>@<version>`, published by the site's release sync; the old `modcommunity/dot-<name>` id is a mirrored alias that gets every new version too, see [Pack ids after the Gamespice rename](#pack-ids-after-the-gamespice-rename)). This is the client side that takes one. gs-cloud's [docs/addon-packs.md](../../gs-cloud/docs/addon-packs.md) has why each gs-cloud piece is shaped the way it is.
+**What this platform wants:** a fix to an addon reaches every player by a server restart; a new shell is needed only for the engine, the boot stage or security. Every addon tag is already a signed pack on the content origin (`gamespice-platform/<name>@<version>`, published by the site's release sync; the old `modcommunity/gs-<name>` id is a mirrored alias that gets every new version too, see [Pack ids after the Gamespice rename](#pack-ids-after-the-gamespice-rename)). This is the client side that takes one. gs-cloud's [docs/addon-packs.md](../../gs-cloud/docs/addon-packs.md) has why each gs-cloud piece is shaped the way it is.
 
 ## How it works
 
@@ -71,10 +71,10 @@ Deriving the list from the pack's own manifest is not an option: the pack would 
 
 ### Pack ids after the Gamespice rename
 
-The Gamespice packs moved from `modcommunity/dot-<name>` to `gamespice-platform/<name>`. The site keeps the old id as a mirrored `RetiredPackId`, so both ids get every version. `TmcAddonNamespaces.pack_for(dir)` returns the new id as `id` and the old one as `old_id`/`old_repo`; `dir_for_id` maps either back to the dir. Until the steps below are done, the server still **announces the old id** (`announced_pack_for`, used by `TmcHost.addon_set_from`):
+The Gamespice packs moved from `modcommunity/gs-<name>` to `gamespice-platform/<name>`. The site keeps the old id as a mirrored `RetiredPackId`, so both ids get every version. `TmcAddonNamespaces.pack_for(dir)` returns the new id as `id` and the old one as `old_id`/`old_repo`; `dir_for_id` maps either back to the dir. Until the steps below are done, the server still **announces the old id** (`announced_pack_for`, used by `TmcHost.addon_set_from`):
 
 - every shell exported so far accepts only `modcommunity/` overlays, and
-- `GSCloudAddonSet` matches a pack to the shell's built version by the pack's file name (`dot-<name>`, the `addons.lock` key) and refuses an id whose file name is not the repo. Announcing `gamespice-platform/core` would make every shell refetch every addon or refuse it.
+- `GSCloudAddonSet` matches a pack to the shell's built version by the pack's file name (`gs-<name>`, the `addons.lock` key) and refuses an id whose file name is not the repo. Announcing `gamespice-platform/core` would make every shell refetch every addon or refuse it.
 
 The solo path in `client/shell.gd` resolves the new id first and falls back to the old one. `sv_pack_pins` pins both ids. Switching the announcement to the new ids needs a gs-cloud lookup by lock alias, a newly exported shell, and the site's prod migration (`npm run db:pack-rename:gamespice`).
 

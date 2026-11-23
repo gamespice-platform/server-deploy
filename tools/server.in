@@ -1437,7 +1437,7 @@ stamp_embed_guards() {
 ## extensions_support=true with *.gdextension left in, script (TMC_WEB_NATIVE=0, or no
 ## side module to ship) is extensions_support=false with *.gdextension excluded. A box's
 ## export_presets.cfg is its own copy, so this puts its Web preset in the mode, in place,
-## as ensure_shell_excludes does for the addons. Non-dot addons (godot-sqlite, whose
+## as ensure_shell_excludes does for the addons. Non-gs addons (godot-sqlite, whose
 ## .gdextension has web entries) stay excluded by ensure_shell_excludes in both modes.
 web_native_mode() {
     [ "${TMC_WEB_NATIVE:-1}" = 0 ] && { echo script; return; }
@@ -1673,7 +1673,7 @@ check_lock_exported() {
 ## pck from 44 MB to 147 MB, past the upload limit. These are the folders every export
 ## leaves out: everything under addons/ that tools/shell-addons.list (the explicit allow
 ## list, read by tools/shell_lock.sh) does not name, so a game addon is left out even when
-## its directory starts with dot_.
+## its directory starts with gs_.
 shell_left_out_addons() {
     local d keep
 

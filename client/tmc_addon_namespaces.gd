@@ -25,10 +25,10 @@ const LEGACY_LAST := {"fc-weapons": "1.4.51"}
 ## Each legacy use already warned about (`dir@ref`), so a server that announces every join warns once.
 static var _warned := {}
 
-## The organisation's packs: `dot-<name>` is published as `gamespice-platform/<name>`.
+## The organisation's packs: the repository `gs-<name>` is published as `gamespice-platform/<name>`.
 const ORG := "gamespice-platform"
 
-## Its old owner. `modcommunity/dot-<name>` is a mirrored alias of the new id (website-city `RetiredPackId.mirror`), so it keeps every new version.
+## Its old owner. `modcommunity/gs-<name>` is a mirrored alias of the new id (website-city `RetiredPackId.mirror`), so it keeps every new version.
 const OLD_ORG := "modcommunity"
 
 ## Where an operator's additions live in the shell build.
@@ -177,9 +177,10 @@ static func warn_legacy(dir: String, ref: String) -> void:
 
 
 ## The pack [param dir]'s code is published as: `{repo, id, old_repo, old_id}`, where `repo` is the id's name ([GSCloudAddonSet] refuses any other).
-## `gs-*` packs are the organisation's (`gamespice-platform/<name>`, with the `modcommunity/dot-<name>` alias as `old_*`), the game addons their author's (no alias).
+## `gs-*` packs are the organisation's (`gamespice-platform/<name>`, with the `modcommunity/gs-<name>` alias as `old_*`), the game addons their author's (no alias).
 static func pack_for(dir: String) -> Dictionary:
-	var lock := lock_repo(dir)
+	# TEMPORARY legacy alias (read only): a prod pack published before the rename may still name `dot_<x>`; it is the `gs_<x>` addon, never a `dot-<x>` pack.
+	var lock := lock_repo(GSCloudLegacyRequirements.modern_name(dir))
 	var repo := str(PUBLISHED_AS.get(lock, lock))
 
 	if repo.begins_with("gs-") and not AUTHOR_GS_ADDONS.has(repo):
@@ -190,7 +191,7 @@ static func pack_for(dir: String) -> Dictionary:
 
 
 ## The `{repo, id}` a server announces for [param dir]: the old id while it has one. Every shell exported so far takes only `modcommunity/`, and
-## [GSCloudAddonSet] compares the version by `repo` against the shell's lock, which names `dot-<name>`; the alias receives every new version.
+## [GSCloudAddonSet] compares the version by `repo` against the shell's lock, which names `gs-<name>`; the alias receives every new version.
 static func announced_pack_for(dir: String) -> Dictionary:
 	var pack := pack_for(dir)
 
@@ -200,7 +201,7 @@ static func announced_pack_for(dir: String) -> Dictionary:
 	return {"repo": pack["repo"], "id": pack["id"]}
 
 
-## The addon directory a content id installs to: `gamespice-platform/<name>` is `dot_<name>`, anything else [method dir_for] of its name
+## The addon directory a content id installs to: `gamespice-platform/<name>` is `gs_<name>`, anything else [method dir_for] of its name
 ## (at [param version], which decides a renamed repository's directory).
 static func dir_for_id(id: String, version: String = "") -> String:
 	if id.begins_with(ORG + "/"):

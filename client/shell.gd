@@ -253,7 +253,7 @@ func _ready() -> void:
 	if going != "":
 		_address.text = going
 
-	await _sign_in(resumed)
+	await TmcSignInWait.bounded(self, _sign_in.bind(resumed))
 
 	# Solo: the page (the site's direct Play) or the command line named a game to run here,
 	# with no server. See [TmcSolo]. Checked before the server, because `embed.html` sends

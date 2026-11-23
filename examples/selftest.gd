@@ -1773,7 +1773,7 @@ func _test_vote() -> void:
 
 	_check(config.vote.enabled, "vote.yml turns voting on")
 
-	# The Gamespice spelling: GS_GAME_VOTE_* wins over the old DOT_ one, and GS_VOTE_* is still the map vote's.
+	# GS_GAME_VOTE_* is the game vote's spelling (the last one set wins), and GS_VOTE_* is still the map vote's.
 	OS.set_environment("GS_GAME_VOTE_EXTEND_SECONDS", "1234")
 	OS.set_environment("GS_GAME_VOTE_EXTEND_SECONDS", "777")
 	OS.set_environment("GS_VOTE_MAX_EXTENDS", "9")

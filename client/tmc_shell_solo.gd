@@ -77,8 +77,23 @@ func _start_solo(content_id: String, version: String = "", map: String = "") -> 
 
 ## The solo button: Retry after [method _solo_overlay] was blocked, which forgets that set's restarts and a failed mark first, so the overlay is built again.
 func _on_solo_pressed() -> void:
+	var refusal := solo_press_refusal(shell._solo_id, shell._launch_job)
+	if refusal != "":
+		# Never a silent no-op: the player pressed a button and is told why nothing started.
+		GSLog.warn(shell.CHANNEL, "solo button pressed but no solo start is possible", {"why": refusal})
+		shell._say(refusal)
+		return
 	_forget_solo_retry()
 	_start_solo(shell._solo_id, shell._solo_version, shell._solo_map)
+
+
+## Why pressing Play solo cannot start a game, shown to the player; empty when it can. [param launching] is a launch already under way.
+static func solo_press_refusal(solo_id: String, launching: bool) -> String:
+	if solo_id == "":
+		return "No solo game was chosen: open this client from a game's Play solo link."
+	if launching:
+		return "%s is already starting; please wait." % solo_id
+	return ""
 
 
 ## What Retry clears: the blocked set's restarts and a failed mark, so [method _overlay_blocked] lets the overlay be built again.

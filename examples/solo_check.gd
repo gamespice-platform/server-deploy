@@ -4,7 +4,7 @@ extends Node
 ## `game.yml` reader against the host's, the shell's map list against the stock server one, and the
 ## session a game reads its map packs from. godot --headless --path .
 
-const CHECKS := 123
+const CHECKS := 127
 
 ## Every game repository, beside this project or in games/: the repositories of cfg/content/games.yml (shipped content-lists/games.yml).
 
@@ -42,6 +42,8 @@ func _ready() -> void:
 	_test_pack_holds_dir()
 	_test_client_refusal()
 	await _test_legacy_requirements()
+	await _test_every_prod_legacy_dir()
+	await _test_solo_press_refusal()
 	_test_overlay_blocked()
 	# Last: it mounts a pack, which nothing unmounts.
 	_test_overlay_in_place()
@@ -476,6 +478,30 @@ func _test_client_refusal() -> void:
 	var wired := FileAccess.get_file_as_string("res://client/tmc_shell_solo.gd")
 	_check(wired.find("await _solo_refusal_result(content_id, wanted)") > 0 and wired.find("await _solo_refusal_result(content_id, wanted)") < wired.find("_solo_workshop_plan(content_id, wanted)"),
 		"the refusal runs before the workshop sync and every pack fetch")
+	_done()
+
+
+## Every dot_* addon the live prod Playlot pack listed on 2026-11-22 (the repro log of a native solo start): all resolve to a carried gs_* addon.
+const PROD_LEGACY_DIRS := ["dot_achievements", "dot_audio", "dot_auth", "dot_browser", "dot_chat", "dot_cloud", "dot_combat", "dot_console", "dot_core", "dot_economy", "dot_effects", "dot_entity", "dot_flashlight", "dot_fx", "dot_game", "dot_inventory", "dot_leaderboard", "dot_lighting", "dot_loadout", "dot_map", "dot_match", "dot_menu", "dot_mobile", "dot_moderation", "dot_net", "dot_npc", "dot_npc_ai", "dot_npc_ai_director", "dot_peer_to_peer", "dot_physics", "dot_platform", "dot_player", "dot_player_char", "dot_player_class", "dot_procedural_generation", "dot_profile", "dot_props", "dot_server", "dot_server_query", "dot_settings", "dot_spawn", "dot_spectate", "dot_stats", "dot_team", "dot_ui", "dot_user", "dot_user_avatar", "dot_vehicle", "dot_voice", "dot_vote", "dot_weapon", "dot_workbench"]
+
+
+func _test_every_prod_legacy_dir() -> void:
+	_section("every legacy dot_* addon a prod pack lists is carried as gs_*, so none is fetched")
+	var shell := load("res://client/tmc_shell_solo.gd") as GDScript
+	var missing := PackedStringArray()
+	for dir: String in PROD_LEGACY_DIRS:
+		if not shell.shell_carries(dir):
+			missing.append(dir)
+	_check(missing.is_empty(), "all %d legacy names resolve to this shell's addons" % PROD_LEGACY_DIRS.size(), str(missing))
+	_done()
+
+
+func _test_solo_press_refusal() -> void:
+	_section("Play solo is never a silent no-op")
+	var shell := load("res://client/tmc_shell_solo.gd") as GDScript
+	_check(shell.solo_press_refusal("", false) != "", "no solo game chosen: a message")
+	_check(shell.solo_press_refusal("gamemann/game-playlot", true) != "", "a launch already under way: a message")
+	_check(shell.solo_press_refusal("gamemann/game-playlot", false) == "", "a chosen idle game starts")
 	_done()
 
 
