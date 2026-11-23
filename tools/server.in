@@ -2624,6 +2624,32 @@ seed_overrides() {
     overrides_seed_filter "$(overrides_seed_games)" < "$PROJECT/cfg.example/$rel" > "$CONFIG_DIR/$rel" \
         && note "wrote $CONFIG_DIR/$rel from the template (only the games on this server): this server's settings per game"
 }
+# The Dot -> GameSpice rename moved every addon's folder from dot_<x> to gs_<x>, and the addons read only the
+# new one: an operator's cfg/server/addon/dot_auth/auth.yml (the backbone a server reports to) was silently
+# dropped, and the shipped default answered instead. So the operator's dot_ files move on boot, BEFORE the
+# templates are copied; an unedited template copy already in gs_<x>/ gives way, an edited file there wins and
+# the differing dot_ one stays where it is, named in a warning.
+# dot_cfg_migrate_begin
+migrate_dot_addon_cfg() {
+    local base="$CONFIG_DIR/server/addon" src rel dst tpl
+    [ -d "$base" ] || return 0
+    while IFS= read -r src; do
+        rel="${src#"$base"/dot_}"
+        dst="$base/gs_$rel"
+        tpl="$PROJECT/cfg.example/server/addon/gs_$rel"
+        if [ -f "$dst" ] && ! { [ -f "$tpl" ] && cmp -s "$tpl" "$dst"; }; then
+            if cmp -s "$src" "$dst"; then rm -f "$src"; continue; fi
+            warn "cfg/server/addon/dot_$rel is not read (the addons were renamed) and differs from gs_$rel, which wins: merge it by hand, then delete it"
+            continue
+        fi
+        mkdir -p "$(dirname "$dst")"
+        mv -f "$src" "$dst" && note "moved cfg/server/addon/dot_$rel -> gs_$rel (the addons were renamed)"
+    done < <(find "$base" -mindepth 2 -type f -path "$base/dot_*" 2>/dev/null | sort)
+    find "$base" -mindepth 1 -depth -type d -path "$base/dot_*" -empty -delete 2>/dev/null
+    return 0
+}
+# dot_cfg_migrate_end
+{ [ "$COMMAND" = "run" ] || [ "$COMMAND" = "check" ]; } && migrate_dot_addon_cfg
 seed_overrides
 copy_template server/addon/gs_map/maps.yml maps.yml "which maps play"
 copy_template content/games.yml games.yml "which games play"
