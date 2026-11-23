@@ -150,6 +150,13 @@ unzip -qo "$ZIP" -d "$work/build"
 [ -f "$work/build/embed.html" ] && ENTRY=embed.html || ENTRY=index.html
 [ -f "$work/build/$ENTRY" ] || die "the zip has no embed.html or index.html at its root"
 
+# The EXACT pck about to ship, not the repo: no dot_* addons, no uid:// claimed twice (tools/check_artifact_static.sh).
+# --dry-run and --manifest-only upload nothing, so they are not gated (as above). A red check refuses, with no override.
+if [ "$DRY" = 0 ] && [ "$MANIFEST_ONLY" = 0 ] && [ -f "$work/build/index.pck" ]; then
+    "$HERE/check_artifact_static.sh" "$work/build/index.pck" \
+        || die "PUBLISH REFUSED: the web shell's pck failed tools/check_artifact_static.sh (a stale dot_* addon or a duplicate uid ships)"
+fi
+
 NOTES=${NOTES:-Shell uploaded from $(basename "$ZIP")}
 
 # The pointer the site's web-build-register job reads (game/<app>/latest.json) so a shell

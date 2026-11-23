@@ -40,6 +40,12 @@ node tools/browser_update_check.mjs --build <old-lock export>  # the addon updat
 - `examples/party_live.tscn`: the party booking seam before and after a real `changelevel`.
 - `examples/admin_loading_selftest.tscn`, `examples/admin_live.tscn`: [admin-menu.md](admin-menu.md#testing-it).
 
+## Published-artifact gate
+
+`tools/check_artifact_static.sh` (no `dot_*` addons, no duplicate `uid://` across shell plus pack overlay), `tools/artifact_boot_smoke.sh` (a prod-shaped `./server` boots each published game: no `ERROR:` / `SCRIPT ERROR` / `would not load` / `Cannot convert argument` / `must extend` / `crashed state`, `content ready` and the module loaded, an A2S query answers) and the nightly `tools/published_artifact_nightly.sh` judge the built artifact, not the source tree. [releases.md](releases.md#publish-gates-no-override) has the why and the wiring. Offline test: `bash tests/test_artifact_static.sh`.
+
+Proof it bites (2026-11-23): a tree with `addons/dot_combat` beside `addons/gs_combat` (the prod outage's shape) fails the boot smoke with `SCRIPT ERROR: Parse Error: Class "GSPelletTracer" hides a global script class.` and `ERROR: Failed to load script "res://addons/gs_combat/gs_pellet_tracer.gd" with error "Parse error".`, plus `never logged "module loaded for the current game"`; the same tree without it prints `ok  game-fatal-contact`. `check_artifact_static.sh` on the same shape prints `ERROR: duplicate uid uid://cbebxr4alar6d claimed by: addons/dot_combat/dot_pellet_tracer.gd, addons/gs_combat/gs_pellet_tracer.gd` and `stale addon directory addons/dot_combat`. The published prod shell (`20261123-1446`) passes the static check (6442 files, 1269 uids). A tree never imported has no class cache; the smoke imports it first.
+
 ## A real client in a delivered game
 
 Each `*_client` suite publishes a game from its sibling repository, boots a real `TmcHost`, joins a real client, and asserts the delivery path from the operator's end. The game's own suites cannot reach any of this: there its files are at `res://` and its `class_name` globals are registered. Each says "skipped" and exits 0 when its sibling is absent.

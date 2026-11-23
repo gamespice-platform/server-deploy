@@ -54,6 +54,7 @@ tools/check.sh                # parse, every suite, a real boot;  --long  adds e
 tools/check_boot_failures.sh  # ./server check must refuse a game that cannot compile
 tools/check_pinned_parse.sh   # every game's scripts must parse against the addons.lock tags (not the linked trees); run it after any lock change
 tools/check_shell_parse.sh    # the shell's own addons (shell_lock.sh cut) must compile alone: a missing transitive addon crashes every native game
+tools/check_artifact_static.sh # the BUILT shell pck/zip/tree: no dot_* addons, no duplicate uid:// (publish refuses red); tools/artifact_boot_smoke.sh boots a prod-shaped server per published game; tools/published_artifact_nightly.sh judges what is published now
 tools/voice_all_games.sh      # voice between two real clients, in every delivered game
 tools/package_check.sh        # the shipped (vendored) shape
 node tools/browser_check.mjs  # the only check that sees a browser

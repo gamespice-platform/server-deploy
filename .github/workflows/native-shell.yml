@@ -140,6 +140,15 @@ jobs:
                   ./server export-native --platform all --build-version "$version"
                   echo "version=$version" >> "$GITHUB_OUTPUT"
 
+            - name: Artifact gate (static check of the exact built shell, then a server boot of a published game)
+              if: steps.need.outputs.build == 'true'
+              run: |
+                  set -euo pipefail
+                  export GODOT="$(sed -n 's/^GODOT="${TMC_GODOT:-\(.*\)}"$/\1/p' server | head -1)"
+                  tools/check_artifact_static.sh build/tmc-linux-x64.zip
+                  # a prod-shaped dedicated server from this lock, one published game, content from the prod origin
+                  tools/artifact_boot_smoke.sh --only game-fatal-contact --origin "${{ vars.SOLO_SMOKE_ORIGIN || 'https://content.gamespice.net/content' }}"
+
             - name: Keep finished-green addon CI results (each check-ci call spends the shared GitHub quota)
               if: steps.need.outputs.build == 'true'
               uses: actions/cache@v4

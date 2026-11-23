@@ -25,6 +25,12 @@ done
 [ -n "$SITE" ] && [ -n "$VERSION" ] || { echo "need --site and --version" >&2; exit 2; }
 # Refuses (no override) over an unpinned lock, a -dirty or missing build stamp, or red addon CI.
 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/publish_gate.sh" || exit 1
+# The EXACT artifacts about to ship, not the repo: no dot_* addons, no uid:// claimed twice (tools/check_artifact_static.sh).
+# The Linux zip is the one a dedicated server's shell is cut from; the others hold the same pck. A red check refuses.
+if [ -f "$DIR/tmc-linux-x64.zip" ]; then
+    "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/check_artifact_static.sh" "$DIR/tmc-linux-x64.zip" \
+        || { echo "PUBLISH REFUSED: the native shell artifact failed tools/check_artifact_static.sh" >&2; exit 1; }
+fi
 [ -n "${SHELL_PUBLISH_TOKEN:-}" ] || { echo "SHELL_PUBLISH_TOKEN is not set" >&2; exit 2; }
 SITE=${SITE%/}
 hdr=$(mktemp); resp=$(mktemp); trap 'rm -f "$hdr" "$resp"' EXIT

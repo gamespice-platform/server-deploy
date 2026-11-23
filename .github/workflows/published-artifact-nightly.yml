@@ -1,0 +1,32 @@
+# The published prod shell and packs, judged nightly the way a release is (tools/published_artifact_nightly.sh): the shell's pck
+# has no dot_* addon and no duplicate uid, and a prod-shaped dedicated server boots every published game with no ERROR: line.
+# A release gate cannot see drift (a lock bump, a re-installed addon); this can. A red night fails the run (GitHub mails it) and
+# the dev box's watchdog files it on the nightly board as published-artifact-drift.
+name: Published artifact nightly
+
+on:
+    schedule:
+        - cron: '37 3 * * *'
+    workflow_dispatch:
+
+jobs:
+    published:
+        runs-on: ubuntu-latest
+        timeout-minutes: 120
+        steps:
+            - uses: actions/checkout@v4
+            - name: Set up at the lock
+              env:
+                  DEPS_TOKEN: ${{ secrets.GS_DEPS_TOKEN }}
+                  GIT_TERMINAL_PROMPT: '0'
+              run: |
+                  set -euo pipefail
+                  if [ -n "$DEPS_TOKEN" ]; then
+                      git config --global url."https://x-access-token:${DEPS_TOKEN}@github.com/".insteadOf "https://github.com/"
+                  fi
+                  ./setup.sh --no-games
+            - name: Judge the published shell and every published game
+              run: |
+                  set -euo pipefail
+                  export GODOT="$(sed -n 's/^GODOT="${TMC_GODOT:-\(.*\)}"$/\1/p' server | head -1)"
+                  tools/published_artifact_nightly.sh --no-report
