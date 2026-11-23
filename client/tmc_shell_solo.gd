@@ -61,8 +61,13 @@ func _start_solo(content_id: String, version: String = "", map: String = "") -> 
 
 	if not started.ok:
 		shell._end_solo_session()
-		shell._fail(shell._text("shell.solo.failed", {"reason": shell._explain(started.error)},
-			"Could not start %s: %s" % [content_id, shell._explain(started.error)]))
+		# The detail names every address asked and why it failed (one per line), which is what tells a missing file from a refused one.
+		var reason: String = shell._explain(started.error)
+		if started.error != null and started.error.detail != "":
+			reason += "\n" + started.error.detail
+		GSLog.error(shell.CHANNEL, "solo start failed", {"content": content_id, "reason": reason})
+		shell._fail(shell._text("shell.solo.failed", {"reason": reason},
+			"Could not start %s: %s" % [content_id, reason]))
 		if shell._solo_retry != "" and shell._solo_button != null:
 			shell._solo_button.text = shell._text("shell.solo.retry", {}, "Retry")
 			shell._solo_button.visible = true
@@ -114,7 +119,13 @@ func _pin_solo_version(content_id: String, version: String) -> GSResult:
 	if wanted == "":
 		var latest: GSResult = await TmcSolo.resolve_latest(shell, content_id, shell._cloud.http_base_urls)
 		if not latest.ok:
-			return latest
+			# The pointer cannot be fetched (offline, CDN down): a game already on this machine still starts, from the newest manifest kept with it.
+			var kept: PackedStringArray = shell._cloud.cached_versions(StringName(content_id))
+			if kept.is_empty():
+				return latest
+			GSLog.warn(shell.CHANNEL, "latest.json unreachable; using the newest kept version",
+				{"content": content_id, "using": kept[0], "why": str(latest.error)})
+			return GSResult.success({"id": content_id, "version": kept[0]})
 		# A retired id resolves to the one it moved to; use that from here on.
 		content_id = str(latest.value["id"])
 		wanted = str(latest.value["version"])
@@ -130,6 +141,13 @@ func _pin_solo_version(content_id: String, version: String) -> GSResult:
 	return GSResult.success({"id": content_id, "version": wanted})
 
 
+## The content network could not be reached and the game starts from the manifest kept when it was downloaded.
+func _on_manifest_from_cache(manifest: GSCloudManifest, detail: String) -> void:
+	GSLog.warn(shell.CHANNEL, "solo starts from the copy on this machine", {"content": manifest.content_id, "version": manifest.version, "tried": detail})
+	shell._say(shell._text("shell.solo.offline_copy", {"version": manifest.version},
+		"Offline: starting the copy of version %s kept on this computer." % manifest.version))
+
+
 func _load_solo_inner(content_id: String, version: String) -> GSResult:
 	var pinned := await _pin_solo_version(content_id, version)
 	if not pinned.ok:
@@ -139,6 +157,8 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 
 	shell._solo_id = content_id
 	shell._solo_version = wanted
+	if not shell._cloud.manifest_from_cache.is_connected(_on_manifest_from_cache):
+		shell._cloud.manifest_from_cache.connect(_on_manifest_from_cache)
 	GSLog.info(shell.CHANNEL, "starting solo", {"content": content_id, "version": wanted})
 	# An icon URL the launcher gave (?icon=) shows from here, before the pack is mounted.
 	TmcGameIconHint.start(shell, shell.loading)

@@ -4,7 +4,7 @@ extends Node
 ## `game.yml` reader against the host's, the shell's map list against the stock server one, and the
 ## session a game reads its map packs from. godot --headless --path .
 
-const CHECKS := 102
+const CHECKS := 107
 
 ## Every game repository, beside this project or in games/: the repositories of cfg/content/games.yml (shipped content-lists/games.yml).
 
@@ -35,6 +35,7 @@ func _ready() -> void:
 	_test_site_default()
 	_test_first_party()
 	await _test_session()
+	await _test_offline_pin()
 	_test_skip_maps()
 	_test_sim_child_args()
 	_test_requires_reader()
@@ -651,6 +652,45 @@ func _build_probe_overlay(dir: String, root: String) -> Dictionary:
 	}
 	GSCloudAddonSet.write_plan(plan)
 	return {"plan": plan, "pack": pack, "scratch": scratch}
+
+
+## With no network the solo start falls back to the newest manifest kept on this machine, and fails with every address named when nothing is kept.
+func _test_offline_pin() -> void:
+	_section("solo pin offline")
+	var stub: Node = Node.new()
+	stub.set_script(load("res://examples/solo_offline_shell.gd"))
+	add_child(stub)
+	var cache := "user://solo_check_offline"
+	GSPaths.remove_tree(cache)
+	var cloud := GSCloudClient.new()
+	cloud.config = GSCloudConfig.new()
+	cloud.config.cache_dir = cache
+	cloud.config.require_signed_manifests = false
+	cloud.config_file = ""
+	cloud.http_base_urls = PackedStringArray(["http://127.0.0.1:9"])
+	cloud.allow_netchan_fallback = false
+	stub.add_child(cloud)
+	await cloud.start()
+	stub._cloud = cloud
+	var solo := TmcShellSolo.new(stub)
+
+	var none: GSResult = await solo._pin_solo_version("a/game", "")
+	_check(not none.ok, "nothing kept and no network: the start fails")
+
+	for v in ["1.0.0", "1.2.0"]:
+		var doc := JSON.stringify({"content_id": "a/game", "version": v, "files": [], "format_version": 1}).to_utf8_buffer()
+		var parsed := GSCloudManifest.from_json_bytes(doc)
+		GSCloudManifestCache.remember(cloud, parsed.value)
+	var pinned: GSResult = await solo._pin_solo_version("a/game", "")
+	_check(pinned.ok and pinned.value["version"] == "1.2.0" and pinned.value["id"] == "a/game", "no network: the newest kept version is used", str(pinned.error))
+	var asked: GSResult = await solo._pin_solo_version("a/game", "1.0.0")
+	_check(asked.ok and asked.value["version"] == "1.0.0", "a pinned version that is kept stays pinned", str(asked.error))
+	var manifest: GSResult = await cloud.resolve_manifest(&"a/game", "1.2.0")
+	_check(manifest.ok, "and its manifest resolves from the kept copy", str(manifest.error))
+	var missing: GSResult = await cloud.resolve_manifest(&"a/game", "3.0.0")
+	_check(not missing.ok and missing.error.detail.contains("http://127.0.0.1:9"), "a version never fetched fails naming the address asked", str(missing.error))
+	stub.queue_free()
+	_done()
 
 
 func _section(title: String) -> void:
