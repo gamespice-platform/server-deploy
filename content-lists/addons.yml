@@ -2,160 +2,160 @@
 # Shipped default; an operator replaces it with cfg/content/addons.yml (see docs/content-lists.md).
 entries:
   - repo: fc-weapons
-    pin: v1.4.61
+    pin: v1.4.62
   - repo: gs-2d
-    pin: v0.1.9
+    pin: v0.1.10
   - repo: gs-achievements
-    pin: v0.1.13
-  - repo: gs-animation
-    pin: v0.2.1
-  - repo: gs-audio
-    pin: v0.1.23
-  - repo: gs-auth
-    pin: v0.1.17
-  - repo: gs-bot
-    pin: v0.1.32
-  - repo: gs-bot-record
-    pin: v0.1.5
-  - repo: gs-browser
-    pin: v0.1.10
-  - repo: gs-camera
-    pin: v0.2.0
-  - repo: gs-chat
-    pin: v0.1.9
-  - repo: gs-cloud
-    pin: v0.1.59
-  - repo: gs-combat
-    pin: v0.1.24
-  - repo: gs-console
-    pin: v0.1.12
-  - repo: gs-core
-    pin: v0.1.53
-  - repo: gs-economy
-    pin: v0.1.8
-  - repo: gs-effects
-    pin: v0.1.11
-  - repo: gs-entity
-    pin: v0.1.11
-  - repo: gs-friends
-    pin: v0.1.8
-  - repo: gs-flashlight
-    pin: v0.1.5
-  - repo: gs-fx
-    pin: v0.3.14
-  - repo: gs-game
-    pin: v0.1.61
-  - repo: gs-input
-    pin: v0.2.0
-  - repo: gs-inventory
-    pin: v0.1.7
-  - repo: gs-leaderboard
-    pin: v0.3.5
-  - repo: gs-lighting
-    pin: v0.1.13
-  - repo: gs-loadout
-    pin: v0.1.18
-  - repo: gs-locale
-    pin: v0.1.8
-  - repo: gs-log
-    pin: v0.1.10
-  - repo: gs-map
-    pin: v0.1.94
-  - repo: gs-match
-    pin: v0.1.8
-  - repo: gs-matchmaking
-    pin: v0.1.10
-  - repo: gs-menu
-    pin: v0.1.34
-  - repo: gs-mobile
-    pin: v0.1.1
-  - repo: gs-moderation
-    pin: v0.1.7
-  - repo: gs-net
-    pin: v0.1.37
-  - repo: gs-npc
-    pin: v0.1.25
-  - repo: gs-npc-ai
     pin: v0.1.14
-  - repo: gs-npc-ai-director
-    pin: v0.1.12
-  - repo: gs-objective
-    pin: v0.1.9
-  - repo: gs-party
-    pin: v0.1.8
-  - repo: gs-peer-to-peer
+  - repo: gs-animation
+    pin: v0.2.2
+  - repo: gs-audio
+    pin: v0.1.24
+  - repo: gs-auth
+    pin: v0.1.18
+  - repo: gs-bot
+    pin: v0.1.33
+  - repo: gs-bot-record
     pin: v0.1.6
-  - repo: gs-physics
-    pin: v0.1.12
-  - repo: gs-platform
+  - repo: gs-browser
     pin: v0.1.11
-  - repo: gs-player
-    pin: v0.1.7
-  - repo: gs-player-char
-    pin: v0.1.76
-  - repo: gs-player-class
-    pin: v0.1.11
-  - repo: gs-player-controller
-    pin: v0.4.16
-  - repo: gs-procedural-generation
-    pin: v0.1.6
-  - repo: gs-profile
-    pin: v0.1.26
-  - repo: gs-profiler
-    pin: v0.1.5
-  - repo: gs-props
-    pin: v0.1.17
-  - repo: gs-radio
-    pin: v0.1.4
-  - repo: gs-trail
-    pin: v0.1.6
-  - repo: gs-save
+  - repo: gs-camera
     pin: v0.2.1
-  - repo: gs-replay
-    pin: v0.1.21
-  - repo: gs-server
-    pin: v0.1.34
-  - repo: gs-server-query
+  - repo: gs-chat
     pin: v0.1.10
-  - repo: gs-server-security
-    pin: v0.1.8
-  - repo: gs-settings
+  - repo: gs-cloud
+    pin: v0.1.60
+  - repo: gs-combat
+    pin: v0.1.25
+  - repo: gs-console
+    pin: v0.1.13
+  - repo: gs-core
+    pin: v0.1.54
+  - repo: gs-economy
     pin: v0.1.9
-  - repo: gs-sim
-    pin: v0.2.10
-  - repo: gs-spawn
-    pin: v0.2.5
-  - repo: gs-spectate
-    pin: v0.1.13
-  - repo: gs-sql
-    pin: v0.1.8
-  - repo: gs-stats
-    pin: v0.1.21
-  - repo: gs-team
-    pin: v0.1.11
-  - repo: gs-timer
-    pin: v0.1.13
-  - repo: gs-ui
-    pin: v0.3.1
-  - repo: gs-user
-    pin: v0.1.8
-  - repo: gs-user-avatar
-    pin: v0.1.13
-  - repo: gs-vehicle
+  - repo: gs-effects
     pin: v0.1.12
-  - repo: gs-voice
-    pin: v0.1.13
-  - repo: gs-vote
+  - repo: gs-entity
+    pin: v0.1.12
+  - repo: gs-friends
+    pin: v0.1.9
+  - repo: gs-flashlight
+    pin: v0.1.6
+  - repo: gs-fx
+    pin: v0.3.15
+  - repo: gs-game
+    pin: v0.1.62
+  - repo: gs-input
+    pin: v0.2.1
+  - repo: gs-inventory
+    pin: v0.1.8
+  - repo: gs-leaderboard
+    pin: v0.3.6
+  - repo: gs-lighting
+    pin: v0.1.14
+  - repo: gs-loadout
     pin: v0.1.19
-  - repo: gs-weapon
-    pin: v0.1.56
-  - repo: gs-weather
-    pin: v0.1.4
-  - repo: gs-workbench
-    pin: v0.3.5
-  - repo: natural-disasters
-    pin: v0.1.4
-  - repo: zed-gs-weapons
+  - repo: gs-locale
+    pin: v0.1.9
+  - repo: gs-log
+    pin: v0.1.11
+  - repo: gs-map
+    pin: v0.1.95
+  - repo: gs-match
+    pin: v0.1.9
+  - repo: gs-matchmaking
+    pin: v0.1.11
+  - repo: gs-menu
+    pin: v0.1.35
+  - repo: gs-mobile
+    pin: v0.1.2
+  - repo: gs-moderation
+    pin: v0.1.8
+  - repo: gs-net
+    pin: v0.1.38
+  - repo: gs-npc
+    pin: v0.1.26
+  - repo: gs-npc-ai
     pin: v0.1.15
+  - repo: gs-npc-ai-director
+    pin: v0.1.13
+  - repo: gs-objective
+    pin: v0.1.10
+  - repo: gs-party
+    pin: v0.1.9
+  - repo: gs-peer-to-peer
+    pin: v0.1.7
+  - repo: gs-physics
+    pin: v0.1.13
+  - repo: gs-platform
+    pin: v0.1.12
+  - repo: gs-player
+    pin: v0.1.8
+  - repo: gs-player-char
+    pin: v0.1.77
+  - repo: gs-player-class
+    pin: v0.1.12
+  - repo: gs-player-controller
+    pin: v0.4.17
+  - repo: gs-procedural-generation
+    pin: v0.1.7
+  - repo: gs-profile
+    pin: v0.1.27
+  - repo: gs-profiler
+    pin: v0.1.6
+  - repo: gs-props
+    pin: v0.1.18
+  - repo: gs-radio
+    pin: v0.1.5
+  - repo: gs-trail
+    pin: v0.1.7
+  - repo: gs-save
+    pin: v0.2.2
+  - repo: gs-replay
+    pin: v0.1.22
+  - repo: gs-server
+    pin: v0.1.35
+  - repo: gs-server-query
+    pin: v0.1.11
+  - repo: gs-server-security
+    pin: v0.1.9
+  - repo: gs-settings
+    pin: v0.1.10
+  - repo: gs-sim
+    pin: v0.2.11
+  - repo: gs-spawn
+    pin: v0.2.6
+  - repo: gs-spectate
+    pin: v0.1.14
+  - repo: gs-sql
+    pin: v0.1.9
+  - repo: gs-stats
+    pin: v0.1.22
+  - repo: gs-team
+    pin: v0.1.12
+  - repo: gs-timer
+    pin: v0.1.14
+  - repo: gs-ui
+    pin: v0.3.2
+  - repo: gs-user
+    pin: v0.1.9
+  - repo: gs-user-avatar
+    pin: v0.1.14
+  - repo: gs-vehicle
+    pin: v0.1.13
+  - repo: gs-voice
+    pin: v0.1.14
+  - repo: gs-vote
+    pin: v0.1.20
+  - repo: gs-weapon
+    pin: v0.1.58
+  - repo: gs-weather
+    pin: v0.1.5
+  - repo: gs-workbench
+    pin: v0.3.6
+  - repo: natural-disasters
+    pin: v0.1.5
+  - repo: zed-gs-weapons
+    pin: v0.1.16
   - repo: zee-gs-weapons
-    pin: v0.1.67
+    pin: v0.1.68
