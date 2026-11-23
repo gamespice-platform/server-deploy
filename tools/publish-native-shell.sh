@@ -23,6 +23,8 @@ while [ $# -gt 0 ]; do
     esac
 done
 [ -n "$SITE" ] && [ -n "$VERSION" ] || { echo "need --site and --version" >&2; exit 2; }
+# Refuses (no override) over an unpinned lock, a -dirty or missing build stamp, or red addon CI.
+"$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/publish_gate.sh" || exit 1
 [ -n "${SHELL_PUBLISH_TOKEN:-}" ] || { echo "SHELL_PUBLISH_TOKEN is not set" >&2; exit 2; }
 SITE=${SITE%/}
 hdr=$(mktemp); resp=$(mktemp); trap 'rm -f "$hdr" "$resp"' EXIT

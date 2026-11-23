@@ -26,6 +26,9 @@ on:
             - tools/shell-inputs.sh
             - tools/addons-lock.sh
             - tools/publish-native-shell.sh
+            - tools/publish_gate.sh
+            - tools/check_solo_smoke.sh
+            - tools/solo_manifest_probe.gd
             - .github/workflows/native-shell.yml
     workflow_dispatch:
         inputs:
@@ -117,6 +120,7 @@ jobs:
                   fi
                   ./setup.sh --no-games
                   git config --global --unset-all url."https://x-access-token:${DEPS_TOKEN}@github.com/".insteadOf 2>/dev/null || true
+                  tools/addons-lock.sh check-pins
                   tools/addons-lock.sh check
 
             - name: The shell's addons compile on their own
@@ -135,6 +139,20 @@ jobs:
                   version="1.$(date -u +%Y%m%d).$(date -u +%H%M)"
                   ./server export-native --platform all --build-version "$version"
                   echo "version=$version" >> "$GITHUB_OUTPUT"
+
+            - name: Publish gate (pins, clean stamp, pinned addon CI green)
+              if: steps.need.outputs.build == 'true'
+              env:
+                  GH_TOKEN: ${{ secrets.GS_DEPS_TOKEN || github.token }}
+              run: tools/publish_gate.sh
+
+            - name: Solo smoke (the client parses and verifies the live manifests)
+              if: steps.need.outputs.build == 'true'
+              env:
+                  GS_CONTENT_ORIGIN: ${{ vars.SOLO_SMOKE_ORIGIN || 'https://content.gamespice.net/content' }}
+              run: |
+                  set -euo pipefail
+                  GODOT="$(sed -n 's/^GODOT="${TMC_GODOT:-\(.*\)}"$/\1/p' server | head -1)" tools/check_solo_smoke.sh
 
             - name: Publish
               if: steps.need.outputs.build == 'true'

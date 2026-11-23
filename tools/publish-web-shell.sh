@@ -119,6 +119,12 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+# Refuses (no override) over an unpinned lock, a -dirty or missing build stamp, or red addon CI.
+# --dry-run and --manifest-only upload nothing, so they are not gated.
+if [ "$DRY" = 0 ] && [ "$MANIFEST_ONLY" = 0 ]; then
+    "$HERE/publish_gate.sh" || exit 1
+fi
+
 die() { echo "error: $*" >&2; exit 1; }
 
 [ -n "$ZIP" ] || { usage >&2; die "--zip is required"; }

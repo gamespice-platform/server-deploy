@@ -6,6 +6,7 @@
 #   tools/addons-lock.sh write v0.1.2    that tag for all of them
 #   tools/addons-lock.sh check-pins      content-lists/addons.yml pins equal the lock (offline)
 #   tools/addons-lock.sh check           the linked addons are at the lock, and clean
+#   tools/addons-lock.sh check-ci        the CI of every locked tag's commit is green (GitHub API; GH_TOKEN, or GS_GH="sudo -u core gh")
 #
 # [b]Why a lock at all.[/b] A server's addons used to be whatever each repository's main
 # was on the day it was installed, and the shell a player connects with is whatever was
@@ -189,7 +190,43 @@ cmd_check() {
     exit "$bad"
 }
 
+# [b]A shell is never published from addons whose own CI is red.[/b] 2026-11-22: gs-cloud CI had been red
+# since the rename commit, tags were cut and consumed anyway, and the red was read as noise until prod solo
+# broke. For every locked tag this asks GitHub for the check runs of the tag's commit; any failed, cancelled
+# or timed-out run, any run still going, or no run at all, refuses. There is no override: fix the addon's
+# CI (or re-tag a green commit) and re-lock.
+cmd_check_ci() {
+    local repo ref slug out bad=0 gh=(${GS_GH:-gh}) n=0
+    [ -f "$LOCK" ] || { echo "no addons.lock; run: tools/addons-lock.sh write" >&2; exit 2; }
+    command -v "${gh[0]}" >/dev/null || { echo "check-ci: no gh (GitHub CLI) to ask about the addons' CI" >&2; exit 2; }
+    while IFS=$'\t' read -r repo ref; do
+        case "$repo" in ''|'#'*) continue ;; esac
+        slug="$(url_of "$repo" | sed -E 's#^https://github.com/##; s#\.git$##')"
+        out="$("${gh[@]}" api "repos/$slug/commits/$ref/check-runs?per_page=100" \
+            --jq '[.check_runs[] | (.status + ":" + (.conclusion // "none"))] | join(" ")' 2>&1)" || {
+            echo "  !!    $repo $ref: could not read its CI ($slug): $(printf '%s' "$out" | head -c 200)"
+            bad=1; continue
+        }
+        n=$((n + 1))
+        if [ -z "$out" ]; then
+            echo "  !!    $repo $ref: no CI ran on this tag's commit ($slug)"; bad=1
+        elif grep -qE 'completed:(failure|cancelled|timed_out|action_required|startup_failure|stale)' <<<"$out"; then
+            echo "  !!    $repo $ref: CI is RED on this tag's commit ($slug): $out"; bad=1
+        elif grep -qE '(queued|in_progress|waiting|pending|requested):' <<<"$out"; then
+            echo "  !!    $repo $ref: CI has not finished on this tag's commit ($slug): $out"; bad=1
+        fi
+    done < "$LOCK"
+    if [ "$bad" -eq 0 ]; then
+        echo "CI is green for all $n locked tags"
+    else
+        echo
+        echo "a shell must not be published from addons whose own CI is red. Fix the addon, tag a green commit, re-lock."
+    fi
+    exit "$bad"
+}
+
 case "${1:-}" in
+    check-ci) cmd_check_ci ;;
     write) shift; cmd_write "${1:-}" ;;
     check) cmd_check ;;
     check-pins) pins_agree; rc=$?; [ "$rc" -eq 0 ] && echo "every yml pin matches addons.lock"; exit "$rc" ;;

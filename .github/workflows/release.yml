@@ -56,6 +56,16 @@ jobs:
                       echo "served: $url"
                   fi
 
+    # [b]No release over a failing pin check.[/b] v0.1.150 was tagged while
+    # `addons-lock.sh check-pins` failed. The release job needs this.
+    addon-pins:
+        runs-on: ubuntu-latest
+        timeout-minutes: 2
+        steps:
+            - uses: actions/checkout@v4
+            - name: content-lists/addons.yml pins equal addons.lock
+              run: bash tools/addons-lock.sh check-pins
+
     validate:
         uses: gamespice-platform/ci/.github/workflows/validate.yml@v1
         with:
@@ -65,7 +75,7 @@ jobs:
             DEPS_TOKEN: ${{ secrets.GS_DEPS_TOKEN }}
 
     release:
-        needs: [validate, shell-pin]
+        needs: [validate, shell-pin, addon-pins]
         uses: gamespice-platform/ci/.github/workflows/release.yml@v1
         permissions:
             contents: write

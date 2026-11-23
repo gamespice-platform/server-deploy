@@ -27,6 +27,14 @@ A game pack's `requires.json` is capped at the levels the shell's lock pins, and
 
 This repository is where an addon release, a game release and a shell release meet. The family's release checklist is in the `release-rules` memory; this is what the code here enforces and why.
 
+## Publish gates (no override)
+
+Born of the 2026-11-22 prod solo outage (the rename changed the manifest marker against manifests already published) and of v0.1.150 being tagged over a failing `check-pins`. Each is mechanical; a red one is fixed at its cause, never bypassed.
+
+- **`release.yml`** has an `addon-pins` job (`addons-lock.sh check-pins`) the release job needs; `ci.yml` runs the same.
+- **`tools/publish_gate.sh`** runs first in `publish-native-shell.sh`, `publish-web-shell.sh` (not for `--dry-run` / `--manifest-only`) and as a step of `native-shell.yml` / `web-shell.yml`. It refuses an unpinned lock, a missing or `-dirty` `client/build_stamp.gd`, and a locked addon tag whose own CI (GitHub check runs of the tag's commit, `addons-lock.sh check-ci`) is red, unfinished or absent. Offline proof: `tools/check_publish_gate.sh`.
+- **`tools/check_solo_smoke.sh`** (with `tools/solo_manifest_probe.gd`) resolves `latest.json` and the signed manifest of at least 3 games from `GS_CONTENT_ORIGIN` and has the shipped gs-cloud client parse and verify them. The shell workflows run it before publishing against `vars.SOLO_SMOKE_ORIGIN` (default prod, `https://content.gamespice.net/content`); run it against dev (`https://tmcdevgames.net/content`) first. `GS_SMOKE_STRICT_MARKER=1` also fails a manifest still on the legacy `dot_cloud_signed` marker: turn it on once prod is re-signed and the alias is removed.
+
 ## The release orders
 
 | Releasing | Order |
