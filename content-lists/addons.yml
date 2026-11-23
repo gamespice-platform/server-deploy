@@ -24,7 +24,7 @@ entries:
   - repo: gs-chat
     pin: v0.1.10
   - repo: gs-cloud
-    pin: v0.1.60
+    pin: v0.1.61
   - repo: gs-combat
     pin: v0.1.25
   - repo: gs-console
