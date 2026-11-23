@@ -474,7 +474,7 @@ func _test_client_refusal() -> void:
 		"a game addon the client does not carry is the overlay's business, not a refusal")
 	_check(TmcSolo.client_refusal(api, "not json") == "" and TmcSolo.client_refusal(api, "") == "", "an unreadable file is not a refusal (the pack's own check reports it)")
 	var wired := FileAccess.get_file_as_string("res://client/tmc_shell_solo.gd")
-	_check(wired.find("_solo_client_refusal(content_id, wanted)") < wired.find("_solo_workshop_plan(content_id, wanted)"),
+	_check(wired.find("await _solo_refusal_result(content_id, wanted)") > 0 and wired.find("await _solo_refusal_result(content_id, wanted)") < wired.find("_solo_workshop_plan(content_id, wanted)"),
 		"the refusal runs before the workshop sync and every pack fetch")
 	_done()
 

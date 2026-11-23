@@ -150,6 +150,27 @@ func _on_manifest_from_cache(manifest: GSCloudManifest, detail: String) -> void:
 		"Offline: starting the copy of version %s kept on this computer." % manifest.version))
 
 
+func _unpublished_failure(content_id: String, wanted: String) -> GSResult:
+	# Not the "needs a newer client" panel GameSpice Cloud's requirement check would show next: no shell build can carry a game
+	# addon (only gs-* addons), so the fix is a publish of that addon's pack, never a newer client.
+	var why := "; ".join(PackedStringArray(_unpublished.values()))
+	GSLog.error(shell.CHANNEL, "a game addon this solo game needs is not published in a pack that holds it", {
+		"content": content_id, "version": wanted, "unpublished": _unpublished,
+	})
+	return GSResult.fail(GSError.CODE_STATE, shell._text("shell.solo.addon_unpublished", {"why": why},
+		"this game needs an addon that is not published yet ({why}). Nothing was downloaded.".format({"why": why})))
+
+
+## Fails with the republish message when the game's pack needs an addon API this client does not run; nothing is fetched.
+func _solo_refusal_result(content_id: String, wanted: String) -> GSResult:
+	var refusal := await _solo_client_refusal(content_id, wanted)
+	if refusal == "":
+		return GSResult.success(null)
+	GSLog.error(shell.CHANNEL, "this game's addon API is not one this client runs; nothing was downloaded",
+		{"content": content_id, "version": wanted, "why": refusal})
+	return GSResult.fail(GSError.CODE_VERSION, refusal)
+
+
 func _load_solo_inner(content_id: String, version: String) -> GSResult:
 	var pinned := await _pin_solo_version(content_id, version)
 	if not pinned.ok:
@@ -164,11 +185,9 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 	TmcGameIconHint.start(shell, shell.loading)
 
 	# Before the addon overlay, the workshop sync or any pack: a game this client cannot run must not download its maps first.
-	var refusal := await _solo_client_refusal(content_id, wanted)
-	if refusal != "":
-		GSLog.error(shell.CHANNEL, "this game's addon API is not one this client runs; nothing was downloaded",
-			{"content": content_id, "version": wanted, "why": refusal})
-		return GSResult.fail(GSError.CODE_VERSION, refusal)
+	var refused := await _solo_refusal_result(content_id, wanted)
+	if not refused.ok:
+		return refused
 
 	# The game addons its pack requires (zee_weapons for Prop Hunt, fc_weapons for Fatal Contact; arena_weapons up to fc-weapons v1.4.51) are not in this shell: fetched as the overlay a server would announce, then a restart into it. Asked of the store before the pack is fetched, because the pack's own requirement check refuses it while one is missing. Returns only when nothing is missing or it cannot be had. Subscriptions are asked first (their downloads only registered): a game that accepts addon packs gets the subscribed ones in the same overlay, so one restart covers both.
 	var subscribed: Array = await shell._solo_packs._solo_workshop_plan(content_id, wanted)
@@ -179,14 +198,7 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 		return GSResult.fail(GSError.CODE_STATE, shell._text("shell.solo.addons_blocked", {},
 			"this game's addons did not start in this tab, so it was not started without them. Retry fetches them again."))
 	if overlay == SoloOverlay.UNPUBLISHED:
-		# Not the "needs a newer client" panel GameSpice Cloud's requirement check would show next: no shell build can carry a game
-		# addon (only gs-* addons), so the fix is a publish of that addon's pack, never a newer client.
-		var why := "; ".join(PackedStringArray(_unpublished.values()))
-		GSLog.error(shell.CHANNEL, "a game addon this solo game needs is not published in a pack that holds it", {
-			"content": content_id, "version": wanted, "unpublished": _unpublished,
-		})
-		return GSResult.fail(GSError.CODE_STATE, shell._text("shell.solo.addon_unpublished", {"why": why},
-			"this game needs an addon that is not published yet ({why}). Nothing was downloaded.".format({"why": why})))
+		return _unpublished_failure(content_id, wanted)
 
 	# Everything is registered and fetched first, so the total is fixed before a byte moves; mounting follows.
 	await shell._solo_packs._prefetch_solo(content_id, wanted)
