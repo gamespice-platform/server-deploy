@@ -1949,6 +1949,16 @@ for ext in "$ROOT"/addons/*/*.gdextension; do
     grep -qF "res://${ext#"$ROOT"/}" "$ROOT/.godot/extension_list.cfg" 2>/dev/null \
         || { NATIVE_UNLISTED="${ext#"$ROOT"/}"; break; }
 done
+# A listed library whose file is gone (an addon renamed, dot_sim -> gs_sim, or dropped) stays in
+# the list through later imports, and every boot then prints three ERROR lines for it. Drop it.
+if [ -f "$ROOT/.godot/extension_list.cfg" ]; then
+    ext_kept="" ext_dropped=0
+    while IFS= read -r ext || [ -n "$ext" ]; do
+        case "$ext" in res://*) [ -f "$ROOT/${ext#res://}" ] || { warn "dropped $ext from .godot/extension_list.cfg (no such file)"; ext_dropped=1; continue; } ;; esac
+        ext_kept+="$ext"$'\n'
+    done < "$ROOT/.godot/extension_list.cfg"
+    [ "$ext_dropped" -eq 0 ] || printf '%s' "$ext_kept" > "$ROOT/.godot/extension_list.cfg"
+fi
 
 # [b]--vendor throws the clones away once they have been copied.[/b] Vendoring says this
 # tree is to carry CONTENT rather than checkouts: a container's final stage and a

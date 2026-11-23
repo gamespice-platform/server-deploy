@@ -42,4 +42,12 @@ migrate_dot_addon_cfg >/dev/null 2>&1
 out="$(migrate_dot_addon_cfg 2>&1)"
 [ -z "$out" ] && good "a second boot is silent" || bad "a second boot printed: $out"
 
+# setup.sh: a native library still listed in .godot/extension_list.cfg after its addon was renamed
+# (dot_sim -> gs_sim) is dropped, so a boot does not print three ERROR lines for it.
+ROOT="$T/proj"; mkdir -p "$ROOT/.godot" "$ROOT/addons/gs_sim"; : > "$ROOT/addons/gs_sim/gs_sim.gdextension"
+printf 'res://addons/dot_sim/dot_sim.gdextension\nres://addons/gs_sim/gs_sim.gdextension\n' > "$ROOT/.godot/extension_list.cfg"
+eval "$(sed -n '/^# A listed library whose file is gone/,/^fi$/p' setup.sh)"
+[ "$(cat "$ROOT/.godot/extension_list.cfg")" = "res://addons/gs_sim/gs_sim.gdextension" ] \
+    && good "a stale native library is dropped from the extension list" || bad "extension list: $(tr '\n' ' ' < "$ROOT/.godot/extension_list.cfg")"
+
 [ "$fails" -eq 0 ]
