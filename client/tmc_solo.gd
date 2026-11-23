@@ -218,11 +218,15 @@ static func _fetch_pointer(host: Node, id: String, bases: PackedStringArray, hop
 
 	for base in bases:
 		var url := "%s/%s/%s" % [GSCloudClient.resolve_base_url(base).rstrip("/"), id, LATEST_FILE]
-		var res: GSResult = await http.get_json(url)
+		var kept: Variant = TmcSoloPointers.fresh(url)
+		var res: GSResult = GSResult.success(kept) if kept != null else await http.get_json(url)
 
 		if not res.ok:
 			tried.append("%s: %s" % [url, str(res.error)])
 			continue
+
+		if kept == null and res.value is Dictionary:
+			TmcSoloPointers.remember(url, res.value)
 
 		var followed := follow_pointer(id, res.value, hop)
 
@@ -237,6 +241,14 @@ static func _fetch_pointer(host: Node, id: String, bases: PackedStringArray, hop
 		tried.append("%s: %s" % [url, followed.error.message])
 
 	http.queue_free()
+
+	# Offline: the pointer this machine last saw still names the version it downloaded.
+	for base in bases:
+		var old: Variant = TmcSoloPointers.stale("%s/%s/%s" % [GSCloudClient.resolve_base_url(base).rstrip("/"), id, LATEST_FILE])
+		var followed: GSResult = follow_pointer(id, old, hop) if old != null else null
+		if followed != null and followed.ok and (str(followed.value["moved_to"]) != "" or valid_version(str(followed.value["version"]))):
+			GSLog.warn(CHANNEL, "the content network was not reachable; using the last pointer seen", {"id": id})
+			return followed
 
 	return GSResult.fail(
 		GSError.CODE_IO,

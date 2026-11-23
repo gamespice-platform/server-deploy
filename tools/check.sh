@@ -579,6 +579,11 @@ echo
 echo "solo play's pieces"
 timeout 300 "$GODOT" --headless --path . res://examples/solo_check.tscn < /dev/null || fails=$((fails + 1))
 
+# The kept latest.json of solo play (client/tmc_solo_pointers.gd): fresh window, offline fallback, damaged file.
+echo
+echo "solo play's kept pointers"
+timeout 120 "$GODOT" --headless --path . res://examples/solo_pointers_check.tscn < /dev/null || fails=$((fails + 1))
+
 # Subscribed packs in solo play through the real shell: a solo start mounts a subscribed map
 # pack and the game's catalogue lists it, an online start never syncs and sees none, a code
 # pack restarts before an online join. Armed: see the header of the suite.
