@@ -92,7 +92,7 @@ entries:
   - repo: gs-player
     pin: v0.1.8
   - repo: gs-player-char
-    pin: v0.1.77
+    pin: v0.1.78
   - repo: gs-player-class
     pin: v0.1.12
   - repo: gs-player-controller
