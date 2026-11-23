@@ -1459,7 +1459,9 @@ ensure_web_preset() {
 check_web_natives() {
     local build="$1" mode="$2" pck="$1/index.pck" exts ext lib bad=""
     if [ "$mode" != native ]; then
-        grep -qaF '.gdextension' "$pck" || return 0
+        # A packed FILE, not a script that names one (gs_weapon's hitscan code mentions
+        # gs_sim.gdextension): the pck's file table holds the full res:// path.
+        grep -qaE 'addons/[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]*\.gdextension' "$pck" || return 0
         rm -f "$pck"
         die "the Web export carries a .gdextension (the unpacked native library) with the plain template; add *.gdextension and addons/*/bin/* to the Web preset's exclude_filter (export_presets.example.cfg has it) or export with TMC_WEB_NATIVE=1." 3
     fi
