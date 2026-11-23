@@ -96,37 +96,10 @@ static func build(auth: Dictionary, config_dir: String, data_dir: String = "") -
 		cfg.local_accounts_path = accounts if accounts.is_absolute_path() \
 			else config_dir.path_join(accounts)
 
-	# [b]This server's roster, reported to the issuer[/b], so a player who leaves is released at once
-	# rather than held for the issuer's lease (GameSpice Auth's GSAuthSessionReporter, built by
-	# GSAuthServer whenever the URL is set).
-	var report_url := str(auth.get("session_report_url", "")).strip_edges()
+	var reported := _apply_session_report(auth, cfg, config_dir)
 
-	if auth.has("session_report_key"):
-		return GSResult.fail(
-			GSError.CODE_INVALID,
-			"auth.yml: session_report_key is a secret and is not read from the YAML.",
-			"put it in a file and name the file in session_report_key_file"
-		)
-
-	if report_url != "":
-		cfg.session_report_url = report_url
-		var report_key_file := str(auth.get("session_report_key_file", "")).strip_edges()
-
-		if report_key_file != "":
-			var report_key_path := report_key_file if report_key_file.is_absolute_path() \
-				else config_dir.path_join(report_key_file)
-
-			if not FileAccess.file_exists(report_key_path):
-				return GSResult.fail(
-					GSError.CODE_IO,
-					"auth.yml: the session report key is not there.",
-					report_key_path
-				)
-
-			cfg.session_report_key = FileAccess.get_file_as_string(report_key_path).strip_edges()
-
-		if auth.has("session_report_interval_sec"):
-			cfg.session_report_interval_sec = float(auth["session_report_interval_sec"])
+	if not reported.ok:
+		return reported
 
 	# Ticket mode with no id or key adopts them from the site this server enrolled with:
 	# the id from integration/v1/me, the keys from its ticket-keys route over HTTPS.
@@ -163,6 +136,43 @@ static func build(auth: Dictionary, config_dir: String, data_dir: String = "") -
 	})
 
 	return GSResult.success(node)
+
+
+## The roster report: the URL from the YAML and the key from a file beside it. A key written inline is refused.
+static func _apply_session_report(auth: Dictionary, cfg: GSAuthConfig, config_dir: String) -> GSResult:
+	# [b]This server's roster, reported to the issuer[/b], so a player who leaves is released at once
+	# rather than held for the issuer's lease (GameSpice Auth's GSAuthSessionReporter, built by
+	# GSAuthServer whenever the URL is set).
+	var report_url := str(auth.get("session_report_url", "")).strip_edges()
+
+	if auth.has("session_report_key"):
+		return GSResult.fail(
+			GSError.CODE_INVALID,
+			"auth.yml: session_report_key is a secret and is not read from the YAML.",
+			"put it in a file and name the file in session_report_key_file"
+		)
+
+	if report_url != "":
+		cfg.session_report_url = report_url
+		var report_key_file := str(auth.get("session_report_key_file", "")).strip_edges()
+
+		if report_key_file != "":
+			var report_key_path := report_key_file if report_key_file.is_absolute_path() \
+				else config_dir.path_join(report_key_file)
+
+			if not FileAccess.file_exists(report_key_path):
+				return GSResult.fail(
+					GSError.CODE_IO,
+					"auth.yml: the session report key is not there.",
+					report_key_path
+				)
+
+			cfg.session_report_key = FileAccess.get_file_as_string(report_key_path).strip_edges()
+
+		if auth.has("session_report_interval_sec"):
+			cfg.session_report_interval_sec = float(auth["session_report_interval_sec"])
+
+	return GSResult.success(null)
 
 
 ## Whether guests get stored profiles: auth.yml `guest_profiles`, defaulting to [param allow_guests]. A server that admits guests
