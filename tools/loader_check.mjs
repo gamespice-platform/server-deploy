@@ -34,8 +34,10 @@ const [game, gamePort] = await listen((req, r) => {
 });
 
 let pagePort = 0;
-function pageFor(withNewer) {
-  const builds = withNewer
+function pageFor(withNewer, script) {
+  const builds = script
+    ? [{ url: 'javascript:window.__ran=1', signon: 'x', label: 'bad' }]
+    : withNewer
     ? [{ url: `http://127.0.0.1:${gamePort}/new/embed.html`, signon: 'x', label: 'new' }]
     : [];
   return `<!doctype html><div id="tmc-game-canvas" style="position:relative;width:800px;height:500px"></div>
@@ -52,7 +54,7 @@ const [page, port] = await listen((req, r) => {
     return r.end(loader);
   }
   r.writeHead(200, { 'Content-Type': 'text/html' });
-  r.end(pageFor(req.url.includes('newer')));
+  r.end(pageFor(req.url.includes('newer'), req.url.includes('script')));
 });
 pagePort = port;
 
@@ -77,6 +79,14 @@ try {
     check(newer ? btn !== null : btn === null, newer ? '  and offers the reload' : '  and offers no reload');
     await p.close();
   }
+  // A build whose url is not http(s) is no build: the button would run it as the site.
+  const p = await browser.newPage();
+  await p.goto(`http://127.0.0.1:${pagePort}/script`);
+  await p.waitForFunction(() => document.body.innerText.includes('newer version of the client'), null, { timeout: 8000 })
+    .catch(() => {});
+  check((await p.$('button')) === null, 'a javascript: build url: no button at all');
+  check((await p.evaluate(() => window.__ran)) === undefined, '  and nothing ran');
+  await p.close();
 } finally {
   await browser.close();
 }

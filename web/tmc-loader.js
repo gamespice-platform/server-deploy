@@ -530,9 +530,9 @@
    */
   function clientBehind(data) {
     var builds = boot && Array.isArray(boot.builds) ? boot.builds : [];
-    var newest = builds.length && builds[0] && builds[0].url ? builds[0] : null;
+    var newestUrl = builds.length && builds[0] ? webUrl(builds[0].url) : '';
     var running = String(frame.src || '');
-    var newer = newest && running.indexOf(String(newest.url)) !== 0;
+    var newer = newestUrl && running.indexOf(newestUrl) !== 0;
 
     var box = panel(
       'This game needs a newer version of the client.',
@@ -543,7 +543,7 @@
     if (newer) {
       box.appendChild(
         button('Reload for the new client', function () {
-          location.href = newest.url;
+          location.href = newestUrl;
         })
       );
     }
@@ -592,19 +592,22 @@
       }
     }
 
-    if (match && match.url) {
+    var matchUrl = match ? webUrl(match.url) : '';
+
+    if (matchUrl) {
       box.appendChild(
         button('Open the version this server needs', function () {
-          location.href = match.url;
+          location.href = matchUrl;
         })
       );
     } else {
       for (i = 0; i < builds.length && i < 10; i++) {
         (function (b) {
-          if (!b || !b.url) return;
+          var to = b ? webUrl(b.url) : '';
+          if (!to) return;
           box.appendChild(
-            button(b.label || b.signon || b.url, function () {
-              location.href = b.url;
+            button(b.label || b.signon || to, function () {
+              location.href = to;
             })
           );
         })(builds[i]);
@@ -656,6 +659,21 @@
     alive = true;
     if (liveness) clearTimeout(liveness);
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  }
+
+  /*
+   * A build's `url` as an absolute http(s) address, or '' for anything else. The
+   * buttons below navigate THIS page (the site's origin) to it, and a `javascript:`
+   * address there would be script run as the site. `boot.builds` is the site's own
+   * list, but its entries are written by whoever publishes the game.
+   */
+  function webUrl(value) {
+    try {
+      var u = new URL(String(value || ''), location.href);
+      return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : '';
+    } catch (e) {
+      return '';
+    }
   }
 
   function button(label, onclick) {
