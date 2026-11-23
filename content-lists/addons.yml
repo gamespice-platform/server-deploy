@@ -30,7 +30,7 @@ entries:
   - repo: gs-console
     pin: v0.1.14
   - repo: gs-core
-    pin: v0.1.55
+    pin: v0.1.56
   - repo: gs-economy
     pin: v0.1.9
   - repo: gs-effects
