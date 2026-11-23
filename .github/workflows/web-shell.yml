@@ -177,6 +177,14 @@ jobs:
                   ./server export-web --zip
                   cat web/build/shell-inputs.txt
 
+            - name: Keep finished-green addon CI results (each check-ci call spends the shared GitHub quota)
+              if: steps.need.outputs.build == 'true'
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/gs-check-ci
+                  key: gs-check-ci-${{ github.run_id }}
+                  restore-keys: gs-check-ci-
+
             - name: Publish gate (pins, clean stamp, pinned addon CI green)
               if: steps.need.outputs.build == 'true'
               env:
