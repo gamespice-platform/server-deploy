@@ -18,7 +18,7 @@ git init -q --bare "$W/bare/addon-x.git"; g "$X" remote add origin "$W/bare/addo
 # gs-server-deploy with the lock at the pre-rename tag, and its bare origin.
 D="$W/fam/gs-server-deploy"; git init -q -b main "$D"; mkdir -p "$D/tools" "$D/content-lists"
 printf '# lock\naddon-x\tv0.1.0\n' > "$D/addons.lock"; printf 'entries:\n  - repo: addon-x\n    pin: v0.1.0\n' > "$D/content-lists/addons.yml"
-cp "$HERE/pack_ready.sh" "$D/tools/"; g "$D" add -A; g "$D" commit -m lock
+cp "$HERE/pack_ready.sh" "$HERE/check_addon_closure.sh" "$D/tools/"; g "$D" add -A; g "$D" commit -m lock
 git init -q --bare "$W/bare/dsd.git"; g "$D" remote add origin "$W/bare/dsd.git"; g "$D" push -q origin main
 G="$W/fam/game-x"; mkdir -p "$G/addons"; echo 'config_version=5' > "$G/project.godot"; ln -s ../../addon-x/addons/addon_x "$G/addons/addon_x"
 fl() { printf '{"format": 1, "addons": {%s}}\n' "$1" > "$G/requires.floor.json"; }
@@ -41,6 +41,12 @@ fl '"addon_x": 3'; pr
 chk "floor within the lock: ready, exit 0" "[ $? -eq 0 ] && grep -q 'OK         addon_x floor 3 <= 3' out && grep -q 'ready' out"
 printf '# lock\naddon-x\tv0.1.0\n' > "$D/addons.lock"; pr
 chk "a checkout lock behind origin/main is noted, origin/main judged" "[ $? -eq 0 ] && grep -q 'differs from origin/main' out"
+# A locked addon whose script names a class only an unlocked addon defines: not ready, whatever the floors say.
+L="$W/fam/gs-lib"; git init -q -b main "$L"; mkdir -p "$L/addons/gs_lib"; printf 'class_name GSLibThing\nextends Node\n' > "$L/addons/gs_lib/thing.gd"; g "$L" add -A; g "$L" commit -m l; g "$L" tag v0.1.0
+printf 'extends Node\nvar t := GSLibThing.new()\n' > "$X/addons/addon_x/uses.gd"; g "$X" add -A; g "$X" commit -m u; g "$X" tag v0.1.4; g "$X" push -q origin main --tags
+printf '# lock\naddon-x\tv0.1.4\n' > "$D/addons.lock"; g "$D" commit -am dep; g "$D" push -q origin main
+fl '"addon_x": 3'; pr
+chk "a locked addon needing an unlocked one: closure FAIL names both, exit 1" "[ $? -eq 1 ] && grep -q 'addon-x v0.1.4 uses GSLibThing' out && grep -q 'gs-lib' out && grep -q 'not dependency-closed' out"
 "$D/tools/pack_ready.sh" "$W" > "$W/out" 2>&1
 chk "not a game directory: usage, exit 2" "[ $? -eq 2 ] && grep -q usage out"
 echo "test_pack_ready: $PASS passed, $FAIL failed"; [ "$FAIL" = 0 ]

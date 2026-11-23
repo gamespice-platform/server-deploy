@@ -2083,7 +2083,32 @@ do_export_native() {
         [ "$target" = "macos" ] || check_shell_gs_only "$PROJECT/$outdir/$binary"
 
         if [ "$target" = "macos" ]; then
-            cp "$PROJECT/$outdir/$binary" "$PROJECT/$archive"
+            # Godot's zip is deflate; the site's upload path caps one request near 100 MB and the universal binary plus the
+            # pack made 107 MB. bzip2 inside the same .zip is smaller and the app's unzip (zip crate: deflate, bzip2) reads
+            # it; kept only when it is actually smaller. 2026-11-23: the cap still refused the 103 MiB deflate zip.
+            if ! python3 - "$PROJECT/$outdir/$binary" "$PROJECT/$archive" <<'MACOS_BZ2_PY'
+import os, shutil, sys, zipfile
+src, out = sys.argv[1], sys.argv[2]
+with zipfile.ZipFile(src) as zi, zipfile.ZipFile(out + ".tmp", "w") as zo:
+    for i in zi.infolist():
+        n = zipfile.ZipInfo(i.filename, i.date_time)
+        n.external_attr, n.create_system = i.external_attr, i.create_system
+        if i.is_dir():
+            zo.writestr(n, b"")
+            continue
+        n.compress_type, n._compresslevel = zipfile.ZIP_BZIP2, 9
+        with zi.open(i) as f, zo.open(n, "w") as g:
+            shutil.copyfileobj(f, g, 1 << 20)
+if os.path.getsize(out + ".tmp") < os.path.getsize(src):
+    os.replace(out + ".tmp", out)
+else:
+    os.remove(out + ".tmp")
+    shutil.copyfile(src, out)
+MACOS_BZ2_PY
+            then
+                warn "could not repack the macOS zip with bzip2; shipping Godot's deflate zip"
+                cp "$PROJECT/$outdir/$binary" "$PROJECT/$archive"
+            fi
         else
             zip_dir "$PROJECT/$outdir" "$PROJECT/$archive"
         fi

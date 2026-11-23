@@ -95,6 +95,10 @@ for r in rows: print("  " + r)
 json.dump({"game": gname, "bumps": bumps, "tags": tags, "actions": actions}, open(out, "w"))
 PY
 [ $? -eq 0 ] || exit 2
+# A locked addon whose code needs one the lock lacks passes every level check and still breaks the game (2026-11-21).
+CLOSURE_LOCK="$(mktemp)"; git -C "$ROOT" show origin/main:addons.lock > "$CLOSURE_LOCK"
+TMC_SIBLINGS="$FAM" bash "$ROOT/tools/check_addon_closure.sh" "$CLOSURE_LOCK" || { rm -f "$CLOSURE_LOCK"; echo "pack_ready: NOT ready: origin/main's addons.lock is not dependency-closed"; exit 1; }
+rm -f "$CLOSURE_LOCK"
 read -r NB NA < <(python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); print(len(d["bumps"]), len(d["actions"]))' "$OUT")
 if [ "$NB" = 0 ] && [ "$NA" = 0 ]; then echo "pack_ready: ready: every floor is within the shell's lock"; exit 0; fi
 [ "$NA" = 0 ] || python3 -I -c 'import json,sys; [print("pack_ready: fix in the game: " + a) for a in json.load(open(sys.argv[1]))["actions"]]' "$OUT"
