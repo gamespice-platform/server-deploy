@@ -1971,6 +1971,51 @@ if [ "$VENDOR" -eq 1 ] && [ -d "$ADDONS_REPOS" ]; then
     ok "addons/.repos/ removed -- --vendor means this tree carries content, not clones"
 fi
 
+# [b]The pre-rename dot_* addons are retired on every run, not only on a filtered one.[/b]
+# The rename (dot-x -> gs-x, addons/dot_x -> addons/gs_x) kept every script's .uid, so a tree
+# that still holds addons/dot_combat beside addons/gs_combat has two files for one uid://, and
+# a `load("uid://...")` in a gs_ script returned the dot_ script: "Cannot convert argument 1
+# from Object to Object" at construction, then "A module script must extend GSModule" (prod
+# Fatal Contact, 2026-11-23). The unlink pass below cannot reach them: it runs only when a game
+# was dropped (derive_ok), and an egg or container install builds every game. A symlink is
+# removed; a real directory (vendored, or put there by hand) is moved to addons/.retired/, which
+# Godot does not scan; a clean addons/.repos/dot-* clone with its gs-* twin beside it is deleted
+# (a re-run fetches nothing it needs from it). The uid cache is dropped so no stale uid survives.
+# retire_renamed_addons_begin
+retire_renamed_addons() {
+    local d name n=0 repo
+    for d in addons/dot_*; do
+        [ -e "$d" ] || [ -L "$d" ] || continue
+        name="$(basename "$d")"
+        if [ -L "$d" ]; then
+            rm -f "$d"
+        else
+            mkdir -p addons/.retired; [ -f addons/.retired/.gdignore ] || : > addons/.retired/.gdignore
+            rm -rf "addons/.retired/$name"; mv "$d" "addons/.retired/$name"
+        fi
+        n=$((n + 1)); RETIRED_ADDONS+=("$name")
+    done
+    for d in addons/.repos/dot-*; do
+        [ -d "$d" ] || continue
+        repo="$(basename "$d")"
+        [ -d "addons/.repos/gs-${repo#dot-}" ] || continue
+        if [ -d "$d/.git" ] && [ -n "$(git -C "$d" status --porcelain 2>/dev/null)" ]; then
+            warn "addons/.repos/$repo is a pre-rename clone with local changes; left in place (it is not scanned: .gdignore)"
+            continue
+        fi
+        rm -rf "$d"; RETIRED_ADDONS+=(".repos/$repo")
+    done
+    if [ "${#RETIRED_ADDONS[@]}" -gt 0 ]; then
+        rm -f .godot/uid_cache.bin
+        FORCE_IMPORT=1
+        FORCE_IMPORT_WHY="pre-rename dot_* addons were retired (their uids duplicated the gs_* ones)"
+    fi
+}
+# retire_renamed_addons_end
+RETIRED_ADDONS=()
+if [ "$VENDOR" -eq 0 ] || [ -d addons ]; then retire_renamed_addons; fi
+[ "${#RETIRED_ADDONS[@]}" -eq 0 ] || ok "retired pre-rename addons (duplicate uids): ${RETIRED_ADDONS[*]}"
+
 # [b]An addon this build no longer needs is UNLINKED, and that is what makes the
 # derivation mean anything.[/b] Left in place, a box that once built all six keeps all
 # fifty-three in addons/, the import registers every one of their class_name globals, and
