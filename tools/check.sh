@@ -110,7 +110,7 @@ done < <(find host client examples -name '*.gd' 2>/dev/null | sort)
 
 echo
 echo "shell scripts"
-for f in setup.sh tools/server.in docker-entrypoint.sh docker-healthcheck.sh tools/content_trust.sh tools/check_content_trust.sh tools/check.sh tools/check_boot_failures.sh tools/check_default_aliases_boot.sh tools/check_lists.sh tools/check_overrides_seed.sh tools/check_dot_cfg_migrate.sh tools/check_retired_addons.sh tools/check_tickrate.sh tools/check_physics_thread.sh tools/check_malloc_env.sh tools/check_deploy_modes.sh tools/check_self_update.sh tools/check_supervise.sh tools/check_channels.sh tools/check_client_host_only.sh tools/check_shell_addons.sh tools/check_artifact_static.sh tools/artifact_boot_smoke.sh tools/published_artifact_nightly.sh tools/check_addon_closure.sh tools/check_shell_parse.sh tools/shell_lock.sh tools/check_renamed_dirs.sh tools/check_web_export_assets.sh tools/import_defs.sh tools/check_import_defs.sh tools/check_game_listing.sh tools/check_tracked_uids.sh tools/deploy-modes.sh tools/enet_relay_all_games.sh tools/check_mobile.sh tools/fetch-android-sdk.sh tools/publish_gate.sh tools/check_publish_gate.sh tools/check_solo_smoke.sh tools/publish-native-shell.sh tools/publish-web-shell.sh; do
+for f in setup.sh tools/server.in docker-entrypoint.sh docker-healthcheck.sh tools/content_trust.sh tools/check_content_trust.sh tools/check.sh tools/check_boot_failures.sh tools/check_default_aliases_boot.sh tools/check_lists.sh tools/check_overrides_seed.sh tools/check_dot_cfg_migrate.sh tools/check_retired_addons.sh tools/check_tickrate.sh tools/check_physics_thread.sh tools/check_malloc_env.sh tools/check_deploy_modes.sh tools/check_self_update.sh tools/check_supervise.sh tools/check_channels.sh tools/check_client_host_only.sh tools/check_shell_addons.sh tools/check_artifact_static.sh tools/artifact_boot_smoke.sh tools/published_artifact_nightly.sh tools/check_addon_closure.sh tools/check_shell_parse.sh tools/shell_lock.sh tools/check_renamed_dirs.sh tools/check_web_export_assets.sh tools/import_defs.sh tools/check_import_defs.sh tools/check_game_listing.sh tools/check_tracked_uids.sh tools/deploy-modes.sh tools/enet_relay_all_games.sh tools/check_mobile.sh tools/fetch-android-sdk.sh tools/publish_gate.sh tools/release-shell.sh tools/check_release_shell.sh tools/check_publish_gate.sh tools/check_solo_smoke.sh tools/publish-native-shell.sh tools/publish-web-shell.sh; do
     [ -f "$f" ] || continue
     if bash -n "$f" 2>/dev/null; then
         printf '  %sok%s   %s\n' "$GRN" "$OFF" "$f"
@@ -156,6 +156,7 @@ bash tests/test_artifact_static.sh || fails=$((fails + 1))   # the artifact gate
 bash tests/test_shell_import.sh || fails=$((fails + 1))   # an import abort after the class cache is a quit-time crash; before it, retried loudly
 bash tests/test_setup_import_retry.sh || fails=$((fails + 1))   # setup.sh runs a crashed import again
 bash tests/test_artifact_boot_retry.sh || fails=$((fails + 1))   # the boot smoke retries only a dropped origin connection
+bash tools/check_release_shell.sh || fails=$((fails + 1))
 bash tools/check_renamed_dirs.sh || fails=$((fails + 1))
 [ -f web/build/embed.html ] && { bash tools/check_web_export_assets.sh || fails=$((fails + 1)); }
 bash tools/check_import_defs.sh tools/check_game_listing.sh || fails=$((fails + 1))
