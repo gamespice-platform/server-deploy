@@ -4,7 +4,7 @@ extends Node
 ## `game.yml` reader against the host's, the shell's map list against the stock server one, and the
 ## session a game reads its map packs from. godot --headless --path .
 
-const CHECKS := 107
+const CHECKS := 116
 
 ## Every game repository, beside this project or in games/: the repositories of cfg/content/games.yml (shipped content-lists/games.yml).
 
@@ -40,6 +40,7 @@ func _ready() -> void:
 	_test_sim_child_args()
 	_test_requires_reader()
 	_test_pack_holds_dir()
+	await _test_legacy_requirements()
 	_test_overlay_blocked()
 	# Last: it mounts a pack, which nothing unmounts.
 	_test_overlay_in_place()
@@ -424,6 +425,34 @@ func _test_requires_reader() -> void:
 	_check(not (shell.solo_addons_in('{"addons": {"../x": 1, "a/b": 1, "ok": 1}}') as Dictionary).has("../x")
 			and not (shell.solo_addons_in('{"addons": {"a/b": 1}}') as Dictionary).has("a/b"),
 		"a name that is a path is dropped")
+	_done()
+
+
+## FC's real prod requires.json (published before the dot to gs rename) lists dot_* addons the shell carries as gs_*. No gs-* addon pack is
+## published, so fetching one failed "has no published version" and stopped web solo. Each must resolve to the built-in with zero pack fetches.
+const PROD_FC_REQUIRES := '{"addons": {"dot_achievements": 3, "dot_audio": 5, "dot_core": 12, "dot_net": 7, "dot_cloud": 20, "gs_ui": 13, "fc_weapons": 32}}'
+
+
+func _test_legacy_requirements() -> void:
+	_section("legacy dot_* requirements resolve to the shell's gs_* addons with no pack fetch")
+	var shell := load("res://client/tmc_shell_solo.gd") as GDScript
+	var needs: Dictionary = shell.solo_addons_in(PROD_FC_REQUIRES)
+	_check(needs.size() == 7, "the prod requirement list is read whole", str(needs))
+	var fetched: PackedStringArray = []
+	for dir: String in needs:
+		if not shell.shell_carries(dir):
+			fetched.append(dir)
+	for dir in ["dot_achievements", "dot_audio", "dot_core", "dot_net", "dot_cloud"]:
+		_check(shell.shell_carries(dir), "%s is carried as %s" % [dir, GSCloudLegacyRequirements.modern_name(dir)])
+	_check("gs_ui" in needs and shell.shell_carries("gs_ui"), "a gs_ name is carried as it is")
+	# Negative: what the shell does not carry still goes to the pack fetch, legacy-named or not.
+	var dot_fetched := fetched.duplicate()
+	for d in fetched:
+		if not d.begins_with("dot_"):
+			dot_fetched.remove_at(dot_fetched.find(d))
+	_check(dot_fetched.is_empty(), "no legacy dot_* requirement goes to the pack fetch", str(fetched))
+	_check(not shell.shell_carries("zzz_not_an_addon") and not shell.shell_carries("dot_zzz_not_an_addon"),
+		"an addon the shell lacks, legacy-named or not, is not carried")
 	_done()
 
 

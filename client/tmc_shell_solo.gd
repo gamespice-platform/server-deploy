@@ -454,6 +454,15 @@ static func solo_addons_in(text: String) -> Dictionary:
 	return out
 
 
+## Whether this shell carries the addon a pack names as [param dir]: `res://addons/<dir>`, or the gs name of a legacy one (prod packs published before the
+## dot to gs rename still list `dot_achievements`; the shell carries `gs_achievements`, and no `gs-*` addon pack is published to fetch instead).
+## Read only: [method GSCloudLegacyRequirements.modern_name] maps the name; nothing writes the old one.
+static func shell_carries(dir: String) -> bool:
+	var modern := GSCloudLegacyRequirements.modern_name(dir)
+	return DirAccess.dir_exists_absolute("res://addons/%s" % dir) or DirAccess.dir_exists_absolute("res://addons/%s" % modern) \
+		or GSAddonApi.installed(modern)
+
+
 ## The addons a solo game needs that this shell does not carry, as the announce a server would send (`announce`), which of them the player's subscription
 ## supplied (`from_subscription`: dir -> id), and which no published pack holds (`unpublished`: dir -> why, see [method pack_holds_dir]).
 func _collect_solo_announce(content_id: String, needs: Dictionary, subscribed: Array) -> Dictionary:
@@ -473,7 +482,7 @@ func _collect_solo_announce(content_id: String, needs: Dictionary, subscribed: A
 		if from_subscription.has(dir):
 			# The game needs what the player subscribed to; the subscription's checked version serves both.
 			continue
-		if DirAccess.dir_exists_absolute("res://addons/%s" % dir):
+		if shell_carries(dir):
 			continue
 		var pack := TmcAddonNamespaces.pack_for(dir)
 		var latest: GSResult = await TmcSolo.resolve_latest(shell, str(pack["id"]), shell._cloud.http_base_urls)
