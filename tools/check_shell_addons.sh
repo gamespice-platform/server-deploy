@@ -23,7 +23,6 @@ bad() { printf '  FAIL %s\n' "$1"; fails=$((fails + 1)); }
 dir_of() {
     case "$1" in
         zee-gs-weapons) echo zee_weapons ;;
-        zed-gs-weapons) echo zed_weapons ;;
         # Both names: fc-weapons holds fc_weapons, its tags up to v1.4.51 the legacy arena_weapons.
         fc-weapons|arena-weapons) echo fc_weapons arena_weapons ;;
         *) echo "${1//-/_}" ;;
@@ -31,7 +30,7 @@ dir_of() {
 }
 
 # Game addons: one game's own, never in a shell (the owner's rule; fc-weapons is Fatal Contact's).
-GAME_ADDONS="fc-weapons arena-weapons zee-gs-weapons zed-gs-weapons natural-disasters"
+GAME_ADDONS="fc-weapons arena-weapons zee-gs-weapons zz-modern-weapons natural-disasters"
 
 [ -f tools/shell-addons.list ] && good "tools/shell-addons.list exists" || bad "no tools/shell-addons.list"
 mapfile -t allowed < <(sed 's/#.*//; s/[[:space:]]//g; /^$/d' tools/shell-addons.list 2>/dev/null)

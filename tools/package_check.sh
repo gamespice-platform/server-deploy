@@ -90,7 +90,7 @@ echo "staging"
 # GitHub into the staging directory -- proving something about GitHub rather than about
 # the working tree, which is the thing this script exists not to do. It surfaced only when
 # three addons were added that had not been pushed yet, and so could not be cloned.
-# `zee_weapons` and `zed_weapons` are the names whose repositories are not the names with hyphens -- see
+# `zee_weapons` is the name whose repository is not the name with hyphens -- see
 # `addon_repo` in setup.sh -- and `gs_` alone never matched it either.
 . "$ROOT/tools/content_lists.sh"
 mapfile -t STAGE_REPOS < <(

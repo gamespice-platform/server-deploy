@@ -87,7 +87,7 @@ func _test_addon_announce() -> void:
 	_check(spaces.size() == TmcAddonNamespaces.DEFAULTS.size() + 1 and TmcAddonNamespaces.covers(spaces, "alice/gs-x") and not TmcAddonNamespaces.covers(spaces, "alicia/gs-x"), "operator namespaces extend the defaults; owner prefix needs the slash")
 	_check(TmcAddonNamespaces.parse_lines("# c\nalice/ # me\n\n") == PackedStringArray(["alice/"]), "the namespaces file is one entry per line with comments")
 	_check(TmcAddonNamespaces.covers(TmcAddonNamespaces.DEFAULTS, "gamemann/arena-weapons") and not TmcAddonNamespaces.covers(TmcAddonNamespaces.DEFAULTS, "gamemann/arena-weapons-evil"), "the defaults keep their exact-id entries exact")
-	for dir: String in ["fc_weapons", "zee_weapons", "zed_weapons", "natural_disasters"]:
+	for dir: String in ["fc_weapons", "zee_weapons", "zz_modern_weapons", "natural_disasters"]:
 		var id := str(TmcAddonNamespaces.pack_for(dir)["id"])
 		_check(str(TmcAddonNamespaces.pack_for(dir)["repo"]) == id.get_file(), "%s's pack repo is its id's name, as the addon set requires" % dir)
 		_check(TmcAddonNamespaces.dir_for(id.get_file()) == dir and TmcAddonNamespaces.dir_for(TmcAddonNamespaces.lock_repo(dir)) == dir, "%s round-trips through its pack and lock names" % dir)
@@ -114,9 +114,9 @@ func _addon_announce_scope(out: Array) -> void:
 	_check(TmcAddonSet.union_needs([{"a": 1}, {"a": 2, "b": 1}]) == {"a": 2, "b": 1}, "the needs of the current and the next game are unioned at the higher level")
 	_check(TmcAddonSet.union_needs([{"a": 1}, null]) == null, "one game with unknown needs makes the union unknown")
 	var told := [{"dir": "gs_core", "version": "0.1.30"}]
-	var next := [{"dir": "gs_core", "version": "0.1.30"}, {"dir": "zed_weapons", "version": "0.2.0"}]
+	var next := [{"dir": "gs_core", "version": "0.1.30"}, {"dir": "zz_modern_weapons", "version": "0.2.0"}]
 	var fresh := TmcAddonSet.added(told, next)
-	_check(fresh.size() == 1 and fresh[0]["dir"] == "zed_weapons", "a client is sent only what it was not told")
+	_check(fresh.size() == 1 and fresh[0]["dir"] == "zz_modern_weapons", "a client is sent only what it was not told")
 	_check(TmcAddonSet.added(next, told).is_empty() and TmcAddonSet.added(told, [{"dir": "gs_core", "version": "0.1.31"}]).size() == 1, "a narrower set adds nothing; a new version of a told addon does")
 	_check(TmcConfig.check_addons_announce("all").ok and TmcConfig.check_addons_announce("game").ok, "addons_announce takes all and game")
 	_check(not TmcConfig.check_addons_announce("gam").ok and not TmcConfig.check_addons_announce("").ok, "any other addons_announce refuses boot")

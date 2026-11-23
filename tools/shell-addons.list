@@ -4,7 +4,7 @@
 # tools/check_shell_addons.sh use. Only these go into a shell build and its addons.lock; every other addons.lock line
 # is for servers only, and its addon reaches a player as a gs-cloud overlay pack (GSCloudAddonSet).
 #
-# OWNER RULE: no game addon here, ever. fc-weapons, zee-gs-weapons, zed-gs-weapons, natural-disasters and anything else one
+# OWNER RULE: no game addon here, ever. fc-weapons, zee-gs-weapons, zz-modern-weapons, natural-disasters and anything else one
 # game brings stay out of the shell: baked in, fc-weapons took the web pck from 44 MB to 147 MB, and a shell that carries a
 # game's addon pins every game to that build's copy. tools/check_shell_addons.sh fails when this list names anything but a
 # gs-* addon, or when addons.lock names a gs-* addon this list does not (add it here when the shell should carry it).

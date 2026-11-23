@@ -50,8 +50,8 @@ func _run() -> void:
 
 	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://dist/tmc/zombiezone")) \
 			or not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://dist/tmc/zombiezone_maps")) \
-			or not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://addons/zed_weapons")):
-		print("skipped: dist/tmc/zombiezone, dist/tmc/zombiezone_maps or addons/zed_weapons is not here")
+			or not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path("res://addons/zz_modern_weapons")):
+		print("skipped: dist/tmc/zombiezone, dist/tmc/zombiezone_maps or addons/zz_modern_weapons is not here")
 		print("  ./server pack zombiezone_maps --source games/zombie-zone-maps")
 		print("  ./server pack zombiezone --source games/game-zombie-zone")
 		get_tree().quit(0)

@@ -126,7 +126,6 @@ cmd_check() {
         ref="$(awk -v r="$repo" '$1 == r { print $2 }' "$LOCK")"
         name="${repo//-/_}"
         [ "$repo" = "zee-gs-weapons" ] && name="zee_weapons"
-        [ "$repo" = "zed-gs-weapons" ] && name="zed_weapons"
         # fc-weapons moved addons/arena_weapons to addons/fc_weapons: whichever setup.sh linked
         # (it follows the checkout's ref) is checked; the legacy one is deprecated and said so.
         if [ "$repo" = "fc-weapons" ]; then

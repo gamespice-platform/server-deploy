@@ -155,7 +155,7 @@ entries:
     pin: v0.3.6
   - repo: natural-disasters
     pin: v0.1.5
-  - repo: zed-gs-weapons
-    pin: v0.1.16
   - repo: zee-gs-weapons
     pin: v0.1.68
+  - repo: zz-modern-weapons
+    pin: v0.1.7

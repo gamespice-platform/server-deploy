@@ -220,16 +220,14 @@ $addons = @('gs_core','gs_log','gs_net','gs_game','gs_entity','gs_server','gs_se
             'gs_vehicle','gs_achievements','gs_objective','gs_effects','gs_spectate','gs_economy','gs_settings','gs_console',
             'gs_audio','gs_fx','gs_lighting','gs_weather','gs_procedural_generation','gs_inventory','gs_peer_to_peer','gs_weapon','gs_physics',
             'gs_spawn','gs_team','gs_player','gs_player_class','gs_player_char','zee_weapons','gs_party','gs_matchmaking',
-            'gs_locale','gs_replay','gs_friends','gs_sql','gs_menu','gs_mobile','gs_bot','zed_weapons','gs_radio','gs_trail','gs_flashlight','gs_bot_record','gs_workbench','natural_disasters','fc_weapons','gs_sim','gs_animation','gs_camera','gs_input','gs_save')
+            'gs_locale','gs_replay','gs_friends','gs_sql','gs_menu','gs_mobile','gs_bot','gs_radio','gs_trail','gs_flashlight','gs_bot_record','gs_workbench','natural_disasters','fc_weapons','gs_sim','gs_animation','gs_camera','gs_input','gs_save','zz_modern_weapons')
 
 # The repository an addon lives in: setup.sh's addon_repo(), exception for exception (also
-# compared by tools/check_lists.sh). The weapons packs (zee_weapons -> zee-gs-weapons,
-# zed_weapons -> zed-gs-weapons) are the names that are not themselves with hyphens; the bare
+# compared by tools/check_lists.sh). The weapons packs (zee_weapons -> zee-gs-weapons) is the names that are not themselves with hyphens; the bare
 # -replace this used to be would have looked for zee-weapons.
 function Get-AddonRepo([string]$name) {
     switch ($name) {
         'zee_weapons' { return 'zee-gs-weapons' }
-        'zed_weapons' { return 'zed-gs-weapons' }
         'fc_weapons'    { return 'fc-weapons' }
         'arena_weapons' { return 'fc-weapons' }
         default       { return ($name -replace '_', '-') }

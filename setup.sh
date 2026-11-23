@@ -1502,7 +1502,6 @@ ADDONS_ALL=()
 while IFS= read -r _repo; do
     case "$_repo" in
         zee-gs-weapons) ADDONS_ALL+=(zee_weapons) ;;
-        zed-gs-weapons) ADDONS_ALL+=(zed_weapons) ;;
         # fc_weapons, or the legacy arena_weapons where the locked ref still holds it: settle_renamed_dirs.
         fc-weapons|arena-weapons) ADDONS_ALL+=(fc_weapons) ;;
         *)               ADDONS_ALL+=("${_repo//-/_}") ;;
@@ -1517,7 +1516,6 @@ while IFS=$'\t' read -r _repo _pin; do
     [ -n "$_repo" ] || continue
     case "$_repo" in
         zee-gs-weapons) _dir=zee_weapons ;;
-        zed-gs-weapons) _dir=zed_weapons ;;
         fc-weapons|arena-weapons) _dir=arena_weapons ;;
         *) _dir="${_repo//-/_}" ;;
     esac
@@ -1692,7 +1690,6 @@ ADDONS_CLONE_DEST="${ADDONS_DIR:-$ADDONS_REPOS}"
 addon_repo() {
     case "$1" in
         zee_weapons) printf 'zee-gs-weapons\n' ;;
-        zed_weapons) printf 'zed-gs-weapons\n' ;;
         fc_weapons)    printf 'fc-weapons\n' ;;
         arena_weapons) printf 'fc-weapons\n' ;;
         *)           printf '%s\n' "${1//_/-}" ;;

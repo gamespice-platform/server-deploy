@@ -6,7 +6,7 @@ extends RefCounted
 ## The organisation's (both its ids), and the game addons published under their author (the weapons packs, natural-disasters).
 ## A shell carries none of those (it is gs-* addons only), so these are what it fetches them under when a server announces them.
 ## `modcommunity/` and `gamemann/arena-weapons` (fc-weapons' old id) stay for servers that still announce the old ids.
-const DEFAULTS: PackedStringArray = ["gamespice-platform/", "modcommunity/", "gamemann/zee-gs-weapons", "gamemann/zed-gs-weapons", "gamemann/fc-weapons", "gamemann/arena-weapons", "gamemann/natural-disasters", "gamemann/gs-trail", "gamemann/gs-radio"]
+const DEFAULTS: PackedStringArray = ["gamespice-platform/", "modcommunity/", "gamemann/zee-gs-weapons", "gamemann/zz-modern-weapons", "gamemann/fc-weapons", "gamemann/arena-weapons", "gamemann/natural-disasters", "gamemann/gs-trail", "gamemann/gs-radio"]
 
 ## Old repository names a lock or content list may still use, to the current one (fc-weapons was arena-weapons).
 const PUBLISHED_AS := {"arena-weapons": "fc-weapons"}
@@ -108,8 +108,6 @@ static func load_shell() -> PackedStringArray:
 static func lock_repo(dir: String) -> String:
 	if dir == "zee_weapons":
 		return "zee-gs-weapons"
-	if dir == "zed_weapons":
-		return "zed-gs-weapons"
 	if dir == "fc_weapons" or is_legacy_dir(dir):
 		return "fc-weapons"
 
@@ -123,8 +121,6 @@ static func dir_for(repo: String, version: String = "") -> String:
 
 	if lock == "zee-gs-weapons":
 		dir = "zee_weapons"
-	elif lock == "zed-gs-weapons":
-		dir = "zed_weapons"
 
 	if LEGACY_DIRS.has(dir) and holds_legacy(lock, version):
 		var legacy := str(LEGACY_DIRS[dir])
