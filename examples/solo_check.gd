@@ -4,7 +4,7 @@ extends Node
 ## `game.yml` reader against the host's, the shell's map list against the stock server one, and the
 ## session a game reads its map packs from. godot --headless --path .
 
-const CHECKS := 127
+const CHECKS := 129
 
 ## Every game repository, beside this project or in games/: the repositories of cfg/content/games.yml (shipped content-lists/games.yml).
 
@@ -524,6 +524,12 @@ func _test_pack_holds_dir() -> void:
 		"a pack that is the addon itself (plugin.cfg at its root) supplies any directory")
 	_check(shell.pack_holds_dir("zee_weapons", "gamemann/zee-gs-weapons", "0.1.66", PackedStringArray(["README.md"])).contains("holds no addon"),
 		"a pack with no plugin.cfg supplies nothing")
+	# Prop Hunt / Playlot / Zombie Zone need zee_weapons: it must resolve to the zee-gs-weapons pack and that pack's layout must be accepted.
+	var zee := PackedStringArray(["LICENSE", "addons/zee_weapons/plugin.cfg", "addons/zee_weapons/zee_weapons_api.gd"])
+	_check(TmcAddonNamespaces.lock_repo("zee_weapons") == "zee-gs-weapons",
+		"zee_weapons is published as zee-gs-weapons", TmcAddonNamespaces.lock_repo("zee_weapons"))
+	_check(shell.pack_holds_dir("zee_weapons", "gamemann/zee-gs-weapons", "0.1.68", zee) == "",
+		"zee-gs-weapons 0.1.68 supplies zee_weapons: the solo overlay is not refused as 'needs zee-weapons'")
 	# The same rule the overlay mounts by, so the two cannot drift apart.
 	var overlay := load("res://addons/gs_cloud/addon_set/gs_cloud_addon_set_overlay.gd") as GDScript
 	var agree := true
