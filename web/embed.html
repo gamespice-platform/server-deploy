@@ -226,10 +226,44 @@
    * derived over there: `{pending:true}` means keep waiting, `{}` means give up
    * and play as a guest.
    */
-  window.__TMC_AUTH__ = framed ? { pending: true } : {};
+  /*
+   * WHO MAY FRAME US, as far as this page can tell.
+   *
+   * The real control is the `frame-ancestors` header of the origin this page is
+   * served from (web/README.md, "The headers"); a host that forgot it would
+   * otherwise leave the handoff open to any site. Two checks that need no header:
+   *
+   *   * `FRAME_ORIGINS`, stamped at export from `TMC_SITE_ORIGINS` (tools/server.in
+   *     stamp_embed_guards). Empty = any parent, which is what an unstamped or
+   *     self-hosted build is. Listed = only those origins are answered and heard.
+   *   * the parent's own origin, where the browser says it (`ancestorOrigins`):
+   *     a message has to come from that origin, and the ping is sent to it and
+   *     not to "*".
+   */
+  var FRAME_ORIGINS = /*TMC_FRAME_ORIGINS*/[];
+  var parentOrigin = null;
+  try {
+    if (framed && location.ancestorOrigins && location.ancestorOrigins.length)
+      parentOrigin = String(location.ancestorOrigins[0]);
+  } catch (e) {
+    /* No ancestorOrigins here (Firefox). The stamped list still applies. */
+  }
+
+  function parentAllowed(origin) {
+    if (parentOrigin && origin !== parentOrigin) return false;
+    return !FRAME_ORIGINS.length || FRAME_ORIGINS.indexOf(origin) >= 0;
+  }
+
+  // A parent that is known and not listed never signs anybody in: guest at once.
+  var parentRefused = framed && !!parentOrigin && !parentAllowed(parentOrigin);
+
+  window.__TMC_AUTH__ = framed && !parentRefused ? { pending: true } : {};
+  // Read by the browser checks (tools/embed_guards_check.mjs).
+  window.__TMC_PARENT__ = { origin: parentOrigin, refused: parentRefused };
 
   window.addEventListener("message", function (event) {
     if (event.source !== window.parent) return;
+    if (parentRefused || !parentAllowed(event.origin)) return;
 
     var data = event.data;
     if (!data || data.type !== "tmc.auth") return;
@@ -237,9 +271,13 @@
     window.__TMC_AUTH__ = data.auth || {};
   });
 
-  if (framed) {
+  if (framed && !parentRefused) {
+    // To the parent's origin when it is known, else to each listed origin (only the
+    // real one receives it), else to anybody: the ping itself says nothing.
+    var targets = parentOrigin ? [parentOrigin] : FRAME_ORIGINS.length ? FRAME_ORIGINS : ["*"];
     try {
-      window.parent.postMessage({ type: "tmc.auth.ready" }, "*");
+      for (var t = 0; t < targets.length; t++)
+        window.parent.postMessage({ type: "tmc.auth.ready" }, targets[t]);
     } catch (e) {
       /* A parent that will not take a message. Play as a guest. */
       window.__TMC_AUTH__ = {};
@@ -260,6 +298,26 @@
   // becomes a link to theirs
   // -- and the shell is a real client, so "theirs" would be a server collecting names
   // and chat from people who thought they were on yours.
+  //
+  // `SERVER_HOSTS` is stamped at export from `TMC_SERVER_HOSTS` (tools/server.in
+  // stamp_embed_guards): host names, `*.example.com` for a domain's subdomains. Empty =
+  // any host, which is what a build that serves every listed server needs; listed = an
+  // address outside it is refused in words, never swapped for another server.
+  var SERVER_HOSTS = /*TMC_SERVER_HOSTS*/[];
+  var serverRefused = "";
+
+  function serverHostAllowed(host) {
+    if (!SERVER_HOSTS.length) return true;
+    host = host.toLowerCase();
+    for (var i = 0; i < SERVER_HOSTS.length; i++) {
+      var want = SERVER_HOSTS[i];
+      if (want === host) return true;
+      if (want.indexOf("*.") === 0 && host.length > want.length - 1 &&
+          host.slice(host.length - (want.length - 1)) === want.slice(1)) return true;
+    }
+    return false;
+  }
+
   function serverFromQuery() {
     var raw = new URLSearchParams(location.search).get("server");
     if (!raw) return SERVER_DEFAULT;
@@ -267,6 +325,12 @@
     try {
       var url = new URL(raw);
       if (url.protocol !== "wss:" && url.protocol !== "ws:") return SERVER_DEFAULT;
+      // An address with a name and password in it is never one of ours.
+      if (url.username || url.password) return SERVER_DEFAULT;
+      if (!serverHostAllowed(url.hostname)) {
+        serverRefused = url.hostname;
+        return SERVER_DEFAULT;
+      }
       return url.toString();
     } catch (e) {
       return SERVER_DEFAULT;
@@ -274,6 +338,15 @@
   }
 
   var server = serverFromQuery();
+  // Read by the browser checks (tools/embed_guards_check.mjs).
+  window.__TMC_SERVER__ = { address: server, refused: serverRefused };
+
+  if (serverRefused) {
+    message.textContent = "This page does not connect to that server.";
+    detail.className = "error";
+    detail.textContent = serverRefused + " is not a server this page was built for.";
+    return;
+  }
 
   // POWERED BY TMC links to the TMC site this build signs in against (client/auth.json's
   // backbone_url), stamped at export by tools/server.in; never a host written here. An

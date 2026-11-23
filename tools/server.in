@@ -1389,6 +1389,41 @@ stamp_tmc_site() {
     return 0
 }
 
+## Who may frame the boot page and which servers it connects to, written into embed.html's
+## `/*TMC_FRAME_ORIGINS*/[]` and `/*TMC_SERVER_HOSTS*/[]`. Both are optional and empty means
+## "any" (a self-hosted or dev export): `TMC_SITE_ORIGINS` is the list deploy/install-game-origin.sh
+## turns into `frame-ancestors` (origins, space separated), `TMC_SERVER_HOSTS` is host names
+## (`*.example.com` for subdomains). A value that is not exactly that shape stops the export:
+## it would otherwise be script in the page, or a guard that silently guards nothing.
+stamp_embed_guards() {
+    local build="$1" item json items
+    [ -f "$build/embed.html" ] || return 0
+    # read -a, not an unquoted expansion: a `*` in the value must reach the test below
+    # as a `*`, not as the names of the files in this directory.
+    if [ -n "${TMC_SITE_ORIGINS:-}" ]; then
+        json=""
+        read -ra items <<< "$TMC_SITE_ORIGINS"
+        for item in "${items[@]}"; do
+            [[ "$item" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]+)?$ ]] \
+                || die "TMC_SITE_ORIGINS: '$item' is not an origin (https://host or https://host:port, no path)." 3
+            json="$json${json:+,}\"$item\""
+        done
+        sed -i "s#/\*TMC_FRAME_ORIGINS\*/\[\]#[$json]#" "$build/embed.html"
+    fi
+    if [ -n "${TMC_SERVER_HOSTS:-}" ]; then
+        json=""
+        read -ra items <<< "$TMC_SERVER_HOSTS"
+        for item in "${items[@]}"; do
+            item="${item,,}"
+            [[ "$item" =~ ^(\*\.)?[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]] \
+                || die "TMC_SERVER_HOSTS: '$item' is not a host name (game.example.com or *.example.com, no scheme or port)." 3
+            json="$json${json:+,}\"$item\""
+        done
+        sed -i "s#/\*TMC_SERVER_HOSTS\*/\[\]#[$json]#" "$build/embed.html"
+    fi
+    return 0
+}
+
 ## [b]The web build runs gs-sim natively[/b] (TMC_WEB_NATIVE, on by default): the Web preset
 ## exports with the dlink nothreads template (variant/extensions_support=true), which loads
 ## GDExtension side modules, and the pck carries addons/gs_sim/gs_sim.gdextension with a
@@ -2230,6 +2265,7 @@ case "$COMMAND" in
         # embed.html: the engine's progress callback only has a total when it is given one.
         stamp_file_sizes "$PROJECT/web/build"
         stamp_tmc_site "$PROJECT/web/build"
+        stamp_embed_guards "$PROJECT/web/build"
         check_embed_stamped "$PROJECT/web/build"
 
         # And the loader website-city uploads, with the engine's location baked in.
