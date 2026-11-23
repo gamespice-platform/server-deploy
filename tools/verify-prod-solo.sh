@@ -45,6 +45,9 @@ analyse_launch() {
     fi
     if ! grep -q "solo game started" "$log"; then
         echo "never logged 'solo game started'"
+        local miss
+        miss="$(grep -c "a game addon this solo game needs is not published" "$log")"
+        [ "$miss" -eq 0 ] || echo "$miss game addon pack(s) the solo game needs are not published on this origin (legacy dot_* addons?)"
     fi
     if [ "$which" = second ]; then
         local dl
