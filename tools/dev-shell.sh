@@ -13,6 +13,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 backbone=https://tmcdev.net publish=1 key=${DEV_PACK_KEY:-$HOME/.config/gs/pack-dev.pub}
+# A machine whose config dir predates the dot -> gs rename keeps the key beside its tokens in ~/.config/dot.
+[ -f "$key" ] || [ -n "${DEV_PACK_KEY:-}" ] || ! [ -f "$HOME/.config/dot/pack-dev.pub" ] || key=$HOME/.config/dot/pack-dev.pub
 while [ $# -gt 0 ]; do
     case $1 in
         --backbone) backbone=${2:?--backbone needs a URL}; shift 2 ;;
