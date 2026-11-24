@@ -12,7 +12,7 @@ entries:
   - repo: gs-audio
     pin: v0.1.25
   - repo: gs-auth
-    pin: v0.1.18
+    pin: v0.1.19
   - repo: gs-bot
     pin: v0.1.34
   - repo: gs-bot-record
@@ -30,7 +30,7 @@ entries:
   - repo: gs-console
     pin: v0.1.14
   - repo: gs-core
-    pin: v0.1.59
+    pin: v0.1.60
   - repo: gs-economy
     pin: v0.1.9
   - repo: gs-effects
@@ -92,7 +92,7 @@ entries:
   - repo: gs-player
     pin: v0.1.8
   - repo: gs-player-char
-    pin: v0.1.78
+    pin: v0.1.79
   - repo: gs-player-class
     pin: v0.1.12
   - repo: gs-player-controller
@@ -130,11 +130,11 @@ entries:
   - repo: gs-sql
     pin: v0.1.9
   - repo: gs-stats
-    pin: v0.1.22
+    pin: v0.1.23
   - repo: gs-team
     pin: v0.1.12
   - repo: gs-timer
-    pin: v0.1.15
+    pin: v0.1.16
   - repo: gs-ui
     pin: v0.3.2
   - repo: gs-user

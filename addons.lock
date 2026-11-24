@@ -5,7 +5,7 @@ gs-2d	v0.1.10
 gs-achievements	v0.1.15
 gs-animation	v0.2.3
 gs-audio	v0.1.25
-gs-auth	v0.1.18
+gs-auth	v0.1.19
 gs-bot	v0.1.34
 gs-bot-record	v0.1.7
 gs-browser	v0.1.12
@@ -14,7 +14,7 @@ gs-chat	v0.1.10
 gs-cloud	v0.1.64
 gs-combat	v0.1.25
 gs-console	v0.1.14
-gs-core	v0.1.59
+gs-core	v0.1.60
 gs-economy	v0.1.9
 gs-effects	v0.1.12
 gs-entity	v0.1.12
@@ -45,7 +45,7 @@ gs-peer-to-peer	v0.1.7
 gs-physics	v0.1.13
 gs-platform	v0.1.13
 gs-player	v0.1.8
-gs-player-char	v0.1.78
+gs-player-char	v0.1.79
 gs-player-class	v0.1.12
 gs-player-controller	v0.4.18
 gs-procedural-generation	v0.1.7
@@ -63,9 +63,9 @@ gs-sim	v0.2.12
 gs-spawn	v0.2.7
 gs-spectate	v0.1.14
 gs-sql	v0.1.9
-gs-stats	v0.1.22
+gs-stats	v0.1.23
 gs-team	v0.1.12
-gs-timer	v0.1.15
+gs-timer	v0.1.16
 gs-trail	v0.1.8
 gs-ui	v0.3.2
 gs-user	v0.1.9
