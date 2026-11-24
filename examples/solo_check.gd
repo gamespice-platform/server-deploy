@@ -4,7 +4,7 @@ extends Node
 ## `game.yml` reader against the host's, the shell's map list against the stock server one, and the
 ## session a game reads its map packs from. godot --headless --path .
 
-const CHECKS := 142
+const CHECKS := 149
 
 ## Every game repository, beside this project or in games/: the repositories of cfg/content/games.yml (shipped content-lists/games.yml).
 
@@ -517,6 +517,24 @@ func _test_gather() -> void:
 	_check((await TmcGather.run([])).is_empty(), "no calls return at once")
 	var fast: Array = await TmcGather.run([_slow.bind(0, 1), func() -> int: return 2])
 	_check(fast == [1, 2], "a plain function and a coroutine mix", str(fast))
+	var one: Array = await TmcGather.run([_slow.bind(10, "only")])
+	_check(one == ["only"], "one call", str(one))
+	var many: Array = []
+	for i in 12:
+		many.append(_slow.bind(i % 3 * 10, i))
+	var many_out: Array = await TmcGather.run(many)
+	_check(many_out == range(12), "twelve calls keep their order", str(many_out))
+	var failed: Array = await TmcGather.run([_slow.bind(5, GSResult.fail(GSError.CODE_STATE, "boom")), _slow.bind(20, "fine")])
+	_check(failed.size() == 2 and not (failed[0] as GSResult).ok and failed[1] == "fine", "a failing call still lets the rest finish", str(failed))
+	var instant: Array = await TmcGather.run([func() -> int: return 1, func() -> int: return 2, func() -> int: return 3])
+	_check(instant == [1, 2, 3], "calls that finish at once return at once", str(instant))
+	var t1 := Time.get_ticks_msec()
+	var stuck: Array = await TmcGather.run([_slow.bind(10, "quick"), _slow.bind(5000, "stuck")], 200)
+	var stuck_took := Time.get_ticks_msec() - t1
+	_check(stuck[0] == "quick" and stuck[1] == null, "a call past the timeout is left null, the rest kept", str(stuck))
+	_check(stuck_took < 1500, "the timeout ends the wait", "%d ms" % stuck_took)
+	var unlimited: Array = await TmcGather.run([_slow.bind(300, "late")], 0)
+	_check(unlimited == ["late"], "timeout 0 waits without limit", str(unlimited))
 	_done()
 
 

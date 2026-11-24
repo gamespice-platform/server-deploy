@@ -250,6 +250,11 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 	# the Workshop plan reads provides.json and asks the site. Different files and hosts, so they run at once. The plan only registers
 	# downloads with the launch job (none starts before _prefetch_solo), so a refused game still fetches nothing.
 	_set_status("shell.solo.preparing", "Preparing %s…", 0.05)
+	# Start the content client before two calls share it: GSCloudClient.start() is not re-entrant, and two first calls each ran it, opening
+	# the cache store twice. On the web the second open never answered, so the launch hung here.
+	var started: GSResult = await shell._cloud.start()
+	if not started.ok:
+		return started
 	var both: Array = await TmcGather.run([_refusal_and_needs.bind(content_id, wanted),
 		shell._solo_packs._solo_workshop_plan.bind(content_id, wanted)])
 	var first: Dictionary = both[0]
