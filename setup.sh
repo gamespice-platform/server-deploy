@@ -1378,6 +1378,9 @@ resolve_games() {
     MISSING_GAMES=()
     GAMES_FROM_DIR=0; GAMES_FROM_REPOS=0; GAMES_FROM_SIBLING=0
     local entry repo
+    # A tree whose games all still sit in the old games/ would otherwise never be migrated (only linking or cloning
+    # did it), and keeps the engine walking those repositories at the first pack mount.
+    [ "$VENDOR" -eq 1 ] || [ -n "$GAMES_DIR" ] || [ ! -d "$GAMES_LEGACY" ] || prepare_games_dir
     for entry in "${GAMES[@]}"; do
         repo="${entry%%:*}"
 

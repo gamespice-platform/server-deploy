@@ -4,7 +4,7 @@ extends Node
 ## `game.yml` reader against the host's, the shell's map list against the stock server one, and the
 ## session a game reads its map packs from. godot --headless --path .
 
-const CHECKS := 140
+const CHECKS := 142
 
 ## Every game repository, beside this project or in games/: the repositories of cfg/content/games.yml (shipped content-lists/games.yml).
 
@@ -45,6 +45,7 @@ func _ready() -> void:
 	await _test_solo_press_refusal()
 	await _test_launch_identity_name()
 	await _test_gather()
+	await _test_threaded_scene_load()
 	await _test_cache_first_pointer()
 	_test_offline_copy_locale()
 	_test_overlay_blocked()
@@ -516,6 +517,16 @@ func _test_gather() -> void:
 	_check((await TmcGather.run([])).is_empty(), "no calls return at once")
 	var fast: Array = await TmcGather.run([_slow.bind(0, 1), func() -> int: return 2])
 	_check(fast == [1, 2], "a plain function and a coroutine mix", str(fast))
+	_done()
+
+
+## The game's client scene is loaded on loader threads while frames keep running: the main thread is never held for the seconds a big game takes.
+func _test_threaded_scene_load() -> void:
+	_section("the client scene loads without freezing the main thread")
+	var solo := TmcShellSolo.new(self)
+	var packed: Variant = await solo._load_scene_threaded("res://client/boot.tscn")
+	_check(packed is PackedScene, "a PackedScene comes back", str(packed))
+	_check((await solo._load_scene_threaded("res://client/does_not_exist.tscn")) == null, "a missing scene loads as null")
 	_done()
 
 

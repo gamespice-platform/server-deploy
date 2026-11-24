@@ -311,13 +311,31 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 	await _add_solo_subscriptions(session, content_id, mount)
 
 	var path := mount.path_join(safe.value)
+	_stage("mounted, preparing scripts")
 	shell._warm_hold = await shell._solo_packs._warm_pack(slice_keys)
-	var packed: Variant = load(path)
+	_stage("scripts prepared")
+	var packed: Variant = await _load_scene_threaded(path)
+	_stage("client scene loaded")
 
 	if not (packed is PackedScene):
 		return GSResult.fail(GSError.CODE_IO, "The game's client scene would not load.", path)
 
 	return _enter_solo_game(session, packed as PackedScene, desc, path)
+
+
+## Loads the game's client scene (and everything it references) on the engine's loader threads, one frame at a time on this one, so the cover keeps drawing and the window keeps answering the OS for the seconds a big game takes. A plain `load` here froze the main thread, which on Windows reads as "Not Responding". Falls back to a plain load when the threaded request is refused.
+func _load_scene_threaded(path: String) -> Variant:
+	if ResourceLoader.load_threaded_request(path, "PackedScene", true) != OK:
+		return load(path)
+	var progress: Array = []
+	while true:
+		var status := ResourceLoader.load_threaded_get_status(path, progress)
+		if status == ResourceLoader.THREAD_LOAD_LOADED:
+			return ResourceLoader.load_threaded_get(path)
+		if status != ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			return null
+		await shell.get_tree().process_frame
+	return null
 
 
 ## Puts the loaded solo session and its client scene into the tree and tells the shell the
@@ -326,6 +344,7 @@ func _enter_solo_game(session: TmcSoloSession, packed: PackedScene, desc: Dictio
 	var content_id := session.content_id
 	# Before the session goes in, so a refusal leaves nothing behind (instantiate runs no _ready).
 	var instance := packed.instantiate()
+	_stage("client scene instantiated")
 	if instance == null:
 		return GSResult.fail(GSError.CODE_INVALID, shell.GAME_DID_NOT_COMPILE, path)
 	shell.add_child(session)
