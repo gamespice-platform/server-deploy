@@ -52,4 +52,21 @@ PROJECT="$W/full"; self_update
 [ "$(git -C "$W/full" rev-parse HEAD)" = "$before" ] \
     && ok "full checkout with an unpushed commit is not reset" || bad "full checkout with an unpushed commit was reset"
 
+# Volume whose HEAD origin has (a side branch, so not under main) -> updated. This is the 12 of
+# 15 TMC Dev volumes that logged "commits origin does not" with nothing unpushed.
+g -C "$origin" config uploadpack.allowAnySHA1InWant true
+g -C "$origin" checkout -q -b side; echo side >"$origin/side"; g -C "$origin" add -A; g -C "$origin" commit -qm side
+g -C "$origin" checkout -q main; echo 7 >"$origin/f"; g -C "$origin" commit -qam c7
+clone pub; g -C "$W/pub" fetch -q --depth 1 origin side; g -C "$W/pub" reset -q --hard FETCH_HEAD
+PROJECT="$W/pub"; self_update
+[ "$(git -C "$W/pub" rev-parse HEAD)" = "$(git -C "$origin" rev-parse main)" ] \
+    && ok "checkout whose HEAD origin has (not under main) is updated" || bad "checkout whose HEAD origin has was refused"
+
+# ...and one origin does not have is still left alone, with the allowAnySHA1InWant origin above.
+clone own; echo mine2 >"$W/own/mine2"; g -C "$W/own" add -A; g -C "$W/own" commit -qm mine2
+before="$(git -C "$W/own" rev-parse HEAD)"
+PROJECT="$W/own"; self_update
+[ "$(git -C "$W/own" rev-parse HEAD)" = "$before" ] \
+    && ok "unpublished commit is still not reset" || bad "unpublished commit was reset"
+
 [ "$fails" -eq 0 ]

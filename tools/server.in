@@ -2494,8 +2494,21 @@ self_update() {
             || { warn "TMC_AUTO_UPDATE: could not tell whether this checkout has commits of its own; not touching it"; return 1; }
     fi
     if ! git -C "$PROJECT" merge-base --is-ancestor HEAD "origin/$branch" 2>/dev/null; then
-        warn "TMC_AUTO_UPDATE: this checkout has commits origin/$branch does not; pull it yourself"
-        return 1
+        # Not an ancestor is not the same as unpushed. A server volume that was updated for
+        # weeks (12 of 15 on TMC Dev) reported "commits origin does not" with every commit
+        # of its own published: the shallow history cannot always connect HEAD to the tip.
+        # So ask origin the question directly: HEAD's own hash is fetchable only if origin
+        # has it, and a commit origin has is nothing to lose. A commit it cannot give back
+        # is somebody's work, and is still never reset.
+        local head own
+        head="$(git -C "$PROJECT" rev-parse HEAD 2>/dev/null)"
+        if [ -n "$head" ] && GIT_TERMINAL_PROMPT=0 git -C "$PROJECT" fetch --quiet --depth 1 origin "$head" 2>/dev/null; then
+            note "HEAD ${head:0:7} is not under origin/$branch in this shallow history but origin has it; updating"
+        else
+            own="$(git -C "$PROJECT" log --oneline -n 5 "origin/$branch..HEAD" 2>/dev/null | tr '\n' ';')"
+            warn "TMC_AUTO_UPDATE: this checkout has commits origin/$branch does not (${own:-unknown}); pull it yourself"
+            return 1
+        fi
     fi
 
     clear_for_update "$PROJECT" "this checkout" || return 1
