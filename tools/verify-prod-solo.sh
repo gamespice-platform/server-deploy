@@ -143,8 +143,16 @@ run_native() {
         kill -0 "$pid" 2>/dev/null || break
         sleep 1
     done
-    # Past the start line a second run keeps its objects check honest: let late downloads land before judging.
-    [ "$n" = second ] && sleep 3
+    # Past the start line the game goes on fetching (the map packs load in the background). Killing the FIRST launch there leaves the
+    # cache half filled, and the second launch then "downloads objects" for nothing the cache could have held. So wait until the
+    # log has been quiet for QUIET seconds (at most SETTLE) before stopping either launch.
+    local quiet=0 last=-1 size
+    for ((i = 0; i < ${SETTLE:-60} && quiet < ${QUIET:-4}; i++)); do
+        size=$(stat -c %s "$log" 2>/dev/null || echo 0)
+        if [ "$size" = "$last" ]; then quiet=$((quiet + 1)); else quiet=0; last=$size; fi
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 1
+    done
     pkill -INT -P "$pid" 2>/dev/null; sleep 1; kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
     return 0
 }
