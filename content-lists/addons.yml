@@ -54,7 +54,7 @@ entries:
   - repo: gs-lighting
     pin: v0.1.14
   - repo: gs-loadout
-    pin: v0.1.20
+    pin: v0.1.21
   - repo: gs-locale
     pin: v0.1.9
   - repo: gs-log
