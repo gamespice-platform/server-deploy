@@ -522,7 +522,7 @@ func _test_subscribed_addon() -> void:
 		and str((held as Dictionary).get("source", "")) == "subscription",
 		"the plan holds the addon, marked as a subscription", str(plan.get("addons", {})))
 	var shell_script: Script = _shell.get_script()
-	_check(TmcShellSolo.plan_holds_subscription(plan), "so the plan holds a subscription")
+	_check(TmcShellSoloAddons.plan_holds_subscription(plan), "so the plan holds a subscription")
 	var resume: Variant = plan.get("resume", {})
 	_check(resume is Dictionary and str((resume as Dictionary).get("solo", "")) == ADDON_GAME,
 		"and the restart comes back into the same game", str(resume))
@@ -537,7 +537,7 @@ func _test_subscribed_addon() -> void:
 	await get_tree().process_frame
 	_check(_restarts[0] == 1 and _shell.get("link") == null, "the join restarted instead of joining", str(_restarts[0]))
 	plan = GSCloudAddonSet.read_plan()
-	_check(str(plan.get("state", "")) == "dropped" and not plan.has("addons") and not TmcShellSolo.plan_holds_subscription(plan),
+	_check(str(plan.get("state", "")) == "dropped" and not plan.has("addons") and not TmcShellSoloAddons.plan_holds_subscription(plan),
 		"the plan is dropped: the next start boots on the build alone", str(plan))
 	resume = plan.get("resume", {})
 	_check(resume is Dictionary and str((resume as Dictionary).get("server", "")) == "10.9.8.7:6064",
@@ -568,7 +568,7 @@ func _test_addon_refused_without_opt_in() -> void:
 	_check(refused, "the addon pack is refused as forbidden",
 		str(session.workshop_summary.get("failed", [])) if session != null else "")
 	var shell_script: Script = _shell.get_script()
-	_check(not TmcShellSolo.plan_holds_subscription(GSCloudAddonSet.read_plan()), "and no overlay holds it")
+	_check(not TmcShellSoloAddons.plan_holds_subscription(GSCloudAddonSet.read_plan()), "and no overlay holds it")
 
 	_done()
 
@@ -578,15 +578,15 @@ func _test_subscription_marks() -> void:
 
 	var shell_script: Script = _shell.get_script()
 	var wanted := {"a": {"id": "x/a"}, "b": {"id": "y/b"}}
-	TmcShellSolo.mark_subscribed(wanted, {"a": "x/a", "b": "z/b"})
+	TmcShellSoloAddons.mark_subscribed(wanted, {"a": "x/a", "b": "z/b"})
 	_check(str(wanted["a"].get("source", "")) == "subscription", "an entry the subscription named is marked")
 	_check(not (wanted["b"] as Dictionary).has("source"), "one whose id differs (the game's own requirement) is not")
-	_check(not TmcShellSolo.plan_holds_subscription({}) and not TmcShellSolo.plan_holds_subscription({"addons": wanted["b"]}),
+	_check(not TmcShellSoloAddons.plan_holds_subscription({}) and not TmcShellSoloAddons.plan_holds_subscription({"addons": wanted["b"]}),
 		"an empty or unmarked plan holds none")
 
-	var kept := TmcShellSolo.without_subscribed(wanted)
+	var kept := TmcShellSoloAddons.without_subscribed(wanted)
 	_check(kept.keys() == ["b"] and wanted.has("a"), "dropping the subscription keeps the game's own entry and leaves the input alone")
-	_check(TmcShellSolo.without_subscribed({"a": wanted["a"]}).is_empty() and TmcShellSolo.without_subscribed({}).is_empty(),
+	_check(TmcShellSoloAddons.without_subscribed({"a": wanted["a"]}).is_empty() and TmcShellSoloAddons.without_subscribed({}).is_empty(),
 		"a plan of only subscriptions drops to nothing")
 
 	_done()

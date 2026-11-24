@@ -9,6 +9,7 @@ const CHANNEL := "tmc.shell"
 var _menu_ui := TmcShellMenu.new(self)
 var _solo_flow := TmcShellSolo.new(self)
 var _solo_packs := TmcShellSoloPacks.new(self)
+var _solo_addons := TmcShellSoloAddons.new(self)
 
 ## Where the game scene is added. Named so the server's scene and this shell's own UI
 ## cannot collide.
@@ -61,7 +62,7 @@ var _solo_version: String = ""
 var _solo_map: String = ""
 var _solo_button: Button = null
 
-## The restart count Retry forgets ([method _attempt_key]), set when [method _solo_overlay] would not start a game without its addons; "" otherwise.
+## The restart count Retry forgets ([method _attempt_key]), set when [method TmcShellSoloAddons._solo_overlay] would not start a game without its addons; "" otherwise.
 var _solo_retry: String = ""
 
 ## What [method _mount_in_place] did: the overlay runs; the engine refused it (restart onto it instead); or it is mounted but an
@@ -268,7 +269,7 @@ func _ready() -> void:
 		solo = {"id": "", "version": "", "map": ""}
 		_show_connect_form(true)
 
-	# A restart into a solo game's addons (see [method _solo_overlay]) goes back into that game,
+	# A restart into a solo game's addons (see [method TmcShellSoloAddons._solo_overlay]) goes back into that game,
 	# which a launch from the menu left in no address.
 	if str(solo["id"]) == "" and str(resumed.get("solo", "")) != "":
 		solo = {"id": str(resumed["solo"]), "version": str(resumed.get("solo_version", "")),
@@ -1219,7 +1220,7 @@ func _connect_to(address: String) -> void:
 	# Online never sees a subscription: the index's session filters every catalogue and the cloud client's tag stamps a mount, so both go to `online` before anything is fetched.
 	# A pack that runs code stays resident after its game is freed, so a process that mounted one restarts first.
 	# So does one whose overlay holds a subscribed addon: the restart drops that overlay.
-	if (_workshop != null and _workshop.requires_restart_before_online()) or TmcShellSolo.plan_holds_subscription(GSCloudAddonSet.read_plan()):
+	if (_workshop != null and _workshop.requires_restart_before_online()) or TmcShellSoloAddons.plan_holds_subscription(GSCloudAddonSet.read_plan()):
 		_restart_for_online(target)
 		return
 
@@ -1469,7 +1470,7 @@ func _update_addons(addons: GSCloudAddonSet, wanted: Dictionary, target: String,
 
 ## Whether a server's overlay just built ([param plan]) was taken without a restart, so the join goes on now: mounted in this process ([method _clear_update_attempts]), or mounted but stale (the join goes on the build's own addons, as after a failed restart). A first visit, or the first join on a new shell build, has none of these addons in this process; mounting them here skips the IndexedDB wait, the page reload, the second fetch of the shell and the second engine boot (about 20 s of a Fast 4G join). False leaves the restart: an overlay that would replace a mounted addon (a compiled script is never read again), a workshop subscription (only a restart unmounts it), or a pack the engine refused, as on the solo path.
 func _join_in_place(plan: Dictionary, target: String) -> bool:
-	if not _overlay_additive(plan) or TmcShellSolo.plan_holds_subscription(plan):
+	if not _overlay_additive(plan) or TmcShellSoloAddons.plan_holds_subscription(plan):
 		return false
 
 	match _mount_in_place():
@@ -1592,7 +1593,7 @@ func _overlay_failed_here(wanted: Dictionary) -> bool:
 
 
 ## Whether the overlay [param attempt] names must not be built again in this tab: it failed to start in this shell build, or it has had
-## its [constant MAX_UPDATE_RESTARTS] restarts. [method _solo_overlay] then blocks the game instead of starting it without its addons.
+## its [constant MAX_UPDATE_RESTARTS] restarts. [method TmcShellSoloAddons._solo_overlay] then blocks the game instead of starting it without its addons.
 func _overlay_blocked(attempt: String, wanted: Dictionary) -> bool:
 	return _overlay_failed_here(wanted) or _update_attempts(attempt) >= MAX_UPDATE_RESTARTS
 
@@ -1912,7 +1913,7 @@ func _restart_for_online(target: String) -> void:
 		resume["member"] = _auth.identity().uid
 
 	var plan := GSCloudAddonSet.read_plan()
-	if TmcShellSolo.plan_holds_subscription(plan):
+	if TmcShellSoloAddons.plan_holds_subscription(plan):
 		# A state the boot does not mount: the next start comes up on the build alone and resumes the join,
 		# whose own addon update builds the server's overlay if it announces one.
 		plan = {"format": int(plan.get("format", 1)), "build": plan.get("build", ""), "state": "dropped"}

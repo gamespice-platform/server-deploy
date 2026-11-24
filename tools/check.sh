@@ -601,6 +601,7 @@ echo "the shell's download watch"
 echo
 echo "solo play's pieces"
 timeout 300 "$GODOT" --headless --path . res://examples/solo_check.tscn < /dev/null || fails=$((fails + 1))
+timeout 300 "$GODOT" --headless --path . res://examples/solo_addons_check.tscn < /dev/null || fails=$((fails + 1))
 
 # The kept latest.json of solo play (client/tmc_solo_pointers.gd): fresh window, offline fallback, damaged file.
 echo
