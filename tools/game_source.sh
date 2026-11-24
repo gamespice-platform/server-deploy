@@ -53,6 +53,42 @@ GAMES_DIR="${GAMES_DIR:-${TMC_GAMES_DIR:-}}"
 GAMES_REPOS="${GAMES_REPOS:-${TMC_GAMES_REPOS:-${XDG_DATA_HOME:-$HOME/.local/share}/gs-server-deploy/games/$(basename "$TMC_ROOT")-$(printf %s "$TMC_ROOT" | cksum | cut -d' ' -f1)}}"
 GAMES_LEGACY="$TMC_ROOT/games"
 
+## Move a legacy $TMC_ROOT/games out of res://. Godot's first load_resource_pack walks all of res:// and
+## ignores .gdignore, so a games/ of links to whole game repositories (630k files) stalls the first mount.
+##
+##   migrate_legacy_games   prints one line per entry it handled; returns 0
+##
+## A symlink is re-created in $GAMES_REPOS pointing at its ABSOLUTE target (a relative games/<repo> ->
+## ../../<repo> link would dangle once moved) and the old link is removed. A real directory or file is
+## MOVED, never deleted; if the destination already has that name it is left in place and reported.
+## games/ stays as an empty directory with a .gdignore, so nothing re-creates it as a trap.
+migrate_legacy_games() {
+    [ -d "$GAMES_LEGACY" ] && [ ! -L "$GAMES_LEGACY" ] && [ "$GAMES_LEGACY" != "$GAMES_REPOS" ] || return 0
+    local e b target dest
+    mkdir -p "$GAMES_REPOS" || return 0
+    [ -f "$GAMES_REPOS/.gdignore" ] || : > "$GAMES_REPOS/.gdignore"
+    for e in "$GAMES_LEGACY"/* "$GAMES_LEGACY"/.[!.]*; do
+        { [ -e "$e" ] || [ -L "$e" ]; } || continue
+        b="$(basename "$e")"
+        [ "$b" = ".gdignore" ] && continue
+        dest="$GAMES_REPOS/$b"
+        if [ -L "$e" ]; then
+            target="$(readlink -m "$e")"
+            if [ -e "$dest" ] || [ -L "$dest" ]; then
+                rm -f "$e"; echo "games/$b: already in $GAMES_REPOS, old link removed"
+            else
+                ln -s "$target" "$dest" && rm -f "$e" && echo "games/$b: relinked to $target in $GAMES_REPOS"
+            fi
+        elif [ -e "$dest" ] || [ -L "$dest" ]; then
+            echo "games/$b: real content, and $dest exists; left in place"
+        else
+            mv "$e" "$dest" && echo "games/$b: moved to $GAMES_REPOS"
+        fi
+    done
+    [ -f "$GAMES_LEGACY/.gdignore" ] || : > "$GAMES_LEGACY/.gdignore"
+    return 0
+}
+
 ## Resolve one game repository, setting:
 ##
 ##   GAME_SRC   the directory that holds it, resolved through any link

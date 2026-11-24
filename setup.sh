@@ -1357,21 +1357,16 @@ fi
 
 GAMES_CLONE_DEST="${GAMES_DIR:-$GAMES_REPOS}"
 
+# A tree set up before the games left res://: move its games/ links out whichever way the games are sourced this
+# run (--games-dir and --no-clone included), because the engine walks res://games on the first pack mount.
+while IFS= read -r _l; do [ -n "$_l" ] && ok "$_l"; done < <(migrate_legacy_games)
+
 ## Make games/ before anything is written into it, and mark it ignored FIRST: a run
 ## interrupted between the two leaves a repository in a directory Godot would then walk.
 prepare_games_dir() {
     mkdir -p "$GAMES_REPOS" || die "could not create $GAMES_REPOS" 4
     [ -f "$GAMES_REPOS/.gdignore" ] || : > "$GAMES_REPOS/.gdignore"
-    # A tree set up before the games left res://: move its links and clones out, then drop the empty directory.
-    local e b
-    if [ -d "$GAMES_LEGACY" ] && [ "$GAMES_LEGACY" != "$GAMES_REPOS" ]; then
-        for e in "$GAMES_LEGACY"/*; do
-            b="$(basename "$e")"
-            { [ -e "$e" ] || [ -L "$e" ]; } || continue
-            { [ -e "$GAMES_REPOS/$b" ] || [ -L "$GAMES_REPOS/$b" ]; } || mv "$e" "$GAMES_REPOS/"
-        done
-        rm -f "$GAMES_LEGACY/.gdignore"; rmdir "$GAMES_LEGACY" 2>/dev/null || true
-    fi
+    migrate_legacy_games >/dev/null
 }
 
 resolve_games() {

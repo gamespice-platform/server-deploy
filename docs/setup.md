@@ -45,6 +45,8 @@ A missing addon is cloned into `addons/.repos/<repo>` and `addons/<name>` is a *
 - **A developer checkout gets a link, not a second clone.** `link_sibling_game` makes `games/<repo> -> ../../<repo>`; a second clone is the arrangement where a fix is committed, pulled and still not running. `--vendor` skips the link.
 - **`--games-dir DIR` (`TMC_GAMES_DIR`) is separate from `--addons-dir`** on purpose: one shared addon library does not imply publishing packs from a shared games tree.
 
+**The games are not in `res://` any more.** Godot's first `load_resource_pack` walks all of `res://` and ignores `.gdignore`, so a `games/` of links to whole repositories (about 635k files) made the first pack mount take seconds (Nightly client-first-load-1). The home is `~/.local/share/gs-server-deploy/games/<project>-<id>` (`TMC_GAMES_REPOS`). Every `setup.sh` run (so `upgrade.sh` too) calls `migrate_legacy_games` (`tools/game_source.sh`): each symlink in a legacy `games/` is re-created there with an absolute target and removed, a real directory is moved (never deleted; on a name clash it is left and reported), and an empty `games/` with a `.gdignore` stays behind. Test: `tests/test_legacy_games.sh`.
+
 ## `--only-games` and `--skip-games`
 
 They filter the `GAMES` array and nothing else; everything below walks only `GAMES`. A name may be the repository, the repository without `game-`, or the content directory. Both are repeatable and comma- or space-separated (`TMC_ONLY_GAMES`, `TMC_SKIP_GAMES`); given both, `--only-games` picks and `--skip-games` narrows. **Do not use them on a box that installs its games at runtime** ([installing-games.md](installing-games.md#a-server-that-installs-its-games-must-build-none-of-them)); use `--no-games`.
