@@ -24,9 +24,13 @@ unpack() {   # pck -> a directory under $W
 for in in "$@"; do
     [ -e "$in" ] || { echo "check_artifact_static: $in does not exist" >&2; exit 2; }
     case "$in" in
-        *.zip) python3 -I -c 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); p=[i for i in z.namelist() if i.endswith(".pck")]
-assert p, "no pck in the zip"; [z.extract(i, sys.argv[2]) for i in p]' "$in" "$W/zip$n" || { echo "check_artifact_static: no pck in $in" >&2; exit 2; }
-               for p in "$W"/zip$n/*.pck; do unpack "$p"; done ;;
+        *.zip) # A pck beside the binary, or (embed_pck, the native presets) inside it: then the largest member is the binary.
+               python3 -I -c 'import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); p=[i for i in z.namelist() if i.endswith(".pck")]
+if not p:
+    f=[i for i in z.infolist() if not i.is_dir()]
+    p=[max(f, key=lambda i: i.file_size).filename] if f else []
+assert p, "nothing in the zip"; [z.extract(i, sys.argv[2]) for i in p]' "$in" "$W/zip$n" || { echo "check_artifact_static: nothing to check in $in" >&2; exit 2; }
+               while IFS= read -r p; do unpack "$p"; done < <(find "$W/zip$n" -type f) ;;
         *.pck) unpack "$in" ;;
         *) [ -d "$in" ] && roots+=("$in") || { echo "check_artifact_static: $in is not a pck, zip or directory" >&2; exit 2; } ;;
     esac
