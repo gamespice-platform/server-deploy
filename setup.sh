@@ -2232,16 +2232,25 @@ import_is_stale() {
 # The import's own output, kept: a failed or killed import used to leave nothing but a
 # missing file later. Overwritten each run; .godot/ is gitignored.
 IMPORT_LOG="$ROOT/.godot/setup-import.log"
+# A crashed import (exit 139, seen on a panel container on cue_bolt_lift_0.ogg, the first audio file it reimports; not reproducible on the host or in an identical container)
+# is run again: it resumes from what it already wrote, and the second pass finished the very import that had crashed. Without that a fresh server had no uid_cache.bin and crash-looped on exit 7.
+IMPORT_TRIES="${TMC_IMPORT_TRIES:-3}"
 run_import() {
     mkdir -p "$ROOT/.godot"
-    local rc=0
-    "$GODOT" --headless --path "$ROOT" --import >"$IMPORT_LOG" 2>&1 || rc=$?
-    local left
-    left="$(import_missing_output | grep -c '')"
-    if [ "$rc" -ne 0 ] || [ "$left" -ne 0 ]; then
+    local rc left try=1
+    while :; do
+        rc=0
+        "$GODOT" --headless --path "$ROOT" --import >"$IMPORT_LOG" 2>&1 || rc=$?
+        left="$(import_missing_output | grep -c '')"
+        if [ "$rc" -eq 0 ] && [ "$left" -eq 0 ]; then
+            return 0
+        fi
         warn "the import exited $rc and left $left imported file(s) missing; its output is in ${IMPORT_LOG#"$ROOT"/}"
         tail -n 5 "$IMPORT_LOG" | sed 's/^/       /'
-    fi
+        [ "$try" -lt "$IMPORT_TRIES" ] || return 1
+        try=$((try + 1))
+        warn "importing again (attempt $try of $IMPORT_TRIES)"
+    done
 }
 
 if [ "$DO_IMPORT" -eq 1 ]; then

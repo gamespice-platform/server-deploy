@@ -10,6 +10,13 @@ static func session_in(root: Variant) -> Object:
 	return first_answering(root, ["change_to", "change_to_map"])
 
 
+## Waits until [param session] is not mid-change. A session with an `initial_map` starts loading it in its own `_ready`, which nobody awaits, so a host asking for a different `sv_map` right after the game loads
+## met "A map change is already in progress" (Airdrift on dev: a boot race, not an operator's typo). A session that does not report `changing_now` is not waited for.
+static func settle(session: Object) -> void:
+	while is_instance_valid(session) and session.get("changing_now") == true:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+
+
 ## The node under [param root] that answers `start_on_map(id) -> GSResult`: a game whose map change is its own rather than a GSMapSession's.
 static func starter_in(root: Variant) -> Object:
 	return first_answering(root, ["start_on_map"])

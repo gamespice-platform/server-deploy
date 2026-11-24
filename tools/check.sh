@@ -153,6 +153,7 @@ else echo "  SKIP check_shell_parse.sh: no godot (set GODOT); the web/native she
 bash tools/check_publish_gate.sh || fails=$((fails + 1))
 bash tests/test_artifact_static.sh || fails=$((fails + 1))   # the artifact gate fails on dot_* dirs and duplicate uids
 bash tests/test_shell_import.sh || fails=$((fails + 1))   # an import abort after the class cache is a quit-time crash; before it, retried loudly
+bash tests/test_setup_import_retry.sh || fails=$((fails + 1))   # setup.sh runs a crashed import again
 bash tests/test_artifact_boot_retry.sh || fails=$((fails + 1))   # the boot smoke retries only a dropped origin connection
 bash tools/check_renamed_dirs.sh || fails=$((fails + 1))
 [ -f web/build/embed.html ] && { bash tools/check_web_export_assets.sh || fails=$((fails + 1)); }

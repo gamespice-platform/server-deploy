@@ -11,7 +11,7 @@ const RoundsWithoutMatch := preload("res://examples/fixtures/rounds_without_matc
 
 const Host := preload("res://host/tmc_host.gd")
 
-const CHECKS := 653
+const CHECKS := 656
 
 ## Where the replay section writes. Emptied at the start of every run, so a clip left by the
 ## last one cannot satisfy a check about this one (docs/testing.md, "a suite that writes to
@@ -67,6 +67,7 @@ func _run() -> void:
 	SelftestAddonAnnounce.new(self)._test_addon_announce()
 	SelftestGameModule.new(self)._test_game_module()
 	SelftestServerFeatures.new(self)._test_boot_refusals()
+	await SelftestServerFeatures.new(self)._test_map_settle()
 
 	print("")
 	_check(

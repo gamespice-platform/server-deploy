@@ -1306,6 +1306,9 @@ func _apply_initial_map() -> void:
 	# so a delivered map was refused here rather than downloaded and read as an operator's typo. A game that fetches its own content sees a mount already there and does nothing twice.
 	await _ensure_map_content(StringName(config.initial_map), TmcMapGame.roots_of(server))
 
+	# The session may still be loading its own default map (the game's `initial_map`): asking now is refused as "already in progress".
+	await TmcMapGame.settle(session)
+
 	var changed: Variant = await session.call("change_to", StringName(config.initial_map))
 
 	if changed is GSResult and not (changed as GSResult).ok:

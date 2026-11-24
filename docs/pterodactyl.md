@@ -43,7 +43,7 @@ gs-cloud's auto-update exits 75. Wings restarts a server only through its crash 
 
 ## What the egg installs
 
-`setup.sh --no-games` (a box that installs its games at runtime must build none: [installing-games.md](installing-games.md#a-server-that-installs-its-games-must-build-none-of-them)), then `--update` on reinstall, which moves the addons to `addons.lock`. "Update addons automatically" is `TMC_AUTO_UPDATE` ([releases.md](releases.md#a-game-that-needs-newer-addons)), and "Web loader version" is `TMC_WEB_LOADER`.
+`setup.sh --no-games` (a box that installs its games at runtime must build none: [installing-games.md](installing-games.md#a-server-that-installs-its-games-must-build-none-of-them)), then `--update` on reinstall, which moves the addons to `addons.lock`. "Update addons automatically" is `TMC_AUTO_UPDATE` ([releases.md](releases.md#a-game-that-needs-newer-addons)), and "Web loader version" is `TMC_WEB_LOADER`. Core dumps are off (`ulimit -c 0` in `./server`) unless `TMC_CORE_DUMPS=1`, which keeps them a day: an engine abort left 0.5 to 1.7 GB `core.<pid>` in the volume per restart. `setup.sh` runs a crashed `--import` again (`TMC_IMPORT_TRIES`, default 3).
 
 ## The config file beats the egg's variables, always
 

@@ -308,6 +308,35 @@ func _test_cache_limit() -> void:
 	_done()
 
 
+## The boot map is asked for only once the game's own first map change has finished.
+func _test_map_settle() -> void:
+	_section("startup: sv_map waits for the game's own first map load")
+
+	var session := _BusySession.new()
+	session.changing_now = true
+	t.add_child(session)
+	var state := {"done": false}
+	var waiter := func() -> void:
+		await TmcMapGame.settle(session)
+		state["done"] = true
+	waiter.call()
+	await t.get_tree().process_frame
+	await t.get_tree().process_frame
+	_check(not state["done"], "settle holds while the session is mid-change")
+	session.changing_now = false
+	await t.get_tree().process_frame
+	await t.get_tree().process_frame
+	_check(state["done"], "and returns once the change has finished")
+	session.queue_free()
+	await TmcMapGame.settle(null)
+	_check(true, "a null session does not wait")
+	_done()
+
+
+class _BusySession extends Node:
+	var changing_now: bool = false
+
+
 class _MapStarter extends Node:
 	func start_on_map(_id: StringName) -> GSResult:
 		return GSResult.success(null)
