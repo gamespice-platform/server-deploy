@@ -40,6 +40,8 @@ func _start_solo(content_id: String, version: String = "", map: String = "") -> 
 	if shell._solo_button != null:
 		shell._solo_button.disabled = true
 	shell._say("Finding %s…" % content_id)
+	_launch_t0 = Time.get_ticks_msec()
+	_show_launch_identity(content_id)
 
 	shell._ensure_cloud()
 	# The solo game's server runs here as well: it needs the server-only files (API 8).
@@ -48,6 +50,8 @@ func _start_solo(content_id: String, version: String = "", map: String = "") -> 
 	shell._enter_solo_session()
 
 	var started := await _load_solo(content_id, version)
+	shell._solo_launching = false
+	_stage("start finished", {"ok": started.ok})
 
 	if shell._solo_button != null:
 		shell._solo_button.disabled = false
@@ -59,6 +63,7 @@ func _start_solo(content_id: String, version: String = "", map: String = "") -> 
 		return
 
 	if not started.ok:
+		shell.loading.end(TmcLoadingScreen.REASON_GAME)
 		shell._end_solo_session()
 		# The detail names every address asked and why it failed (one per line), which is what tells a missing file from a refused one.
 		var reason: String = shell._explain(started.error)
@@ -104,6 +109,33 @@ func _forget_solo_retry() -> void:
 	if GSValue.same(GSCloudAddonSet.read_plan().get("state", ""), GSCloudAddonSet.STATE_FAILED):
 		GSCloudAddonSet.forget()
 	shell._solo_retry = ""
+
+
+## When this launch began (msec), for [method _stage].
+var _launch_t0 := 0
+
+
+## The name a game shows before its pack says one: its repository slug, `game-` dropped, in words.
+static func friendly_name(content_id: String) -> String:
+	var slug := content_id.get_slice("/", content_id.get_slice_count("/") - 1)
+	slug = slug.trim_prefix("game-").trim_prefix("mg-")
+	return slug.replace("-", " ").replace("_", " ").capitalize()
+
+
+## The game's name, its icon (when hinted) and a bar with words, from the first frame, so the wait before the download is never the bare shell splash.
+func _show_launch_identity(content_id: String) -> void:
+	shell._solo_launching = true
+	var title := friendly_name(content_id)
+	shell.loading.begin(TmcLoadingScreen.REASON_GAME, content_id, title, true)
+	shell.loading.set_progress(-1.0, shell._text("shell.loading.game", {"game": title}, "Loading %s…" % title))
+	TmcGameIconHint.start(shell, shell.loading)
+
+
+## One timing line per stage of a launch: where the time before the download goes.
+func _stage(what: String, extra: Dictionary = {}) -> void:
+	var data := extra.duplicate()
+	data["ms"] = Time.get_ticks_msec() - _launch_t0
+	GSLog.info(shell.CHANNEL, "[TMC] solo stage: %s" % what, data)
 
 
 ## Everything [method _start_solo] does that can fail, so it has one way out.
@@ -191,6 +223,7 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 		return pinned
 	content_id = str(pinned.value["id"])
 	var wanted := str(pinned.value["version"])
+	_stage("version pinned", {"version": wanted})
 
 	shell._solo_id = content_id
 	shell._solo_version = wanted
@@ -200,12 +233,17 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 
 	# Before the addon overlay, the workshop sync or any pack: a game this client cannot run must not download its maps first.
 	var refused := await _solo_refusal_result(content_id, wanted)
+	_stage("client refusal checked")
 	if not refused.ok:
 		return refused
 
 	# The game addons its pack requires (zee_weapons for Prop Hunt, fc_weapons for Fatal Contact; arena_weapons up to fc-weapons v1.4.51) are not in this shell: fetched as the overlay a server would announce, then a restart into it. Asked of the store before the pack is fetched, because the pack's own requirement check refuses it while one is missing. Returns only when nothing is missing or it cannot be had. Subscriptions are asked first (their downloads only registered): a game that accepts addon packs gets the subscribed ones in the same overlay, so one restart covers both.  gs-rename: keep
 	var subscribed: Array = await shell._solo_packs._solo_workshop_plan(content_id, wanted)
-	var overlay: int = await _solo_overlay(content_id, await _solo_needs(content_id, wanted), subscribed)
+	_stage("workshop planned", {"addons": subscribed.size()})
+	var needs: Dictionary = await _solo_needs(content_id, wanted)
+	_stage("addon needs read", {"needs": needs.size()})
+	var overlay: int = await _solo_overlay(content_id, needs, subscribed)
+	_stage("overlay decided", {"overlay": overlay})
 	if overlay == SoloOverlay.RESTARTING:
 		return GSResult.success(null)
 	if overlay == SoloOverlay.BLOCKED:
@@ -216,6 +254,7 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 
 	# Everything is registered and fetched first, so the total is fixed before a byte moves; mounting follows.
 	await shell._solo_packs._prefetch_solo(content_id, wanted)
+	_stage("packs downloaded")
 	# The player pressed Retry: the transfer was cancelled, so do not go on to fetch it again here; _start_solo starts over.
 	if shell._dl_guard != null and shell._dl_guard.requested != "":
 		return GSResult.fail(GSError.CODE_CANCELLED, "The download was stopped.")

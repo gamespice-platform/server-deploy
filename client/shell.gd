@@ -80,6 +80,8 @@ var _solo_key_cache: Dictionary = {}
 ## This launch's map packs ([method TmcShellSoloPacks._solo_start_map_packs]), worked out once: null until then.
 var _solo_map_packs_memo: Variant = null
 var _deferred_workshop := false
+## True from the moment a solo start is asked until it finishes: the loading cover shows the game's name from the first frame.
+var _solo_launching := false
 var _late_sync := false
 var _solo_session: TmcSoloSession = null
 
@@ -221,7 +223,7 @@ func _ready() -> void:
 	loading.name = "Loading"
 	loading.site_url = _workshop_site()
 	loading.in_game_fn = func() -> bool:
-		return _joining or (_has_spawned and _menu != null and not _menu.visible)
+		return _joining or _solo_launching or (_has_spawned and _menu != null and not _menu.visible)
 	add_child(loading)
 	# A portrait phone sees the cover fitted, not letterboxed; it is handed back as the game takes over.
 	loading.cover_changed.connect(func(_up: bool) -> void: _menu_ui._fit_menu())

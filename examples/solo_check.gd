@@ -43,6 +43,7 @@ func _ready() -> void:
 	await _test_legacy_requirements()
 	await _test_every_prod_legacy_dir()
 	await _test_solo_press_refusal()
+	await _test_launch_identity_name()
 	_test_overlay_blocked()
 	# Last: it mounts a pack, which nothing unmounts.
 	_test_overlay_in_place()
@@ -482,6 +483,15 @@ func _test_solo_press_refusal() -> void:
 	_check(shell.solo_press_refusal("", false) != "", "no solo game chosen: a message")
 	_check(shell.solo_press_refusal("gamemann/game-playlot", true) != "", "a launch already under way: a message")
 	_check(shell.solo_press_refusal("gamemann/game-playlot", false) == "", "a chosen idle game starts")
+	_done()
+
+
+func _test_launch_identity_name() -> void:
+	_section("A solo launch names its game from the first frame")
+	var shell := load("res://client/tmc_shell_solo.gd") as GDScript
+	_check(shell.friendly_name("gamemann/game-airdrift") == "Airdrift", "game- prefix dropped")
+	_check(shell.friendly_name("gamemann/game-prop-hunt") == "Prop Hunt", "dashes become spaces")
+	_check(shell.friendly_name("airdrift") == "Airdrift", "no owner")
 	_done()
 
 
