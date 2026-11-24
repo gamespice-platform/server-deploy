@@ -1892,6 +1892,39 @@ resolve_addons() {
     done
 }
 
+# [b]zee-dot-weapons was renamed zee-gs-weapons, and a tree installed before that keeps serving the old one.[/b]
+# Its clone has no twin beside it, so the dot-* retirement further down never touches it; its
+# addons/zee_weapons link "still resolves", and addon_source keeps such a link exactly as it is. The
+# tree then runs a zee_weapons that extends the retired res://addons/dot_weapon/..., and a game
+# pack fails "Could not parse global class ZeeScopeOverlay", then "Cannot infer the type" on every
+# Zee/GS weapon type: prod Prop Hunt, Zombie Zone and Minigames crashed at boot, 2026-11-24. This
+# runs BEFORE the addons are resolved, so the clone step below fetches zee-gs-weapons at the locked ref.
+# retire_stale_zee_begin
+retire_stale_zee_weapons() {
+    local d
+    for d in "$ROOT"/addons/*; do
+        [ -L "$d" ] || continue
+        case "$(readlink "$d")" in *zee-dot-weapons*) ;; *) continue ;; esac
+        rm -f "$d"; STALE_ZEE+=("$(basename "$d")")
+    done
+    d="$ROOT/addons/.repos/zee-dot-weapons"
+    [ -d "$d" ] || return 0
+    if [ -d "$d/.git" ] && [ -n "$(git -C "$d" status --porcelain 2>/dev/null)" ]; then
+        warn "addons/.repos/zee-dot-weapons is a pre-rename clone with local changes; left in place (not scanned: .gdignore)"
+    else
+        rm -rf "$d"; STALE_ZEE+=(".repos/zee-dot-weapons")
+    fi
+}
+# retire_stale_zee_end
+STALE_ZEE=()
+retire_stale_zee_weapons
+if [ "${#STALE_ZEE[@]}" -gt 0 ]; then
+    rm -f .godot/uid_cache.bin
+    FORCE_IMPORT=1
+    FORCE_IMPORT_WHY="the pre-rename zee-dot-weapons was retired (${STALE_ZEE[*]})"
+    ok "retired pre-rename zee-dot-weapons: ${STALE_ZEE[*]}"
+fi
+
 settle_renamed_dirs
 resolve_addons
 

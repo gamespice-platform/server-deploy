@@ -41,4 +41,18 @@ rm -rf addons/.repos/dot-dirty
 retire_renamed_addons >/dev/null 2>&1
 [ "${#RETIRED_ADDONS[@]}" -eq 0 ] && [ "$FORCE_IMPORT" = 0 ] && good "a second run retires nothing" || bad "second run retired: ${RETIRED_ADDONS[*]}"
 
+# zee-dot-weapons (renamed zee-gs-weapons): the stale link and clean clone go, a dirty clone stays.
+cd - >/dev/null
+eval "$(sed -n '/^# retire_stale_zee_begin/,/^# retire_stale_zee_end/p' setup.sh)"
+T2="$(mktemp -d)"; ROOT="$T2"; STALE_ZEE=()
+mkdir -p "$T2/addons/.repos/zee-dot-weapons/addons/zee_weapons"
+ln -s .repos/zee-dot-weapons/addons/zee_weapons "$T2/addons/zee_weapons"
+retire_stale_zee_weapons >/dev/null 2>&1
+[ ! -L "$T2/addons/zee_weapons" ] && [ ! -d "$T2/addons/.repos/zee-dot-weapons" ] && good "stale zee-dot-weapons link and clone retired" || bad "zee-dot-weapons left behind"
+mkdir -p "$T2/addons/.repos/zee-gs-weapons/addons/zee_weapons"
+ln -s .repos/zee-gs-weapons/addons/zee_weapons "$T2/addons/zee_weapons"
+STALE_ZEE=(); retire_stale_zee_weapons >/dev/null 2>&1
+[ -L "$T2/addons/zee_weapons" ] && [ "${#STALE_ZEE[@]}" -eq 0 ] && good "a zee-gs-weapons link is untouched" || bad "zee-gs-weapons link retired"
+rm -rf "$T2"
+
 [ "$fails" -eq 0 ]
