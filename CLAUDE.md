@@ -38,7 +38,7 @@ Read the family [CLAUDE.md](../../CLAUDE.md) first; this file is what is specifi
 | `tools/` | `server.in` (generates `./server`), the installer, indexer and packer, the check scripts, `addons-lock.sh`, the runtime fetchers |
 | `examples/` | every suite, `enet_relay` and `burst_probe` (every game), and one `*_client` per delivered game |
 | `addons/`, `addons.lock` | linked addons (`addons/.repos/` holds clones) and the tag each is locked to |
-| `games/` | game repositories (links on a developer box), `.gdignore`d |
+| `$GAMES_REPOS` (not in the project) | game repositories (links on a developer box), `~/.local/share/gs-server-deploy/games/<project>-<id>`; never under res:// (the engine walks it) |
 | `dist/`, `data/`, `keys/` | published packs, runtime state, the signing key (all gitignored) |
 | `web/` | `README.md` (publishing), `embed.html`, `tmc-loader.js`, `shell-build` and `shell-build.inputs` (tracked, written by the pin) |
 | `deploy/` | `pterodactyl-egg.json`, TLS and nginx scripts, systemd, S3 publish |

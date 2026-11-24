@@ -154,8 +154,9 @@ pull_one() {
 # not. games/<repo> is a LINK to the sibling in a developer checkout, so `-d` matches
 # both names for one repository -- pull_one is given the resolved path, and pulling the
 # same checkout twice would print it twice and do nothing the second time.
+. "$ROOT/tools/game_source.sh"   # GAMES_REPOS: where the games live now, outside res://
 for d in "$ROOT"/addons/.repos/gs-* "$ROOT"/../gs-* \
-         "$ROOT"/games/game-* "$ROOT"/../game-*; do
+         "$ROOT"/games/game-* "$GAMES_REPOS"/game-* "$ROOT"/../game-*; do
     [ -d "$d" ] && pull_one "$(cd "$d" && pwd -P)"
 done
 

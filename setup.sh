@@ -1331,7 +1331,10 @@ fi
 # server's directory then republishes packs from a tree another server's operator was
 # halfway through editing. It stays a fallback below -- a developer checkout has the
 # games right there and must not grow a second copy of each.
-GAMES_REPOS="$ROOT/games"
+# GAMES_REPOS is set by tools/game_source.sh (sourced below) and is OUTSIDE the project: the engine walks
+# res:// on its first pack mount and a games/ full of linked repositories (630k files on a developer box)
+# stalled every solo start 14-17 s; a .gdignore does not prevent that walk. Default
+# ${XDG_DATA_HOME:-~/.local/share}/gs-server-deploy/games/<project>-<id>; TMC_GAMES_REPOS overrides.
 
 if [ -n "$GAMES_DIR" ]; then
     # Through a second variable for the reason --addons-dir is: the assignment happens
@@ -1345,20 +1348,30 @@ fi
 # Where a MISSING game is cloned to. A shared directory was asked for by name, so it is
 # also where the missing ones are put -- otherwise the first run fills it and every run
 # after it quietly starts a second copy inside the project.
-GAMES_CLONE_DEST="${GAMES_DIR:-$GAMES_REPOS}"
-
 # `game_source` and the search order it implements. In its own file because four
 # scripts here ask this question and a fourth copy of the answer is how the three
-# hand-kept copies of the GAMES list drifted. GAMES_DIR is already set above, from
+# hand-kept copies of the GAMES list drifted. GAMES_DIR is set above, from
 # --games-dir, and the helper takes it as it finds it.
 # shellcheck source=tools/game_source.sh
 . "$ROOT/tools/game_source.sh"
+
+GAMES_CLONE_DEST="${GAMES_DIR:-$GAMES_REPOS}"
 
 ## Make games/ before anything is written into it, and mark it ignored FIRST: a run
 ## interrupted between the two leaves a repository in a directory Godot would then walk.
 prepare_games_dir() {
     mkdir -p "$GAMES_REPOS" || die "could not create $GAMES_REPOS" 4
     [ -f "$GAMES_REPOS/.gdignore" ] || : > "$GAMES_REPOS/.gdignore"
+    # A tree set up before the games left res://: move its links and clones out, then drop the empty directory.
+    local e b
+    if [ -d "$GAMES_LEGACY" ] && [ "$GAMES_LEGACY" != "$GAMES_REPOS" ]; then
+        for e in "$GAMES_LEGACY"/*; do
+            b="$(basename "$e")"
+            { [ -e "$e" ] || [ -L "$e" ]; } || continue
+            { [ -e "$GAMES_REPOS/$b" ] || [ -L "$GAMES_REPOS/$b" ]; } || mv "$e" "$GAMES_REPOS/"
+        done
+        rm -f "$GAMES_LEGACY/.gdignore"; rmdir "$GAMES_LEGACY" 2>/dev/null || true
+    fi
 }
 
 resolve_games() {
@@ -1406,7 +1419,7 @@ link_sibling_game() {
     [ -e "$GAMES_REPOS/$repo" ] && return 0
 
     prepare_games_dir
-    ln -sfn "../../$repo" "$GAMES_REPOS/$repo"
+    ln -sfn "$(cd "$ROOT/.." && pwd)/$repo" "$GAMES_REPOS/$repo"
 }
 
 if [ "$DO_UPDATE" -eq 1 ]; then

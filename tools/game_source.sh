@@ -21,7 +21,7 @@
 #   1. $GAMES_DIR      a shared directory, named with --games-dir or TMC_GAMES_DIR.
 #                      A box running several servers keeps one set of checkouts and
 #                      says so.
-#   2. games/          this project's own, which is where setup.sh clones a missing
+#   2. $GAMES_REPOS    this project's own (outside res://, see below; the old games/ is read too), which is where setup.sh clones a missing
 #                      one and where it links a sibling. The default, and the answer
 #                      for anything that is not a developer checkout.
 #   3. ..              beside this project, which is where they all used to go and is
@@ -45,7 +45,13 @@ TMC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Already set by setup.sh, which parses --games-dir. Anything else picks up the
 # environment variable, so one export covers a whole session.
 GAMES_DIR="${GAMES_DIR:-${TMC_GAMES_DIR:-}}"
-GAMES_REPOS="${GAMES_REPOS:-$TMC_ROOT/games}"
+# OUTSIDE res://. A games/ directory inside the project is walked by the engine (Godot's first
+# load_resource_pack mount scans res://, and a .gdignore does not stop that), and on a developer box
+# it links whole game repositories: 630k files, a 14-17 s main-thread stall at every solo start. So the
+# default home is per-user and per-project, beside nothing Godot reads. The old $TMC_ROOT/games is still
+# searched (GAMES_LEGACY) so a tree set up before this keeps working until setup.sh moves it.
+GAMES_REPOS="${GAMES_REPOS:-${TMC_GAMES_REPOS:-${XDG_DATA_HOME:-$HOME/.local/share}/gs-server-deploy/games/$(basename "$TMC_ROOT")-$(printf %s "$TMC_ROOT" | cksum | cut -d' ' -f1)}}"
+GAMES_LEGACY="$TMC_ROOT/games"
 
 ## Resolve one game repository, setting:
 ##
@@ -65,14 +71,14 @@ game_source() {
     [ -f "$tsv" ] && names="$repo $(awk -F'\t' -v r="$repo" '$1 !~ /^#/ && NF { n = split($3, a, ","); hit = ($1 == r); for (i = 1; i <= n; i++) if (a[i] == r) hit = 1
         if (hit) { out = out " " $1; for (i = 1; i <= n; i++) out = out " " a[i] } } END { print out }' "$tsv")"
     for name in $names; do
-    for dir in ${GAMES_DIR:+"$GAMES_DIR"} "$GAMES_REPOS" "$TMC_ROOT/.."; do
+    for dir in ${GAMES_DIR:+"$GAMES_DIR"} "$GAMES_REPOS" "$GAMES_LEGACY" "$TMC_ROOT/.."; do
         [ -d "$dir/$name/game" ] || [ -f "$dir/$name/project.godot" ] || continue
         # Resolved, so games/<repo> -> ../../<repo> and the sibling itself are one
         # answer rather than two. A caller comparing timestamps or greping for a
         # class_name against both would otherwise do it twice.
         GAME_SRC="$(cd "$dir/$name" && pwd -P)"
         case "$dir" in
-            "$GAMES_REPOS")   GAME_KIND="repos" ;;
+            "$GAMES_REPOS"|"$GAMES_LEGACY")   GAME_KIND="repos" ;;
             "$TMC_ROOT/..")   GAME_KIND="sibling" ;;
             *)                GAME_KIND="dir" ;;
         esac

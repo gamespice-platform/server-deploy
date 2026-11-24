@@ -16,7 +16,7 @@ fi
 W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
 bash "$ROOT/tools/check-pinned.sh" "$W/addons" || { echo "FAIL the pinned set did not build" >&2; exit 1; }
 games=("$@")
-[ ${#games[@]} -gt 0 ] || while read -r g; do games+=("$(basename "$g")"); done < <(ls -d "$ROOT"/games/*/ 2>/dev/null)
+[ ${#games[@]} -gt 0 ] || while read -r g; do games+=("$(basename "$g")"); done < <(. "$ROOT/tools/game_source.sh"; ls -d "$GAMES_REPOS"/*/ "$GAMES_LEGACY"/*/ 2>/dev/null)
 fails=0
 for g in "${games[@]}"; do
     src="$SIB/$g"; [ -d "$src/.git" ] && [ -f "$src/project.godot" ] || continue
