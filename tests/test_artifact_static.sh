@@ -37,6 +37,37 @@ expect "remap + uid of one script is not a clash" 0 "ok" "$T/exp"
 mk "$T/exp/addons/gs_y/y.gd.remap" 'uid="uid://bbbb2222"'
 expect "two remaps of one uid is a clash" 1 "duplicate uid uid://bbbb2222" "$T/exp"
 
+# A native zip: the pck is beside the binary, or (embed_pck) inside it, where the largest member is the binary.
+# GODOT is a stub that records which file it was asked to unpack and "unpacks" it to one script, so only the zip handling is judged.
+cat > "$T/fakegodot" <<'STUB'
+#!/usr/bin/env bash
+pck="${@: -2:1}"; out="${@: -1}"
+basename "$pck" >> "$UNPACKED"
+mkdir -p "$out/addons/gs_x"; echo "$pck" > "$out/_paths.txt"
+echo 'class_name GSX' > "$out/addons/gs_x/x.gd"
+STUB
+chmod +x "$T/fakegodot"
+zipcheck() {   # name want_rc pattern unpacked_names zipfile
+    : > "$T/unpacked.log"
+    out="$(GODOT="$T/fakegodot" UNPACKED="$T/unpacked.log" bash tools/check_artifact_static.sh "$5" 2>&1)"; rc=$?
+    got="$(paste -sd, "$T/unpacked.log")"
+    if [ "$rc" = "$2" ] && [ "$got" = "$4" ] && { [ -z "$3" ] || grep -q -- "$3" <<<"$out"; }; then echo "  ok   $1"
+    else echo "  FAIL $1 (rc $rc, wanted $2, unpacked '$got', wanted '$4')"; echo "$out" | sed 's/^/       /'; fails=$((fails + 1)); fi
+}
+python3 -I - "$T" <<'PY'
+import sys, zipfile
+t = sys.argv[1]
+with zipfile.ZipFile(t + "/beside.zip", "w") as z:
+    z.writestr("tmc.pck", "x" * 10); z.writestr("tmc.x86_64", "y" * 5000)
+with zipfile.ZipFile(t + "/embedded.zip", "w") as z:
+    z.writestr("tmc.x86_64", "y" * 5000); z.writestr("libfoo.so", "z" * 10); z.writestr("README", "r")
+with zipfile.ZipFile(t + "/empty.zip", "w") as z:
+    z.writestr("dir/", "")
+PY
+zipcheck "zip with a pck beside the binary unpacks only the pck" 0 "ok" "tmc.pck" "$T/beside.zip"
+zipcheck "zip with an embedded pck unpacks the largest member (the binary)" 0 "ok" "tmc.x86_64" "$T/embedded.zip"
+zipcheck "a zip with nothing in it is rc 2" 2 "nothing to check" "" "$T/empty.zip"
+
 mkdir -p "$T/empty"
 expect "an empty root is not a pass" 2 "" "$T/empty"
 exit "$fails"
