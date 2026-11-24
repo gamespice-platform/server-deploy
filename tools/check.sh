@@ -561,6 +561,17 @@ echo
 echo "returning to a game: its netcode for the client and a fresh joiner"
 timeout 600 "$GODOT" --headless --path . res://examples/return_to_game.tscn < /dev/null || fails=$((fails + 1))
 
+# A shell joining a server that went to sleep with its game loaded: the wake must leave the
+# game's RPC link (Server/<Game>) in place and no RPC may be addressed to a missing node
+# (the dev "Node not found: Server/Hungry" log). Skips without dist/tmc/hungry.
+echo
+echo "joining a hibernated server"
+# The engine aborts at exit (heap corruption in shutdown, also in the dev server's log) after
+# the verdict: judge by the printed line, not the exit code.
+hj=$(timeout 300 "$GODOT" --headless --path . res://examples/hibernated_join.tscn < /dev/null 2>&1; true)
+echo "$hj" | grep -E "passed|SKIP|skip" || true
+echo "$hj" | grep -q " 0 failed\|[Ss]kip" || fails=$((fails + 1))
+
 # The game vote on the real shell's HUD. The director counts, gs-server carries a
 # GSNotice, the overlay draws and plays -- each tested on its own elsewhere, and this is
 # the only place a countdown the SERVER counts becomes a line and a sound on a client it

@@ -1,0 +1,7 @@
+# A fixture for examples/hibernated_join.tscn: Hungario, no stdin console, and hibernation ON,
+# because the suite joins a server that has gone to sleep.
+sv_name: "Hibernated Join Fixture"
+sv_maxplayers: 8
+game: "hungry_classic"
+sv_stdin_console: false
+sv_hibernate_when_empty: true
