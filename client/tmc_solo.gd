@@ -190,8 +190,10 @@ static func follow_pointer(content_id: String, body: Variant, hop: int) -> GSRes
 
 ## The newest published version of [param id], from `latest.json` under each base in turn: `{id,
 ## version}`.
-static func resolve_latest(host: Node, id: String, bases: PackedStringArray) -> GSResult:
-	var first := await _fetch_pointer(host, id, bases, 0)
+## With [param cache_first] a pointer kept on this machine is answered at once however old, and refreshed in the
+## background for the next launch: a solo start never waits on a slow origin when it has played this game before.
+static func resolve_latest(host: Node, id: String, bases: PackedStringArray, cache_first: bool = false) -> GSResult:
+	var first := await _fetch_pointer(host, id, bases, 0, cache_first)
 
 	if not first.ok:
 		return first
@@ -204,7 +206,7 @@ static func resolve_latest(host: Node, id: String, bases: PackedStringArray) -> 
 	GSLog.warn(CHANNEL, "the config names a retired content id; change it", {
 		"retired": id, "change_to": moved,
 	})
-	var second := await _fetch_pointer(host, moved, bases, 1)
+	var second := await _fetch_pointer(host, moved, bases, 1, cache_first)
 
 	if not second.ok:
 		return second.wrap("could not follow %s to %s:" % [id, moved])
@@ -212,7 +214,18 @@ static func resolve_latest(host: Node, id: String, bases: PackedStringArray) -> 
 	return GSResult.success({"id": moved, "version": second.value["version"]})
 
 
-static func _fetch_pointer(host: Node, id: String, bases: PackedStringArray, hop: int) -> GSResult:
+## Asks [param url] for its pointer and keeps the answer; the background half of a cache-first resolve.
+static func _refresh_pointer(host: Node, url: String) -> void:
+	var http := GSHttp.new()
+	http.name = "SoloLatestRefresh"
+	host.add_child(http)
+	var res: GSResult = await http.get_json(url)
+	if res.ok and res.value is Dictionary:
+		TmcSoloPointers.remember(url, res.value)
+	http.queue_free()
+
+
+static func _fetch_pointer(host: Node, id: String, bases: PackedStringArray, hop: int, cache_first: bool = false) -> GSResult:
 	var http := GSHttp.new()
 	http.name = "SoloLatest"
 	host.add_child(http)
@@ -222,6 +235,10 @@ static func _fetch_pointer(host: Node, id: String, bases: PackedStringArray, hop
 	for base in bases:
 		var url := "%s/%s/%s" % [GSCloudClient.resolve_base_url(base).rstrip("/"), id, LATEST_FILE]
 		var kept: Variant = TmcSoloPointers.fresh(url)
+		if kept == null and cache_first:
+			kept = TmcSoloPointers.stale(url)
+			if kept != null:
+				_refresh_pointer(host, url)
 		var res: GSResult = GSResult.success(kept) if kept != null else await http.get_json(url)
 
 		if not res.ok:

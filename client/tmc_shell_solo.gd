@@ -127,7 +127,8 @@ func _show_launch_identity(content_id: String) -> void:
 	shell._solo_launching = true
 	var title := friendly_name(content_id)
 	shell.loading.begin(TmcLoadingScreen.REASON_GAME, content_id, title, true)
-	shell.loading.set_progress(-1.0, shell._text("shell.loading.game", {"game": title}, "Loading %s…" % title))
+	# Determinate from the first frame: the bar starts at a sliver and each stage moves it, instead of an unfilled bar for the pin and fetches.
+	shell.loading.set_progress(0.01, shell._text("shell.loading.game", {"game": title}, "Loading %s…" % title))
 	TmcGameIconHint.start(shell, shell.loading)
 
 
@@ -165,7 +166,7 @@ func _pin_solo_version(content_id: String, version: String) -> GSResult:
 	var wanted := version
 
 	if wanted == "":
-		var latest: GSResult = await TmcSolo.resolve_latest(shell, content_id, shell._cloud.http_base_urls)
+		var latest: GSResult = await TmcSolo.resolve_latest(shell, content_id, shell._cloud.http_base_urls, true)
 		if not latest.ok:
 			# The pointer cannot be fetched (offline, CDN down): a game already on this machine still starts, from the newest manifest kept with it.
 			var kept: PackedStringArray = GSCloudManifestCache.versions(shell._cloud.config.cache_dir, content_id)
@@ -217,6 +218,20 @@ func _solo_refusal_result(content_id: String, wanted: String) -> GSResult:
 	return GSResult.fail(GSError.CODE_VERSION, refusal)
 
 
+## The client refusal for a game, then the addons its pack names; both read the same requires files, one after the other.
+func _refusal_and_needs(content_id: String, wanted: String) -> Dictionary:
+	var refused := await _solo_refusal_result(content_id, wanted)
+	if not refused.ok:
+		return {"refused": refused, "needs": {}}
+	return {"refused": refused, "needs": await _solo_needs(content_id, wanted)}
+
+
+## The cover's status line from a locale key, at [param fraction] of the bar (negative: moving without a fraction).
+func _set_status(key: String, fallback: String, fraction: float) -> void:
+	var title := friendly_name(shell._solo_id) if shell._solo_id != "" else ""
+	shell.loading.set_progress(fraction, shell._text(key, {"name": title}, fallback % title))
+
+
 func _load_solo_inner(content_id: String, version: String) -> GSResult:
 	var pinned := await _pin_solo_version(content_id, version)
 	if not pinned.ok:
@@ -231,17 +246,18 @@ func _load_solo_inner(content_id: String, version: String) -> GSResult:
 	# An icon URL the launcher gave (?icon=) shows from here, before the pack is mounted.
 	TmcGameIconHint.start(shell, shell.loading)
 
-	# Before the addon overlay, the workshop sync or any pack: a game this client cannot run must not download its maps first.
-	var refused := await _solo_refusal_result(content_id, wanted)
-	_stage("client refusal checked")
-	if not refused.ok:
-		return refused
-
-	# The game addons its pack requires (zee_weapons for Prop Hunt, fc_weapons for Fatal Contact; arena_weapons up to fc-weapons v1.4.51) are not in this shell: fetched as the overlay a server would announce, then a restart into it. Asked of the store before the pack is fetched, because the pack's own requirement check refuses it while one is missing. Returns only when nothing is missing or it cannot be had. Subscriptions are asked first (their downloads only registered): a game that accepts addon packs gets the subscribed ones in the same overlay, so one restart covers both.  gs-rename: keep
-	var subscribed: Array = await shell._solo_packs._solo_workshop_plan(content_id, wanted)
-	_stage("workshop planned", {"addons": subscribed.size()})
-	var needs: Dictionary = await _solo_needs(content_id, wanted)
-	_stage("addon needs read", {"needs": needs.size()})
+	# The refusal check (a game this client cannot run must not download its maps) and the addon list read the game's requires files;
+	# the Workshop plan reads provides.json and asks the site. Different files and hosts, so they run at once. The plan only registers
+	# downloads with the launch job (none starts before _prefetch_solo), so a refused game still fetches nothing.
+	_set_status("shell.solo.preparing", "Preparing %s…", 0.05)
+	var both: Array = await TmcGather.run([_refusal_and_needs.bind(content_id, wanted),
+		shell._solo_packs._solo_workshop_plan.bind(content_id, wanted)])
+	var first: Dictionary = both[0]
+	var subscribed: Array = both[1]
+	_stage("refusal, needs and workshop plan read", {"addons": subscribed.size()})
+	if not (first["refused"] as GSResult).ok:
+		return first["refused"]
+	var needs: Dictionary = first["needs"]
 	var overlay: int = await _solo_overlay(content_id, needs, subscribed)
 	_stage("overlay decided", {"overlay": overlay})
 	if overlay == SoloOverlay.RESTARTING:
@@ -557,36 +573,49 @@ func _collect_solo_announce(content_id: String, needs: Dictionary, subscribed: A
 		from_subscription[dir] = str(entry.get("id", ""))
 		announce.append({"dir": dir, "repo": str(entry.get("repo", "")), "id": from_subscription[dir],
 			"version": str(entry.get("version", ""))})
+	var dirs: Array = []
 	for dir: String in needs:
-		if from_subscription.has(dir):
-			# The game needs what the player subscribed to; the subscription's checked version serves both.
-			continue
-		if shell_carries(dir):
-			continue
-		var pack := TmcAddonNamespaces.pack_for(dir)
-		var latest: GSResult = await TmcSolo.resolve_latest(shell, str(pack["id"]), shell._cloud.http_base_urls)
-		if not latest.ok and str(pack["old_id"]) != "":
-			# Before the site renamed the organisation's packs only the old id is published.
-			latest = await TmcSolo.resolve_latest(shell, str(pack["old_id"]), shell._cloud.http_base_urls)
-		if not latest.ok:
-			GSLog.warn(shell.CHANNEL, "a game addon this solo game needs is not published", {
-				"content": content_id, "dir": dir, "id": pack["id"], "why": str(latest.error),
-			})
-			continue
-		# A retired id resolves to the one it moved to, whose name is the repo [GSCloudAddonSet] checks.
-		var id := str(latest.value["id"])
-		var version := str(latest.value["version"])
-		# The newest published version must hold `addons/<dir>`: fc-weapons up to v1.4.51 holds the legacy arena_weapons, so  gs-rename: keep
-		# Fatal Contact 0.1.70 (fc_weapons 32) fetched 1.4.50, which [GSCloudAddonSet] refused as "not an addon pack".
-		var manifest: GSResult = await shell._cloud.resolve_manifest(StringName(id), version)
-		if manifest.ok:
-			var why := pack_holds_dir(dir, id, version, manifest_paths(manifest.value as GSCloudManifest))
-			if why != "":
-				unpublished[dir] = why
-				continue
-		announce.append({"dir": dir, "repo": id.get_file(), "id": id, "version": version})
+		if not from_subscription.has(dir) and not shell_carries(dir):
+			# The game needs what the player subscribed to when it is in from_subscription: that checked version serves both.
+			dirs.append(dir)
+	# One round trip for all of them, not one after another.
+	var calls: Array = []
+	for dir: String in dirs:
+		calls.append(_announce_for_dir.bind(content_id, dir))
+	var found: Array = await TmcGather.run(calls)
+	for i in dirs.size():
+		var one: Dictionary = found[i]
+		if one.has("unpublished"):
+			unpublished[dirs[i]] = one["unpublished"]
+		elif one.has("announce"):
+			announce.append(one["announce"])
 	_unpublished = unpublished
 	return {"announce": announce, "from_subscription": from_subscription, "unpublished": unpublished}
+
+
+## What one missing game addon needs: `{announce}` (what to fetch), `{unpublished}` (why it cannot be had) or `{}` (not published; logged).
+func _announce_for_dir(content_id: String, dir: String) -> Dictionary:
+	var pack := TmcAddonNamespaces.pack_for(dir)
+	var latest: GSResult = await TmcSolo.resolve_latest(shell, str(pack["id"]), shell._cloud.http_base_urls, true)
+	if not latest.ok and str(pack["old_id"]) != "":
+		# Before the site renamed the organisation's packs only the old id is published.
+		latest = await TmcSolo.resolve_latest(shell, str(pack["old_id"]), shell._cloud.http_base_urls, true)
+	if not latest.ok:
+		GSLog.warn(shell.CHANNEL, "a game addon this solo game needs is not published", {
+			"content": content_id, "dir": dir, "id": pack["id"], "why": str(latest.error),
+		})
+		return {}
+	# A retired id resolves to the one it moved to, whose name is the repo [GSCloudAddonSet] checks.
+	var id := str(latest.value["id"])
+	var version := str(latest.value["version"])
+	# The newest published version must hold `addons/<dir>`: fc-weapons up to v1.4.51 holds the legacy arena_weapons, so  gs-rename: keep
+	# Fatal Contact 0.1.70 (fc_weapons 32) fetched 1.4.50, which [GSCloudAddonSet] refused as "not an addon pack".
+	var manifest: GSResult = await shell._cloud.resolve_manifest(StringName(id), version)
+	if manifest.ok:
+		var why := pack_holds_dir(dir, id, version, manifest_paths(manifest.value as GSCloudManifest))
+		if why != "":
+			return {"unpublished": why}
+	return {"announce": {"dir": dir, "repo": id.get_file(), "id": id, "version": version}}
 
 
 ## Every path [param manifest] lists.

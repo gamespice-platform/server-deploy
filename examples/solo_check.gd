@@ -4,7 +4,7 @@ extends Node
 ## `game.yml` reader against the host's, the shell's map list against the stock server one, and the
 ## session a game reads its map packs from. godot --headless --path .
 
-const CHECKS := 125
+const CHECKS := 140
 
 ## Every game repository, beside this project or in games/: the repositories of cfg/content/games.yml (shipped content-lists/games.yml).
 
@@ -44,6 +44,9 @@ func _ready() -> void:
 	await _test_every_prod_legacy_dir()
 	await _test_solo_press_refusal()
 	await _test_launch_identity_name()
+	await _test_gather()
+	await _test_cache_first_pointer()
+	_test_offline_copy_locale()
 	_test_overlay_blocked()
 	# Last: it mounts a pack, which nothing unmounts.
 	_test_overlay_in_place()
@@ -457,8 +460,11 @@ func _test_client_refusal() -> void:
 		"a game addon the client does not carry is the overlay's business, not a refusal")
 	_check(TmcSolo.client_refusal(api, "not json") == "" and TmcSolo.client_refusal(api, "") == "", "an unreadable file is not a refusal (the pack's own check reports it)")
 	var wired := FileAccess.get_file_as_string("res://client/tmc_shell_solo.gd")
-	_check(wired.find("await _solo_refusal_result(content_id, wanted)") > 0 and wired.find("await _solo_refusal_result(content_id, wanted)") < wired.find("_solo_workshop_plan(content_id, wanted)"),
-		"the refusal runs before the workshop sync and every pack fetch")
+	var chain := wired.substr(wired.find("func _refusal_and_needs"))
+	# The refusal and the addon list run in one chain (refusal first); the Workshop plan only registers downloads, none start before _prefetch_solo.
+	_check(chain.find("await _solo_refusal_result(content_id, wanted)") > 0 and chain.find("await _solo_refusal_result(content_id, wanted)") < chain.find("await _solo_needs(content_id, wanted)")
+		and wired.find("_refusal_and_needs.bind(") > 0 and wired.find("_refusal_and_needs.bind(") < wired.find("await shell._solo_packs._prefetch_solo"),
+		"the refusal runs before the addon list, and both before any pack is fetched")
 	_done()
 
 
@@ -492,6 +498,52 @@ func _test_launch_identity_name() -> void:
 	_check(shell.friendly_name("gamemann/game-airdrift") == "Airdrift", "game- prefix dropped")
 	_check(shell.friendly_name("gamemann/game-prop-hunt") == "Prop Hunt", "dashes become spaces")
 	_check(shell.friendly_name("airdrift") == "Airdrift", "no owner")
+	_done()
+
+
+func _slow(ms: int, value: Variant) -> Variant:
+	await get_tree().create_timer(ms / 1000.0).timeout
+	return value
+
+
+func _test_gather() -> void:
+	_section("independent fetches run at once and answer in call order")
+	var t0 := Time.get_ticks_msec()
+	var out: Array = await TmcGather.run([_slow.bind(250, "a"), _slow.bind(250, "b"), _slow.bind(250, "c")])
+	var took := Time.get_ticks_msec() - t0
+	_check(out == ["a", "b", "c"], "results are in the order given", str(out))
+	_check(took < 600, "three 250 ms calls take about one, not three", "%d ms" % took)
+	_check((await TmcGather.run([])).is_empty(), "no calls return at once")
+	var fast: Array = await TmcGather.run([_slow.bind(0, 1), func() -> int: return 2])
+	_check(fast == [1, 2], "a plain function and a coroutine mix", str(fast))
+	_done()
+
+
+## A pointer kept on this machine is answered at once even when old and the origin is unreachable; the answer is the kept version.
+func _test_cache_first_pointer() -> void:
+	_section("solo pointers are cache first")
+	var base := "http://127.0.0.1:9"
+	var id := "solo_check/cachefirst"
+	var url := "%s/%s/%s" % [GSCloudClient.resolve_base_url(base).rstrip("/"), id, TmcSolo.LATEST_FILE]
+	TmcSoloPointers.remember(url, {"version": "2.5.0"}, int(Time.get_unix_time_from_system()) - 100000)
+	_check(TmcSoloPointers.fresh(url) == null, "the kept pointer is long past fresh")
+	var t0 := Time.get_ticks_msec()
+	var got: GSResult = await TmcSolo.resolve_latest(self, id, PackedStringArray([base]), true)
+	_check(got.ok and got.value["version"] == "2.5.0" and got.value["id"] == id, "an old kept pointer answers without the network", str(got.error))
+	_check(Time.get_ticks_msec() - t0 < 500, "and does not wait for the origin", "%d ms" % (Time.get_ticks_msec() - t0))
+	var none: GSResult = await TmcSolo.resolve_latest(self, "solo_check/never_seen", PackedStringArray([base]), true)
+	_check(not none.ok, "nothing kept and offline still fails")
+	DirAccess.remove_absolute(TmcSoloPointers.path_for(url))
+	_done()
+
+
+func _test_offline_copy_locale() -> void:
+	_section("the offline notice and preparing status are in every locale")
+	for lang in ["en", "de"]:
+		var doc: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://client/locales/%s/shell.json" % lang))
+		var solo: Dictionary = (doc as Dictionary).get("solo", {})
+		_check(str(solo.get("offline_copy", "")).contains("{version}"), "%s has shell.solo.offline_copy with {version}" % lang)
+		_check(str(solo.get("preparing", "")).contains("{name}"), "%s has shell.solo.preparing with {name}" % lang)
 	_done()
 
 

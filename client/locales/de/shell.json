@@ -19,6 +19,8 @@
 		"minutes": "noch {n} Min."
 	},
 	"solo": {
+		"offline_copy": "Offline: Die auf diesem Computer gespeicherte Version {version} wird gestartet.",
+		"preparing": "{name} wird vorbereitet…",
 		"fetching": "Karten werden geladen: {name}…",
 		"have": "Karten: {name} (bereits geladen)",
 		"fetching_size": "Karten werden geladen: {name} ({size})…"

@@ -87,6 +87,8 @@
 		"minutes": "{n} min left"
 	},
 	"solo": {
+		"offline_copy": "Offline: starting the copy of version {version} kept on this computer.",
+		"preparing": "Preparing {name}…",
 		"fetching": "Fetching maps: {name}…",
 		"have": "Maps: {name} (already downloaded)",
 		"fetching_size": "Fetching maps: {name} ({size})…",

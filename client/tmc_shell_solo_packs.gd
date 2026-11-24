@@ -21,7 +21,7 @@ const SLICE_EXTENSIONS := ["tscn", "scn", "tres", "res"]
 func _resolve_solo_key(key: String) -> GSResult:
 	if shell._solo_key_cache.has(key):
 		return GSResult.success(shell._solo_key_cache[key])
-	var latest: GSResult = await TmcSolo.resolve_latest(shell, str(TmcSolo.split_key(key)["id"]), shell._cloud.http_base_urls)
+	var latest: GSResult = await TmcSolo.resolve_latest(shell, str(TmcSolo.split_key(key)["id"]), shell._cloud.http_base_urls, true)
 	if latest.ok:
 		shell._solo_key_cache[key] = latest.value
 	return latest

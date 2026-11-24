@@ -1004,7 +1004,9 @@ func _on_launch_job(snap: Dictionary) -> void:
 	var title := _text("shell.job.unpacking_title", {}, "Unpacking…") if unpacking else _text("shell.job.downloading_title", {}, "Downloading…")
 	if loading != null:
 		loading.begin(TmcLoadingScreen.REASON_CONTENT)
-		loading.set_progress(-1.0 if unpacking else frac, title, line)
+		var unpack_total := int(snap.get("unpack_total", 0))
+		# Unpacking counts files, so the bar fills with them instead of sliding without a position.
+		loading.set_progress(clampf(float(snap.get("unpack_done", 0)) / float(unpack_total), 0.0, 1.0) if unpacking and unpack_total > 0 else (-1.0 if unpacking else frac), title, line)
 	if _status != null:
 		_status.text = title
 	if _progress != null:
