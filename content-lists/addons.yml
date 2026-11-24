@@ -24,13 +24,13 @@ entries:
   - repo: gs-chat
     pin: v0.1.10
   - repo: gs-cloud
-    pin: v0.1.63
+    pin: v0.1.64
   - repo: gs-combat
     pin: v0.1.25
   - repo: gs-console
     pin: v0.1.14
   - repo: gs-core
-    pin: v0.1.57
+    pin: v0.1.58
   - repo: gs-economy
     pin: v0.1.9
   - repo: gs-effects
@@ -44,7 +44,7 @@ entries:
   - repo: gs-fx
     pin: v0.3.15
   - repo: gs-game
-    pin: v0.1.63
+    pin: v0.1.64
   - repo: gs-input
     pin: v0.2.1
   - repo: gs-inventory
@@ -60,7 +60,7 @@ entries:
   - repo: gs-log
     pin: v0.1.11
   - repo: gs-map
-    pin: v0.1.95
+    pin: v0.1.96
   - repo: gs-match
     pin: v0.1.9
   - repo: gs-matchmaking
