@@ -14,7 +14,7 @@ gs-chat	v0.1.10
 gs-cloud	v0.1.64
 gs-combat	v0.1.25
 gs-console	v0.1.14
-gs-core	v0.1.58
+gs-core	v0.1.59
 gs-economy	v0.1.9
 gs-effects	v0.1.12
 gs-entity	v0.1.12
@@ -29,7 +29,7 @@ gs-lighting	v0.1.14
 gs-loadout	v0.1.20
 gs-locale	v0.1.9
 gs-log	v0.1.11
-gs-map	v0.1.96
+gs-map	v0.1.97
 gs-match	v0.1.9
 gs-matchmaking	v0.1.11
 gs-menu	v0.1.36
@@ -65,7 +65,7 @@ gs-spectate	v0.1.14
 gs-sql	v0.1.9
 gs-stats	v0.1.22
 gs-team	v0.1.12
-gs-timer	v0.1.14
+gs-timer	v0.1.15
 gs-trail	v0.1.8
 gs-ui	v0.3.2
 gs-user	v0.1.9

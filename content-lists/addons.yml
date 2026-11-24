@@ -30,7 +30,7 @@ entries:
   - repo: gs-console
     pin: v0.1.14
   - repo: gs-core
-    pin: v0.1.58
+    pin: v0.1.59
   - repo: gs-economy
     pin: v0.1.9
   - repo: gs-effects
@@ -60,7 +60,7 @@ entries:
   - repo: gs-log
     pin: v0.1.11
   - repo: gs-map
-    pin: v0.1.96
+    pin: v0.1.97
   - repo: gs-match
     pin: v0.1.9
   - repo: gs-matchmaking
@@ -134,7 +134,7 @@ entries:
   - repo: gs-team
     pin: v0.1.12
   - repo: gs-timer
-    pin: v0.1.14
+    pin: v0.1.15
   - repo: gs-ui
     pin: v0.3.2
   - repo: gs-user
