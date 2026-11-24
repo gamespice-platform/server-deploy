@@ -44,7 +44,7 @@ entries:
   - repo: gs-fx
     pin: v0.3.16
   - repo: gs-game
-    pin: v0.1.64
+    pin: v0.1.65
   - repo: gs-input
     pin: v0.2.1
   - repo: gs-inventory
