@@ -1315,9 +1315,10 @@ ensure_lock_exported() {
     tmp="$(mktemp "$PROJECT/.export_presets.XXXXXX")" || die "could not write a temporary file" 5
     awk '
         /^include_filter=/ && index($0, "addons.lock") == 0 {
+            # The value ends at its closing quote; anything after it (a "; gs-rename: keep" marker) is kept.
             value = substr($0, length("include_filter=\"") + 1)
-            sub(/"$/, "", value)
-            print "include_filter=\"" (value == "" ? "addons.lock" : value ", addons.lock") "\""
+            q = index(value, "\""); tail = substr(value, q + 1); value = substr(value, 1, q - 1)
+            print "include_filter=\"" (value == "" ? "addons.lock" : value ", addons.lock") "\"" tail
             next
         }
         { print }
@@ -1461,14 +1462,15 @@ ensure_web_preset() {
         /^\[preset\.[0-9]+\.options\]$/ { o = $0; gsub(/[^0-9]/, "", o); opts = (o == web); main = 0 }
         main && /^name="Web"$/ { web = sec }
         main && web == sec && /^exclude_filter=/ {
-            value = substr($0, length("exclude_filter=\"") + 1); sub(/"$/, "", value)
+            value = substr($0, length("exclude_filter=\"") + 1)
+            q = index(value, "\""); tail = substr(value, q + 1); value = substr(value, 1, q - 1)
             n = split(value, part, /, */); out = ""; has = 0
             for (i = 1; i <= n; i++) {
                 if (part[i] == "*.gdextension") { has = 1; if (mode == "native") { changed = 1; continue } }
                 if (part[i] != "") out = (out == "" ? part[i] : out ", " part[i])
             }
             if (mode != "native" && !has) { out = (out == "" ? "*.gdextension" : out ", *.gdextension"); changed = 1 }
-            print "exclude_filter=\"" out "\""; next
+            print "exclude_filter=\"" out "\"" tail; next
         }
         opts && /^variant\/extensions_support=/ {
             want = (mode == "native") ? "true" : "false"
@@ -1708,8 +1710,10 @@ ensure_shell_excludes() {
     tmp="$(mktemp "$PROJECT/.export_presets.XXXXXX")" || die "could not write a temporary file" 5
     awk -v dirs="$dirs" '
         /^exclude_filter=/ {
+            # The value ends at its closing quote; the tracked presets carry a "; gs-rename: keep"
+            # marker after it, and appending at the end of the line put the new patterns inside that comment.
             value = substr($0, length("exclude_filter=\"") + 1)
-            sub(/"$/, "", value)
+            q = index(value, "\""); tail = substr(value, q + 1); value = substr(value, 1, q - 1)
             n = split(dirs, d, " ")
             for (i = 1; i <= n; i++) {
                 pat = "addons/" d[i] "/*"
@@ -1718,7 +1722,7 @@ ensure_shell_excludes() {
                     changed = 1
                 }
             }
-            print "exclude_filter=\"" value "\""
+            print "exclude_filter=\"" value "\"" tail
             next
         }
         { print }

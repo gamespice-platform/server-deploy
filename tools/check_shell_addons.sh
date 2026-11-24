@@ -94,6 +94,20 @@ for repo in "${repos[@]}"; do
         || bad "TmcAddonNamespaces.DEFAULTS lacks \"$owner\": the shell would refuse the addon it no longer carries"
 done
 
+# A preset line ends in a "; gs-rename: keep" marker: the patterns must land inside the quotes,
+# or Godot reads them as part of the comment and the game addons ride into the shell's pck.
+prog="$(sed -n "/^ensure_shell_excludes()/,/^}/p" tools/server.in | sed -n "/awk -v dirs=/,/^    ' \"\$cfg\"/p" | sed '1d;$d')"
+if [ -n "$prog" ]; then
+    line="$(grep -m1 '^exclude_filter=' export_presets.example.cfg)"
+    out="$(printf '%s\n' "$line" | awk -v dirs="fc_weapons gs_hud" "$prog")"
+    case "$out" in
+        *'addons/gs_hud/*"'*"gs-rename: keep") good "ensure_shell_excludes puts new patterns inside the quotes and keeps the trailing marker" ;;
+        *) bad "ensure_shell_excludes mangled a preset line with a trailing marker: $out" ;;
+    esac
+else
+    bad "could not extract ensure_shell_excludes' awk program"
+fi
+
 for fn in ensure_shell_excludes shell_lock_begin check_shell_gs_only check_shell_web_size; do
     n="$(grep -c "^ *$fn\b" tools/server.in)"
     [ "$n" -ge 2 ] && good "tools/server.in defines and calls $fn" || bad "tools/server.in no longer calls $fn"
