@@ -130,7 +130,7 @@ entries:
   - repo: gs-sql
     pin: v0.1.9
   - repo: gs-stats
-    pin: v0.1.23
+    pin: v0.1.24
   - repo: gs-team
     pin: v0.1.12
   - repo: gs-timer
