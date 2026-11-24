@@ -1217,13 +1217,8 @@ func _load_game_module() -> void:
 		return
 
 	var current := server.games.current()
-	var wanted := ""
-
-	if current != null:
-		var descriptor := content.find(current.game_id)
-
-		if descriptor != null:
-			wanted = String(descriptor.metadata.get("module", ""))
+	var installed: GSGameDescriptor = content.find(current.game_id) if current != null else null
+	var wanted := TmcGameModule.wanted(installed, current, _module_path)
 
 	if wanted == _module_path:
 		return
