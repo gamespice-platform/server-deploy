@@ -183,8 +183,8 @@ jobs:
                   set -euo pipefail
                   export GODOT="$(sed -n 's/^GODOT="${TMC_GODOT:-\(.*\)}"$/\1/p' server | head -1)"
                   tools/check_artifact_static.sh web/build.zip
-                  # a prod-shaped dedicated server from this lock, one published game, content from the prod origin
-                  tools/artifact_boot_smoke.sh --only game-fatal-contact --origin "${{ vars.SOLO_SMOKE_ORIGIN || 'https://content.gamespice.net/content' }}"
+                  # a prod-shaped dedicated server from this lock, the CI sample of published games, content from the prod origin
+                  tools/artifact_boot_smoke.sh --ci --origin "${{ vars.SOLO_SMOKE_ORIGIN || 'https://content.gamespice.net/content' }}"
 
             - name: Keep finished-green addon CI results (each check-ci call spends the shared GitHub quota)
               if: steps.need.outputs.build == 'true'

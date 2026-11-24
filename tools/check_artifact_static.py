@@ -8,6 +8,8 @@ holds _paths.txt, the full file list). Roots are judged together, so a shell tre
 namespace, as it is at runtime. FAILS (exit 1) on:
   - any addons/dot_* directory, or a dot_*.gd script anywhere (the pre-rename addons a shell must no longer carry)
   - a Dot* class_name
+  - a text file naming a dev-only origin or the dev panel (DEV_ORIGIN: tmcdev.net, tmcdevgames.net, x-tmc-dev): a prod shell
+    or game pack must not send players to the dev box (override the pattern with ARTIFACT_DEV_ORIGIN; "" turns it off)
   - one uid:// claimed by two different files (the 2026-11-23 prod outage: dot_combat/dot_pellet_tracer.gd and
     gs_combat/gs_pellet_tracer.gd both owned uid://cbebxr4alar6d, and the server would not boot)
 Exit 2 when a root is unreadable or holds nothing to judge.
@@ -17,6 +19,10 @@ from collections import defaultdict
 
 HDR = re.compile(r'^\[gd_(?:scene|resource)[^\]]*\buid="(uid://[a-z0-9]+)"', re.M)
 UID = re.compile(r'uid://[a-z0-9]+')
+
+
+DEV_ORIGIN = re.compile(os.environ.get("ARTIFACT_DEV_ORIGIN", r'tmcdev(?:games)?\.net|x-tmc-dev')) if os.environ.get("ARTIFACT_DEV_ORIGIN", "x") else None
+TEXT = (".gd", ".tscn", ".tres", ".cfg", ".json", ".html", ".js", ".txt", ".yml", ".yaml", ".remap")
 
 
 def ns_of(rel):
@@ -36,7 +42,7 @@ def owner_of(rel):
 
 def scan(roots):
     owners = defaultdict(set)   # uid -> resource paths (root-relative)
-    paths, classes = [], []
+    paths, classes, devs = [], [], []
     for root in roots:
         listed = os.path.join(root, "_paths.txt")
         has_list = os.path.isfile(listed)
@@ -54,6 +60,10 @@ def scan(roots):
                     text = open(full, errors="replace").read()
                 except OSError:
                     continue
+                if DEV_ORIGIN and fn.endswith(TEXT):
+                    m = DEV_ORIGIN.search(text)
+                    if m:
+                        devs.append(f"{rel} names {m.group(0)}")
                 if fn.endswith(".uid"):
                     for u in UID.findall(text):
                         owners[(ns_of(rel), u)].add(owner_of(rel))
@@ -68,7 +78,7 @@ def scan(roots):
                 elif fn.endswith(".gd"):
                     for m in re.finditer(r'^class_name\s+(Dot\w*)', text, re.M):
                         classes.append(f"Dot* class {m.group(1)} in {rel}")
-    return owners, paths, classes
+    return owners, paths, classes, devs
 
 
 def main(argv):
@@ -80,13 +90,15 @@ def main(argv):
         if not os.path.isdir(r):
             print(f"check_artifact_static: {r} is not a directory")
             return 2
-    owners, paths, classes = scan(roots)
+    owners, paths, classes, devs = scan(roots)
     if not paths:
         print("check_artifact_static: nothing to judge in the roots")
         return 2
     bad = []
     if classes:   # one line with a count and the first few: a stale addon has dozens
         bad.append(f"{len(classes)} Dot* class_name(s), first: " + "; ".join(classes[:3]))
+    if devs:
+        bad.append(f"{len(devs)} file(s) name a dev-only origin, first: " + "; ".join(devs[:3]))
     dirs = {}
     for p in sorted(set(paths)):
         m = re.match(r'((?:games/[^/]+/)?addons/dot_[^/]+)(/|$)', p)

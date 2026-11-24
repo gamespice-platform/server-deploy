@@ -25,11 +25,14 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TREE="$HERE"; ORIGIN="${ARTIFACT_ORIGIN:-https://content.gamespice.net/content}"; ONLY=""; KEEP=""; WAIT=240
 OWNER="${CONTENT_OWNER:-gamemann}"
+# Shell CI boots this sample on every built shell (a boot is ~a minute each); the nightly boots every published game.
+CI_GAMES="${ARTIFACT_CI_GAMES:-game-fatal-contact,game-airdrift,game-playlot,game-deathrun,mg-wipeout}"
 while [ $# -gt 0 ]; do
     case $1 in
         --tree) TREE="$(cd "${2:?}" && pwd)"; shift 2 ;;
         --origin) ORIGIN="${2:?}"; shift 2 ;;
         --only) ONLY="${2:?}"; shift 2 ;;
+        --ci) ONLY="$CI_GAMES"; shift ;;
         --owner) OWNER="${2:?}"; shift 2 ;;
         --keep) KEEP="${2:?}"; shift 2 ;;
         --ready-wait) WAIT="${2:?}"; shift 2 ;;

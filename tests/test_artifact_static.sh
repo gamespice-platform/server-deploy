@@ -30,6 +30,11 @@ expect "the same trees alone pass" 0 "ok" "$T/shell"
 mk "$T/cls/addons/gs_x/x.gd" 'class_name DotThing'
 expect "Dot* class fails" 1 "Dot\* class DotThing" "$T/cls"
 
+# a dev-only origin in a shell or pack file (the dev panel, the dev content host)
+mk "$T/devo/cfg/x.json" '{"url":"https://panel.tmcdev.net/api"}'
+mk "$T/devo/a.gd.uid" 'uid://dddd4444'
+expect "a dev origin in a text file fails" 1 "name a dev-only origin" "$T/devo"
+ARTIFACT_DEV_ORIGIN= expect "the same file passes with the pattern off" 0 "ok" "$T/devo"
 # an exported pck: foo.gd.remap + foo.gd.uid for ONE script is one resource, not a clash
 mk "$T/exp/addons/gs_x/x.gd.remap" 'uid="uid://bbbb2222"'
 mk "$T/exp/addons/gs_x/x.gd.uid" 'uid://bbbb2222'
