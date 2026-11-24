@@ -36,13 +36,7 @@ printf 'config_version=5\n\n[application]\n\nconfig/name="shell parse check"\n' 
 tool="$p/addons/gs_core/tools/gs_parse_all.gd"
 [ -f "$tool" ] || { echo "FAIL no gs_parse_all in the shell's gs-core"; exit 1; }
 
-timeout 600 "$GODOT" --headless --path "$p" --import > "$W/import.log" 2>&1; irc=$?
-# Godot 4 can abort (134) while quitting the editor after the import has finished; that is not a failed import.
-done_ok=0; grep -aq 'loading_editor_layout.*DONE\|DONE.*loading_editor_layout' "$W/import.log" && done_ok=1
-[ "$irc" = 134 ] && [ "$done_ok" = 1 ] && irc=0
-if [ "$irc" -ge 124 ] || grep -aqE 'handle_crash|Program crashed|Segmentation fault' "$W/import.log"; then
-    echo "FAIL --import died (exit $irc; 124 = timeout, 139 = SIGSEGV)"; tail -20 "$W/import.log"; exit 1
-fi
+GODOT="$GODOT" bash "$ROOT/tools/shell_import.sh" "$p" "$W/import.log" || exit 1
 
 # Runtime scripts only: an addon's examples and tests are not exported and may use what the shell lacks.
 (cd "$p" && find addons -name '*.gd' -not -path '*/examples/*' -not -path '*/tests/*' -not -path '*/test/*' \
