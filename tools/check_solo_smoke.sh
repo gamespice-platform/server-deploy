@@ -13,7 +13,7 @@
 #   GS_SMOKE_STRICT_MARKER=1   also refuse a manifest still carrying the legacy `dot_cloud_signed` marker
 #   GS_SMOKE_EXTRA_KEY  a PUBLIC key PEM file to trust in addition to client/content.json's, as a dev shell does
 #                       (the tmc-dev pack key, tools/dev-shell.sh): dev content is signed by it, prod's by the shipped key
-#   GODOT               the engine (default godot)
+#   GODOT / TMC_GODOT   the engine (default godot on PATH; exit 2 naming the binary if it is missing)
 #
 # [b]Why.[/b] 2026-11-22: a rename changed the envelope marker, every manifest already published kept the old one,
 # and prod solo failed with "Could not download the content manifest". Nothing parsed a REAL published manifest
@@ -26,7 +26,8 @@ ORIGIN="${ORIGIN%/}"
 OWNER="${GS_SMOKE_OWNER:-gamemann}"
 GAMES="${GS_SMOKE_GAMES:-game-fatal-contact game-airdrift game-playlot game-hungario}"
 MIN="${GS_SMOKE_MIN:-3}"
-GODOT="${GODOT:-godot}"
+GODOT="${TMC_GODOT:-${GODOT:-godot}}"
+command -v "$GODOT" >/dev/null 2>&1 || { echo "check_solo_smoke: godot binary not found: '$GODOT' (not on PATH or not executable); set GODOT=/path/to/godot or TMC_GODOT" >&2; exit 2; }
 
 urls=(); bad=0; n=0
 for id in $GAMES; do
