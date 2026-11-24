@@ -96,7 +96,7 @@ entries:
   - repo: gs-player-class
     pin: v0.1.12
   - repo: gs-player-controller
-    pin: v0.4.18
+    pin: v0.4.19
   - repo: gs-procedural-generation
     pin: v0.1.7
   - repo: gs-profile
