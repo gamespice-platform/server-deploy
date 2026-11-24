@@ -11,7 +11,8 @@
 # Then polls `votestatus` until "running <id>" shows and checks the client is still connected. Prints one verdict
 # line (CHANGED / TIMEOUT / NOJOIN / NOTARGET) and exits 0 only for CHANGED. No rcon password: commands go through the panel API.
 # Run as the work user (the panel key is gamedev's): sudo -u gamedev tools/map_change_verify.sh 5652482b 10.50.0.5:6120
-# Env: PTERO_KEY_FILE (default ~/.config/pterodactyl/client_key), PTERO_PANEL (default https://panel.tmcdev.net),
+# Env: SEND_SECS (default 8: seconds the console is read per command; a game with a long map list, Zombie Zone's 60 rows, answers `mapmenu` after the first 2 s),
+#      PTERO_KEY_FILE (default ~/.config/pterodactyl/client_key), PTERO_PANEL (default https://panel.tmcdev.net),
 #      PTERO_CONSOLE (default ptero-console, prints a server's console for N seconds), GODOT.
 # Heavy: one headless client. Run it through heavy/hv. Never prints the key.
 set -u
@@ -34,7 +35,7 @@ W=$(mktemp -d); trap 'kill $(jobs -p) 2>/dev/null; rm -rf "$W"' EXIT
 
 # send <command...>: send one console command; $W/con holds the console for the next few seconds.
 send() {
-    "$CON" "$ID" 4 > "$W/con" 2>&1 &
+    "$CON" "$ID" "${SEND_SECS:-8}" > "$W/con" 2>&1 &
     local p=$!; sleep 2
     python3 -c '
 import json,os,sys,urllib.request
