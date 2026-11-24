@@ -26,7 +26,7 @@ entries:
   - repo: gs-cloud
     pin: v0.1.64
   - repo: gs-combat
-    pin: v0.1.25
+    pin: v0.1.26
   - repo: gs-console
     pin: v0.1.14
   - repo: gs-core
