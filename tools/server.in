@@ -22,6 +22,9 @@ while [ -L "$SELF" ]; do
     [[ $SELF != /* ]] && SELF="$DIR/$SELF"
 done
 PROJECT="$(cd -P "$(dirname "$SELF")" && pwd)"
+# glibc keeps a heap arena per thread and does not hand freed pages back, so a threaded nav bake on a large map (ZZ's gm_boreas)
+# left ~0.5 GB held after it finished. Two arenas and an early trim bound that; an operator's own values win.
+export MALLOC_ARENA_MAX="${MALLOC_ARENA_MAX:-2}" MALLOC_TRIM_THRESHOLD_="${MALLOC_TRIM_THRESHOLD_:-131072}"
 # Kept for TMC_AUTO_UPDATE, which re-runs this script with exactly what it was given once
 # the addons have been moved.
 ORIG_ARGS=("$@")
