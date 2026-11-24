@@ -2,7 +2,7 @@ extends Node
 
 ## The admin menu and the loading screen, both halves, without a server.
 
-const CHECKS := 231
+const CHECKS := 236
 
 var _passed := 0
 var _failed := 0

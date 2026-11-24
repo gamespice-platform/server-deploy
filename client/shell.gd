@@ -2023,6 +2023,8 @@ func _on_spawned() -> void:
 	_set_busy(false)
 	_menu.visible = false
 	_has_spawned = true
+	# Hold the screen over the gap until the game is on screen to be watched, before the reasons below end it.
+	_cover.hold_for_game()
 	# Both: the new game is on screen, and whatever the content client was doing for it is
 	# done whether or not its last phase said so.
 	loading.end(TmcLoadingScreen.REASON_GAME)
@@ -2341,6 +2343,8 @@ func clear_pending() -> int:
 ## Reports something that stopped the game from starting, and puts the menu back: the only way out, since a player who cannot be shown a game needs the address box.
 func _fail(text: String) -> void:
 	GSLog.error(CHANNEL, text)
+	if _cover != null:
+		_cover.release_hold()
 	TmcGameIdentity.apply_shell()
 	_leave_game_ui()
 	_set_busy(false)

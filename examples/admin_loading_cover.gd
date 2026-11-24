@@ -127,6 +127,60 @@ func _test_cover_gate() -> void:
 	root2.free()
 	_cover_free(rig)
 	_done()
+	await _test_cover_gap()
+
+
+## The shell ends its game and content reasons at signon; a built-in game arrives seconds later. The screen must not go down in between.
+func _test_cover_gap() -> void:
+	_section("the screen stays up between signon and the game being watched")
+	var rig := _cover_rig()
+	var screen: TmcLoadingScreen = rig[0]
+	var cover: TmcGameCover = rig[1]
+	var root: Node = rig[2]
+
+	# Before: the shell's two ends with nothing raised lifts the screen at once.
+	screen.begin(TmcLoadingScreen.REASON_GAME, "g", "G", true)
+	screen.end(TmcLoadingScreen.REASON_GAME)
+	_check(not screen.is_showing(), "without a hold the screen goes down at signon (the old gap)")
+
+	screen.begin(TmcLoadingScreen.REASON_GAME, "g", "G", true)
+	cover.hold_for_game()
+	screen.end(TmcLoadingScreen.REASON_GAME)
+	screen.end(TmcLoadingScreen.REASON_CONTENT)
+	await get_tree().process_frame
+	_check(screen.is_showing(), "with a hold the screen stays up after the shell ends its reasons")
+
+	var game := Node3D.new()
+	var gate := GSLoadGate.new()
+	gate.require_camera = false
+	gate.register_service = false
+	gate.hold(&"map", "Loading the map")
+	game.add_child(gate)
+	root.add_child(game)
+	cover.watch()
+	_check(screen.is_showing() and cover.mode_of(game) == "gate", "the watch takes the screen over for the game's gate")
+	gate.release(&"map")
+	gate.free()
+	game.free()
+
+	# No game ever comes: the failed load ends the hold.
+	cover.hold_for_game()
+	cover.release_hold()
+	_check(not screen.is_showing(), "a failed load releases the held screen")
+
+	# A game already open needs nothing: watch ends the hold.
+	var open_game := Node3D.new()
+	var open_gate := GSLoadGate.new()
+	open_gate.require_camera = false
+	open_gate.register_service = false
+	open_game.add_child(open_gate)
+	root.add_child(open_game)
+	cover.hold_for_game()
+	cover.watch()
+	open_gate.set_process(false)
+	_check(screen.is_showing() == (not bool(open_gate.is_open())), "a watched game that needs no screen does not keep it up", str(screen.is_showing()))
+	_cover_free(rig)
+	_done()
 
 
 ## The shell's warm-up goes up in budgeted rounds, so its time-out can cut it between frames. Unbudgeted, PLAYLOT's

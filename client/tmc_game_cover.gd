@@ -38,6 +38,8 @@ var _gates: Dictionary = {}
 var _warming: Dictionary = {}
 ## game instance id -> {"game": Node, "since": msec, "settled": frames}
 var _fallback: Dictionary = {}
+## True from [method hold_for_game] until [method watch] has seen the game.
+var _pending := false
 
 
 ## Claims the covering job for every gate that enters [param root].
@@ -46,11 +48,34 @@ func claim(root: Node) -> void:
 	root.set_meta(HOST_META, self)
 
 
+## Keeps the screen up across the gap between signon (the shell ends its own reasons) and the game being on screen to watch: a built-in game is loaded after the spawn, seconds later, and without this the screen went down in between and came back when [method watch] found the game (the late loading screen, a 4 s gap). [method watch] takes over; [method release_hold] ends it when no game will come.
+func hold_for_game() -> void:
+	if loading == null or _pending:
+		return
+	_pending = true
+	loading.begin(TmcLoadingScreen.REASON_WARM, "", "", true)
+	get_tree().create_timer(warm_wait_sec).timeout.connect(func() -> void:
+		if _pending:
+			GSLog.warn(CHANNEL, "no game came on screen in time; dropping the screen", {"seconds": warm_wait_sec})
+			release_hold())
+
+
+## Ends the screen [method hold_for_game] raised, when no game came (a failed load).
+func release_hold() -> void:
+	if not _pending:
+		return
+	_pending = false
+	if not _needs_screen():
+		loading.end(TmcLoadingScreen.REASON_WARM)
+
+
 ## Starts covering every game under [member game_root] not seen before. Called once a game
 ## is on screen.
 func watch() -> void:
 	if game_root == null:
 		return
+	var was_pending := _pending
+	_pending = false
 	for game in game_root.get_children():
 		if game.has_meta(&"tmc_warm_watched"):
 			continue
@@ -62,6 +87,24 @@ func watch() -> void:
 			_watch_contract(game)
 		else:
 			_watch_fallback(game)
+	# The held screen ends unless a watch still needs it (a game already open, or watched earlier, has nothing to wait for).
+	if was_pending and not _needs_screen():
+		loading.end(TmcLoadingScreen.REASON_WARM)
+
+
+## True while a watched game still waits on the screen: a closed gate, a draw, a fallback wait, a contract game not yet shown.
+func _needs_screen() -> bool:
+	if not _fallback.is_empty() or not _warming.is_empty():
+		return true
+	for id: int in _gates:
+		var g: Object = _gates[id]
+		if is_instance_valid(g) and not bool(g.call(&"is_open")):
+			return true
+	if game_root != null:
+		for game in game_root.get_children():
+			if game.has_signal(&"ready_to_show") and not _gate_in(game) and not game.has_meta(&"tmc_warmed"):
+				return true
+	return false
 
 
 ## What [method watch] chose for each game: "gate", "contract", "fallback" or "".
