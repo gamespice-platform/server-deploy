@@ -315,6 +315,16 @@ func _publish_one(
 
 	var published := pub.publish(source, out_dir.path_join(out_name))
 
+	# A map repository is not a game, so nothing above imported it (derive_requires returns early
+	# for a source with no gs_requires.gd); its textures then ship as markers for outputs that were
+	# never made. Imported once and published again, the way a source with no class cache is.
+	var src_abs := ProjectSettings.globalize_path(source)
+	if not published.ok and published.error.message.contains("has not imported") \
+			and FileAccess.file_exists(src_abs.path_join("project.godot")):
+		print("  importing %s first (it has .import markers and no imported files)" % src_abs)
+		_godot(["--headless", "--path", src_abs, "--import"])
+		published = pub.publish(source, out_dir.path_join(out_name))
+
 	if published.ok and requires_file != "" and not _lists(published.value, GSAddonApi.REQUIREMENTS_FILE):
 		return GSResult.fail(
 			GSError.CODE_STATE,
