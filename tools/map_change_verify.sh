@@ -44,7 +44,7 @@ r=urllib.request.Request(os.environ["PTERO_PANEL"]+"/api/client/servers/"+sys.ar
 urllib.request.urlopen(r).read()' "$ID" "$*" >/dev/null
     wait $p
 }
-running() { send votestatus; grep -aoE 'running +[a-z0-9_]+' "$W/con" | tail -1 | awk '{print $2}'; }
+running() { send votestatus; grep -aoE 'running +[A-Za-z0-9_:.-]+' "$W/con" | tail -1 | awk '{print $2}'; }
 
 [ -x "$GODOT" ] || { echo "no godot: set GODOT" >&2; exit 2; }
 timeout "$SECS" "$GODOT" --headless --path "$HERE" res://client/boot.tscn -- --connect "$ADDR" > "$W/join.log" 2>&1 &
@@ -55,7 +55,7 @@ sleep 10
 before=$(running)
 if [ -z "$TARGET" ]; then
     send mapmenu
-    TARGET=$(grep -aE '^ +[^(]+\([a-z0-9_]+\)[[:space:]]*$' "$W/con" | grep -aoE '\([a-z0-9_]+\)' | tr -d '()' | grep -vx "$before" | head -1)
+    TARGET=$(grep -aE '^ +[^(]+\([A-Za-z0-9_:.-]+\)[[:space:]]*$' "$W/con" | grep -aoE '\([A-Za-z0-9_:.-]+\)' | tr -d '()' | grep -v '^mode:' | grep -vxF "$before" | head -1)
 fi
 [ -n "$TARGET" ] || { echo "$ID NOTARGET before=$before"; exit 1; }
 case $VIA in
