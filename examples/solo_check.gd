@@ -391,17 +391,16 @@ func _names(repo: String) -> PackedStringArray:
 	return out
 
 
-## Prod packs are gs_core API 37/38 and this client's OLDEST is 43: the pack is refused from its requires.json alone, before the 446 MiB maps pack.
+## A pack built for an API newer than this client is refused from its requires.json alone, before the maps pack is fetched. One below the
+## addon's OLDEST is only warned about and tried (GSAddonApi.check, gs-core API 46).
 func _test_client_refusal() -> void:
-	_section("a game built for an API this client no longer runs is refused before any pack is fetched")
+	_section("a game built for an API this client does not run is refused before any pack is fetched")
 	var api := GSAddonApi.new()
 	var oldest := api.oldest_of("gs_core")
 	var level := api.level_of("gs_core")
 	var old_text := '{"addons": {"dot_core": %d, "gs_ui": 1, "fc_weapons": 32}}' % (oldest - 1)
-	var why := TmcSolo.client_refusal(api, old_text)
-	_check(why.contains("republished for this client") and why.contains("gs_core>=%d" % (oldest - 1)),
-		"a legacy dot_core below OLDEST is refused with the republish message", why)
-	_check(TmcSolo.client_refusal(api, '{"addons": {"gs_core": %d}}' % (oldest - 1)) != "", "the same under its gs_ name")
+	_check(TmcSolo.client_refusal(api, old_text) == "", "a legacy dot_core below OLDEST is warned about, not refused")
+	_check(TmcSolo.client_refusal(api, '{"addons": {"gs_core": %d}}' % (oldest - 1)) == "", "the same under its gs_ name")
 	_check(TmcSolo.client_refusal(api, '{"addons": {"gs_core": %d}}' % level) == "", "a game at this client's level runs")
 	_check(TmcSolo.client_refusal(api, '{"addons": {"gs_core": %d}}' % (level + 1)).contains("republished"), "a game newer than this client is refused too")
 	_check(TmcSolo.client_refusal(api, '{"addons": {"zzz_game_addon": 99, "gs_core": %d}}' % level) == "",

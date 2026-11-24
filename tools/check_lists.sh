@@ -105,7 +105,9 @@ else
             case "$repo" in ''|'#'*) continue ;; esac
             case "$url" in *zees-games/*) ;; *) continue ;; esac
             [ -f "../$repo/game.yml" ] || continue
-            printf '%s\n' "${GL_REPOS[@]}" | grep -qxF -e "$repo" $(printf -- "-e %s " ${aliases//,/ }) || missing="$missing $repo"
+            # One -e per name; an empty alias column adds none (a bare `-e` made grep fail for every such row).
+            pats=(-e "$repo"); for a in ${aliases//,/ }; do pats+=(-e "$a"); done
+            printf '%s\n' "${GL_REPOS[@]}" | grep -qxF "${pats[@]}" || missing="$missing $repo"
         done < "$TSV"
         # A renamed repository is listed under its NEW name with the old ones in column 3
         # (the header of projects.tsv), and a checkout may still sit under the old one until

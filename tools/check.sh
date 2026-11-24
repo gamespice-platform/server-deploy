@@ -365,10 +365,13 @@ if [ "$checked_any" -eq 1 ]; then
         game_source "$repo" || continue
         # A linked worktree checked out inside the repository is another copy, not this game's source.
         wt_skip=()
+        # git records a worktree under the path it was added through (a renamed repository's old symlink
+        # name), so compare resolved paths: the same directory must not count as another game's source.
+        src_real="$(cd "$GAME_SRC" && pwd -P)"
         while read -r wt; do
             [ -n "$wt" ] && wt_skip+=(--exclude-dir="$(basename "$wt")")
         done < <(git -C "$GAME_SRC" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' \
-            | grep -F "$(cd "$GAME_SRC" && pwd -P)/")
+            | while read -r w; do real="$(realpath -m "$w")"; case "$real" in "$src_real"/*) echo "$real" ;; esac; done)
         while read -r hit; do
             printf '  %sFAIL%s %s declares a class_name: %s
 ' \

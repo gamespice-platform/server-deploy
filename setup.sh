@@ -428,8 +428,8 @@ game_tickrate() {
         return
     done
     case "$g" in
-        fatalcontact|arena) printf 66 ;;
-        airdrift|airdrift|playlot|playground) printf 128 ;;  # airdrift: legacy id (a server still configured under it)
+        fatalcontact|fatal-contact|arena) printf 66 ;;
+        airdrift|playlot|playground|g2gfast) printf 128 ;;  # airdrift: legacy id (a server still configured under it)
         *)                 printf 60 ;;
     esac
 }

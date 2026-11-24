@@ -258,8 +258,9 @@ func _publish_template() -> String:
 
 	var godot := OS.get_executable_path()
 	OS.set_environment("GODOT", godot)
-	if not DirAccess.dir_exists_absolute(source.path_join(".godot/imported")):
-		OS.execute(godot, ["--headless", "--path", source, "--import"])
+	# Always: a checkout imported before an addon's classes changed keeps a stale class cache, and gs_requires.gd then
+	# cannot see GSAddonApi. An import of an already-imported project only touches what changed.
+	OS.execute(godot, ["--headless", "--path", source, "--import"])
 	var out := ProjectSettings.globalize_path(_root.path_join("release"))
 	var said: Array = []
 	var status := OS.execute("bash", [package_sh, source, TEMPLATE_VERSION, "--out", out, "--name", TEMPLATE, "--pack"], said, true)

@@ -46,7 +46,8 @@ static func valid_id(id: String) -> bool:
 
 ## Why this client cannot run a game whose `requires.json` reads [param text], or "" when it can. Only the addons this client carries are judged
 ## (legacy `dot_*` names read as `gs_*`): a game addon the shell lacks is the overlay's business. Asked before ANY pack of the game is fetched, so a
-## game published against an API this client no longer supports (below the addon's OLDEST) costs one small file, not a maps download.
+## game published against an API newer than this client carries costs one small file, not a maps download. A game below the addon's OLDEST is
+## not refused: GSAddonApi.check warns and the game is tried (gs-core API 46).
 static func client_refusal(api: GSAddonApi, text: String) -> String:
 	var parsed := GSAddonApi.parse(text)
 	if not parsed.ok:

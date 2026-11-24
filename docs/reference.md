@@ -384,9 +384,9 @@ A game can be **in the build** or **delivered**. Built in is the default and is 
    kind: pack
    version: 0.1.0
 
-   scene: scenes/arena_server.tscn
-   client_scene: game/arena.tscn
-   module: game/arena_module.gd
+   scene: scenes/fc_server.tscn
+   client_scene: game/fc.tscn
+   module: game/fc_module.gd
    ```
 
    **No address**, and that is deliberate: a pack is found by its content id, against `content/` and `dist/` on this box first and then every `content_urls` entry in order. `manifest_url:` is still accepted and overrides all of that, for content that lives somewhere this server has no base for — but writing one by default put a per-deployment fact into a per-game file, and made every version bump an edit in two places.
@@ -402,7 +402,7 @@ A game can be **in the build** or **delivered**. Built in is the default and is 
    ```
    cloud.mount  mounted content=arena@0.1.0 files=140 prefix=res://gs_cloud/arena/0.1.0
    tmc.host     content ready at=res://gs_cloud/arena/0.1.0
-   games        game loaded scene=res://gs_cloud/arena/0.1.0/scenes/arena_server.tscn
+   games        game loaded scene=res://gs_cloud/arena/0.1.0/scenes/fc_server.tscn
    ```
 
 5. **Take it out of the build**, once it is delivered: drop its entry from `BUILTIN_CLIENTS` in `client/shell.gd` and its entry from `content-lists/games.yml`.
@@ -413,7 +413,7 @@ Every one of these was published and booted as a pack — mounted, module loaded
 
 | game.yml | `--source` | pack | `scene:` | `client_scene:` | `module:` |
 | --- | --- | --- | --- | --- | --- |
-| `arena` | `games/game-fatal-contact` | `dist/arena` — 140 files, 3.1 MiB | `scenes/arena_server.tscn` | `game/arena.tscn` | `game/arena_module.gd` |
+| `arena` | `games/game-fatal-contact` | `dist/arena` — 140 files, 3.1 MiB | `scenes/fc_server.tscn` | `game/fc.tscn` | `game/fc_module.gd` |
 | `airdrift` | `games/game-airdrift` | `dist/airdrift` — 171 files, 3.1 MiB | `scenes/airdrift_server.tscn` | `game/airdrift.tscn` | `game/airdrift_module.gd` |
 | `playlot` | `games/game-playlot` | `dist/playground` — 76 files, 755 KiB | `scenes/pg_server.tscn` | `game/playlot.tscn` | `game/playlot_module.gd` |
 | `hungry_classic` `hungry_frenzy` `hungry_gauntlet` | `games/game-hungario` | `dist/hungry` — 65 files, 644 KiB | `game/modes/<mode>.tscn` | `game/client/hungry_client.tscn` | `game/hungry_module.gd` |

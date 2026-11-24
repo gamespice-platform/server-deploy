@@ -142,7 +142,7 @@ func _test_repositories() -> void:
 		var differ := PackedStringArray()
 
 		for key in MUST_AGREE:
-			if str(theirs.get(key, "")) != str(ours.get(key, "")):
+			if not _agrees(key, str(theirs.get(key, "")), str(ours.get(key, ""))):
 				differ.append("%s: %s vs %s" % [key, theirs.get(key, ""), ours.get(key, "")])
 
 		_check(differ.is_empty(),
@@ -150,6 +150,14 @@ func _test_repositories() -> void:
 			"; ".join(differ))
 
 	_done()
+
+
+## A game that ships as several modes names each one "<game>: <mode>" here, while its own
+## repository carries the game name alone (it is the shell title); that is agreement.
+func _agrees(key: String, theirs: String, ours: String) -> bool:
+	if theirs == ours:
+		return true
+	return key == "name" and ours.begins_with(theirs + ": ")
 
 
 func _section(title: String) -> void:
