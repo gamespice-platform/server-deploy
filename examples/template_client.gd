@@ -103,7 +103,11 @@ func _package(source: String, package_sh: String) -> String:
 	OS.set_environment("GODOT", godot)
 
 	# package.sh refuses an unimported checkout, because a pack is never re-imported.
-	if not DirAccess.dir_exists_absolute(source.path_join(".godot/imported")):
+	# A checkout imported before the addons gained a class has a stale class list; the pack's
+	# requirements are derived from it, so it is imported again, not trusted.
+	var classes := FileAccess.get_file_as_string(source.path_join(".godot/global_script_class_cache.cfg"))
+	if not DirAccess.dir_exists_absolute(source.path_join(".godot/imported")) \
+			or not classes.contains("GSAddonApi"):
 		OS.execute(godot, ["--headless", "--path", source, "--import"])
 
 	var out := ProjectSettings.globalize_path(ROOT.path_join("release"))
