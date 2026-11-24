@@ -148,7 +148,7 @@ entries:
   - repo: gs-vote
     pin: v0.1.20
   - repo: gs-weapon
-    pin: v0.1.58
+    pin: v0.1.59
   - repo: gs-weather
     pin: v0.1.5
   - repo: gs-workbench
