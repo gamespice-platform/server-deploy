@@ -215,6 +215,8 @@ jobs:
                   SHELL_PUBLISH_TOKEN: ${{ secrets.SHELL_PUBLISH_TOKEN }}
               run: |
                   set -euo pipefail
+                  # The publish script re-runs the static artifact check, which needs the pinned engine.
+                  export GODOT="$(sed -n 's/^GODOT="${TMC_GODOT:-\(.*\)}"$/\1/p' server | head -1)"
                   git config user.name "github-actions[bot]"
                   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
                   # The origin is optional: with it the upload is read back before the pin.

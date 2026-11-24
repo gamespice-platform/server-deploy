@@ -177,6 +177,8 @@ jobs:
                   SHELL_PUBLISH_TOKEN: ${{ secrets.SHELL_PUBLISH_TOKEN }}
               run: |
                   set -euo pipefail
+                  # The publish script re-runs the static artifact check, which needs the pinned engine.
+                  export GODOT="$(sed -n 's/^GODOT="${TMC_GODOT:-\(.*\)}"$/\1/p' server | head -1)"
                   tools/publish-native-shell.sh --site "$WEB_SHELL_API" --app "$WEB_SHELL_APP" \
                       --version "${{ steps.export.outputs.version }}" \
                       --notes "Exported by the native-shell workflow, run ${{ github.run_id }}, from $(git rev-parse --short HEAD)"
