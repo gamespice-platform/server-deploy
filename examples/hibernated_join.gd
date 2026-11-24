@@ -115,7 +115,26 @@ func _server_link() -> Node:
 	return _server().get_node_or_null(NodePath("Hungry"))
 
 
+## A mode switch inside the pack (what `nextgame` and `changelevel` do on a dev box) before the nap; the manager once retired the surviving module's link there. `-- --no-switch` skips it.
+func _switch_game() -> void:
+	print("switching game before the nap")
+	var result := _server().console.execute("changelevel hungry_gauntlet")
+	_check(result.ok, "changelevel hungry_gauntlet is accepted", str(result.error))
+	var switched := await _until(
+		func() -> bool:
+			var current := _server().games.current()
+			return current != null and current.game_id == "hungry_gauntlet" \
+				and _server().games.phase == GSGameManager.Phase.IDLE,
+		60.0
+	)
+	_check(switched, "the server runs hungry_gauntlet")
+	await _until(func() -> bool: return _server_link() != null, 15.0)
+	_check(_server_link() != null, "the game's link is under Server after the switch")
+
+
 func _join() -> void:
+	if not "--no-switch" in OS.get_cmdline_user_args():
+		await _switch_game()
 	print("joining a sleeping server")
 	var slept := await _until(func() -> bool: return _server().is_hibernating(), 30.0)
 	if not _check(slept, "the empty server went to sleep"):
