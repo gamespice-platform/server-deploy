@@ -27,6 +27,9 @@ on:
             - tools/addons-lock.sh
             - tools/publish-native-shell.sh
             - tools/publish_gate.sh
+            - tools/artifact_boot_smoke.sh
+            - tools/shell_import.sh
+            - tools/check_shell_parse.sh
             - tools/check_solo_smoke.sh
             - tools/solo_manifest_probe.gd
             - .github/workflows/native-shell.yml
