@@ -2331,6 +2331,9 @@ func clear_pending() -> int:
 	var started: GSResult = await _cloud.start()
 	if started.ok and _cloud.store != null:
 		_cloud.store.clear_all()
+	# The kept manifests are downloads too (megabytes of them), and with the objects gone
+	# they only point at nothing; the store's own clear leaves them.
+	GSPaths.remove_tree(_cloud.config.cache_dir.path_join(GSCloudManifestCache.DIR))
 	for dir in _cache_dirs():
 		if dir != _cloud.config.cache_dir:
 			GSPaths.remove_tree(dir)
