@@ -2,7 +2,7 @@
 # Shipped default; an operator replaces it with cfg/content/addons.yml (see docs/content-lists.md).
 entries:
   - repo: fc-weapons
-    pin: v1.4.70
+    pin: v1.4.71
   - repo: gs-2d
     pin: v0.1.10
   - repo: gs-achievements
@@ -44,7 +44,7 @@ entries:
   - repo: gs-fx
     pin: v0.3.16
   - repo: gs-game
-    pin: v0.1.65
+    pin: v0.1.67
   - repo: gs-input
     pin: v0.2.1
   - repo: gs-inventory

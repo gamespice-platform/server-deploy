@@ -1,6 +1,6 @@
 # The addon commits servers install and the client shell is exported from.
 # Written by tools/addons-lock.sh write; read by setup.sh. repo<TAB>ref.
-fc-weapons	v1.4.70
+fc-weapons	v1.4.71
 gs-2d	v0.1.10
 gs-achievements	v0.1.15
 gs-animation	v0.2.3
@@ -21,7 +21,7 @@ gs-entity	v0.1.12
 gs-flashlight	v0.1.6
 gs-friends	v0.1.9
 gs-fx	v0.3.16
-gs-game	v0.1.65
+gs-game	v0.1.67
 gs-input	v0.2.1
 gs-inventory	v0.1.9
 gs-leaderboard	v0.3.7
