@@ -3,7 +3,7 @@ extends Node
 ## The addons a solo game needs: what its requires files name, which of them this shell carries, whether a published pack holds the one a game needs,
 ## and the overlay decision (blocked behind Retry, mounted without a restart). godot --headless --path .
 
-const CHECKS := 48
+const CHECKS := 50
 
 var _passed := 0
 var _failed := 0
