@@ -2,7 +2,7 @@
 # Shipped default; an operator replaces it with cfg/content/addons.yml (see docs/content-lists.md).
 entries:
   - repo: fc-weapons
-    pin: v1.4.69
+    pin: v1.4.70
   - repo: gs-2d
     pin: v0.1.10
   - repo: gs-achievements
@@ -60,7 +60,7 @@ entries:
   - repo: gs-log
     pin: v0.1.11
   - repo: gs-map
-    pin: v0.1.97
+    pin: v0.1.98
   - repo: gs-match
     pin: v0.1.9
   - repo: gs-matchmaking
@@ -78,7 +78,7 @@ entries:
   - repo: gs-npc-ai
     pin: v0.1.16
   - repo: gs-npc-ai-director
-    pin: v0.1.14
+    pin: v0.1.15
   - repo: gs-objective
     pin: v0.1.10
   - repo: gs-party
@@ -92,7 +92,7 @@ entries:
   - repo: gs-player
     pin: v0.1.8
   - repo: gs-player-char
-    pin: v0.1.79
+    pin: v0.1.81
   - repo: gs-player-class
     pin: v0.1.12
   - repo: gs-player-controller
@@ -122,7 +122,7 @@ entries:
   - repo: gs-settings
     pin: v0.1.10
   - repo: gs-sim
-    pin: v0.2.12
+    pin: v0.2.14
   - repo: gs-spawn
     pin: v0.2.7
   - repo: gs-spectate

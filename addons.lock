@@ -1,6 +1,6 @@
 # The addon commits servers install and the client shell is exported from.
 # Written by tools/addons-lock.sh write; read by setup.sh. repo<TAB>ref.
-fc-weapons	v1.4.69
+fc-weapons	v1.4.70
 gs-2d	v0.1.10
 gs-achievements	v0.1.15
 gs-animation	v0.2.3
@@ -29,7 +29,7 @@ gs-lighting	v0.1.14
 gs-loadout	v0.1.21
 gs-locale	v0.1.9
 gs-log	v0.1.11
-gs-map	v0.1.97
+gs-map	v0.1.98
 gs-match	v0.1.9
 gs-matchmaking	v0.1.11
 gs-menu	v0.1.36
@@ -38,14 +38,14 @@ gs-moderation	v0.1.9
 gs-net	v0.1.38
 gs-npc	v0.1.27
 gs-npc-ai	v0.1.16
-gs-npc-ai-director	v0.1.14
+gs-npc-ai-director	v0.1.15
 gs-objective	v0.1.10
 gs-party	v0.1.9
 gs-peer-to-peer	v0.1.7
 gs-physics	v0.1.13
 gs-platform	v0.1.13
 gs-player	v0.1.8
-gs-player-char	v0.1.79
+gs-player-char	v0.1.81
 gs-player-class	v0.1.12
 gs-player-controller	v0.4.19
 gs-procedural-generation	v0.1.7
@@ -59,7 +59,7 @@ gs-server	v0.1.37
 gs-server-query	v0.1.12
 gs-server-security	v0.1.10
 gs-settings	v0.1.10
-gs-sim	v0.2.12
+gs-sim	v0.2.14
 gs-spawn	v0.2.7
 gs-spectate	v0.1.14
 gs-sql	v0.1.9
