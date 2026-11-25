@@ -412,6 +412,11 @@ func _test_client_refusal() -> void:
 	_check(chain.find("await _solo_refusal_result(content_id, wanted)") > 0 and chain.find("await _solo_refusal_result(content_id, wanted)") < chain.find("await shell._solo_addons._solo_needs(content_id, wanted)")
 		and wired.find("_refusal_and_needs.bind(") > 0 and wired.find("_refusal_and_needs.bind(") < wired.find("await shell._solo_packs._prefetch_solo"),
 		"the refusal runs before the addon list, and both before any pack is fetched")
+	var needs_at := wired.find("func _check_solo_needs")
+	var checked := wired.substr(needs_at, wired.find("\n\n\n", needs_at) - needs_at)
+	_check(checked.find("return first[\"refused\"]") > 0 and checked.find("return first[\"refused\"]") < checked.find("_prefetch_solo.bind(content_id, wanted, true)")
+		and checked.find("_solo_overlay.bind(") > 0,
+		"a refused game fetches nothing; the overlay and the game's packs download side by side after the refusal check")
 	_done()
 
 

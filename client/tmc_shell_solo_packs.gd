@@ -61,7 +61,10 @@ func _solo_workshop_plan(content_id: String, version: String) -> Array:
 ## Registers the game, its dependencies and map packs with the launch job (subscribed packs were registered by
 ## [method _solo_workshop_plan]) and downloads them all, mounting none.
 ## Nothing here is fatal: a pack that cannot be fetched now is reported by the mount pass that follows, as it was before.
-func _prefetch_solo(content_id: String, version: String) -> void:
+## [param early] runs it beside the overlay download, before the overlay is mounted: the requirements preflight is left out (the pass after the overlay runs it, and finds the bytes in the store), which needs gs-cloud 35; older builds skip the early pass.
+func _prefetch_solo(content_id: String, version: String, early: bool = false) -> void:
+	if early and GSAddonApi.build_level("gs_cloud") < 35:
+		return
 	var game: GSResult = await shell._cloud.resolve_manifest(StringName(content_id), version)
 	if not game.ok:
 		return
@@ -94,7 +97,10 @@ func _prefetch_solo(content_id: String, version: String) -> void:
 		else:
 			await shell._cloud.job_register(refs)
 
-	await shell._cloud.job_download()
+	if early:
+		await shell._cloud.job_download(true)
+	else:
+		await shell._cloud.job_download()
 
 
 ## `{id, version}` for each valid key of [param keys], a missing version resolved to the newest; a key that will not resolve is left out.

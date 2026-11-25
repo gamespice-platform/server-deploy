@@ -292,7 +292,12 @@ func _check_solo_needs(content_id: String, wanted: String) -> Variant:
 	if not (first["refused"] as GSResult).ok:
 		return first["refused"]
 	var needs: Dictionary = first["needs"]
-	var overlay: int = await shell._solo_addons._solo_overlay(content_id, needs, subscribed)
+	# The overlay (the 227 MiB weapon pack on a first visit) and the game's own packs share no bytes, so they download side by side: serial,
+	# the game's pack and the script warm that follows it started only after the overlay landed. The game's pack is checked against the
+	# mounted overlay afterwards, in _fetch_solo_packs.
+	var both_done: Array = await TmcGather.run([shell._solo_addons._solo_overlay.bind(content_id, needs, subscribed),
+		shell._solo_packs._prefetch_solo.bind(content_id, wanted, true)])
+	var overlay: int = both_done[0]
 	_stage("overlay decided", {"overlay": overlay})
 	match overlay:
 		TmcShellSoloAddons.SoloOverlay.RESTARTING:
