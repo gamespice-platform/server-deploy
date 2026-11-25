@@ -22,6 +22,15 @@ var map_keys: PackedStringArray = PackedStringArray()
 ## ([TmcSoloMaps]): a game's map list or vote re-reads [method map_dirs] on it.
 signal maps_changed()
 
+## Every map the game's map packs list, mounted or not ([method TmcSolo.provided_maps] rows), filled in by [TmcSoloMaps] from the packs' manifests; [signal maps_changed] fires when it is.
+var available: Array = []
+
+## Set once a game asked for [method available_maps]: it downloads each map when it is picked, so the shell does not ask to download them all.
+var on_demand: bool = false
+
+## Downloads one map: `func(id: StringName) -> GSResult`. Set by the shell ([TmcSoloMaps]).
+var fetch_fn: Callable = Callable()
+
 ## The map the player asked to start on (`?map=`, `--solo-map`), &"" for the game's own first map.
 ## Only a request: the game checks it is a map it has or can fetch.
 var start_map: StringName = &""
@@ -60,6 +69,22 @@ func is_connected_to_server() -> bool:
 func leave() -> void:
 	if leave_fn.is_valid():
 		leave_fn.call_deferred()
+
+
+## The maps a game can list before they are downloaded (see [member available]). A game that calls this downloads each map when it is picked ([method fetch_map]).
+func available_maps() -> Array:
+	on_demand = true
+	return available.duplicate(true)
+
+
+## Downloads and mounts the map [param id] (its one-map pack, else its game's map pack), with the shell's busy panel up; [signal maps_changed] fires when it is mounted. Fails loudly, so the game can say so and let the player try again.
+func fetch_map(id: StringName) -> GSResult:
+	if not fetch_fn.is_valid():
+		return GSResult.fail(GSError.CODE_STATE, "This shell cannot download maps.", String(id))
+	var got: Variant = await fetch_fn.call(id)
+	if got is GSResult:
+		return got
+	return GSResult.fail(GSError.CODE_STATE, "The map download gave no answer.", String(id))
 
 
 ## `<root>/<subdir>` for every mounted map pack that has that directory: the same answer

@@ -465,9 +465,32 @@ static func set_maps_answer(content_id: String, answer: String) -> void:
 
 
 ## What the in-game session does about the maps once the game is up: "mount" (the player said yes, or the packs are already on the disk), "ask" (new player, never asked) or "none" (said no, or the game has no map pack).
-static func maps_plan(answer: String, has_packs: bool, on_disk: bool) -> String:
+## [param on_demand]: the game downloads each map when the player picks it (it called [method TmcSoloSession.available_maps]), so a new player is not asked to download them all: "Download all maps" stays on the Maps page.
+static func maps_plan(answer: String, has_packs: bool, on_disk: bool, on_demand: bool = false) -> String:
 	if not has_packs or answer == ANSWER_NO:
 		return "none"
 	if answer == ANSWER_YES or on_disk:
 		return "mount"
-	return "ask"
+	return "none" if on_demand else "ask"
+
+
+## The maps a map pack's `provides.json` lists (`entries` of kind "map"), as rows a game lists before they are downloaded: `{id, name, map_kind, pack, key}`, where `pack` is [param pack_key] (the bulk pack) and `key` its one-map pack ([method per_map_key], "" when there is none).
+static func provided_maps(provides: Dictionary, pack_key: String) -> Array:
+	var out: Array = []
+	var entries: Variant = provides.get("entries", [])
+	if not (entries is Array):
+		return out
+	for e: Variant in entries:
+		if not (e is Dictionary) or str((e as Dictionary).get("kind", "")) != "map":
+			continue
+		var id := str((e as Dictionary).get("id", ""))
+		if not valid_map(id):
+			continue
+		out.append({
+			"id": id,
+			"name": str((e as Dictionary).get("name", id)),
+			"map_kind": str((e as Dictionary).get("map_kind", "")),
+			"pack": pack_key,
+			"key": per_map_key(pack_key, id),
+		})
+	return out

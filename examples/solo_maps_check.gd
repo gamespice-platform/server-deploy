@@ -2,7 +2,7 @@ extends Node
 
 ## The player's answer about a solo game's map packs (TmcSolo.maps_answer / maps_plan) and TmcSoloMaps' pure parts.
 
-const CHECKS := 20
+const CHECKS := 32
 
 var _passed := 0
 var _failed := 0
@@ -16,6 +16,7 @@ func _ready() -> void:
 func _run() -> void:
 	print("gs-server-deploy: the solo maps answer and plan")
 	_test_maps_answer()
+	await _test_on_demand()
 	print("%d passed, %d failed (expected %d checks)" % [_passed, _failed, CHECKS])
 	get_tree().quit(0 if _failed == 0 and _passed == CHECKS else 1)
 
@@ -72,11 +73,47 @@ func _test_maps_answer() -> void:
 		f.close()
 
 
-func _check(ok: bool, what: String) -> bool:
+func _test_on_demand() -> void:
+	print("== every map the packs list is offered, each downloaded when picked")
+	var provides := {"entries": [
+		{"kind": "map", "id": "pgc_fork", "name": "Fork", "scene": "maps/pgc_fork.json", "map_kind": "course"},
+		{"kind": "map", "id": "gm_fork", "scene": "maps/gm_fork.json"},
+		{"kind": "model", "id": "chair", "scene": "models/chair.json"},
+		{"kind": "map", "id": "../bad"},
+	]}
+	var rows := TmcSolo.provided_maps(provides, "gamemann/playlot-maps")
+	_check(rows.size() == 2, "a pack's map entries are listed, other kinds and bad ids left out", str(rows))
+	_check(rows.size() == 2 and rows[0]["name"] == "Fork" and rows[0]["map_kind"] == "course", "with their names and kinds")
+	_check(rows.size() == 2 and rows[1]["name"] == "gm_fork", "an unnamed map reads as its id")
+	_check(rows.size() == 2 and rows[0]["pack"] == "gamemann/playlot-maps" and rows[0]["key"] == "gamemann/pgc_fork", "with the bulk pack and its one-map pack")
+	_check(TmcSolo.provided_maps({}, "gamemann/x").is_empty(), "a pack with no provides lists nothing")
+
+	_check(TmcSolo.maps_plan("", true, false, true) == "none", "a game that downloads maps when picked does not ask to download them all")
+	_check(TmcSolo.maps_plan(TmcSolo.ANSWER_YES, true, false, true) == "mount", "a yes still downloads them all")
+	_check(TmcSolo.maps_plan("", true, true, true) == "mount", "and packs on the disk are still mounted")
+
+	var session := TmcSoloSession.new()
+	session.available = rows
+	_check(not session.on_demand and session.available_maps().size() == 2 and session.on_demand, "a game asking for the list marks the session on demand")
+	session.available_maps()[0]["id"] = "changed"
+	_check(str(session.available[0]["id"]) == "pgc_fork", "and gets a copy")
+	var none: GSResult = await session.fetch_map(&"pgc_fork")
+	_check(not none.ok, "with no download wired, fetch_map fails loudly", str(none.error))
+	var asked := []
+	session.fetch_fn = func(id: StringName) -> GSResult:
+		asked.append(id)
+		await get_tree().process_frame
+		return GSResult.success("gamemann/pgc_fork@1.0.0")
+	var got: GSResult = await session.fetch_map(&"pgc_fork")
+	_check(got.ok and asked == [&"pgc_fork"], "fetch_map hands the map to the shell's download", str(asked))
+	session.free()
+
+
+func _check(ok: bool, what: String, detail: String = "") -> bool:
 	if ok:
 		_passed += 1
 		print("  ok    %s" % what)
 	else:
 		_failed += 1
-		print("  FAIL  %s" % what)
+		print("  FAIL  %s%s" % [what, "  (%s)" % detail if detail != "" else ""])
 	return ok
