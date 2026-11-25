@@ -47,7 +47,7 @@ gs-platform	v0.1.13
 gs-player	v0.1.8
 gs-player-char	v0.1.81
 gs-player-class	v0.1.12
-gs-player-controller	v0.4.19
+gs-player-controller	v0.4.20
 gs-procedural-generation	v0.1.7
 gs-profile	v0.1.27
 gs-profiler	v0.1.7
@@ -59,7 +59,7 @@ gs-server	v0.1.37
 gs-server-query	v0.1.12
 gs-server-security	v0.1.10
 gs-settings	v0.1.10
-gs-sim	v0.2.14
+gs-sim	v0.2.15
 gs-spawn	v0.2.7
 gs-spectate	v0.1.14
 gs-sql	v0.1.9
