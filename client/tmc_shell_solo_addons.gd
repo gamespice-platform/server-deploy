@@ -163,6 +163,10 @@ func _solo_overlay(content_id: String, needs: Dictionary, subscribed: Array = []
 
 	var addons := GSCloudAddonSet.new(shell._cloud)
 	addons.namespaces = TmcAddonNamespaces.load_shell()
+	# A web game that names its early groups starts on those; the rest is topped up after its gate opens (TmcShellSoloLate).
+	var early := await shell._solo_late.early_groups(content_id, shell._solo_version)
+	if not early.is_empty():
+		addons.groups = early
 	for dir: String in from_subscription:
 		# The site approved this exact pack for this player; that, not a namespace, is why it is taken.
 		addons.namespaces.append(str(from_subscription[dir]))

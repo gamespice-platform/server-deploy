@@ -389,6 +389,7 @@ func _enter_solo_game(session: TmcSoloSession, packed: PackedScene, desc: Dictio
 	shell.loading.end(TmcLoadingScreen.REASON_CONTENT)
 	shell._say("")
 	shell._watch_game_ready()
+	shell._solo_late.begin()
 	if session.takes_subscriptions:
 		shell._sync_suggested_later(content_id, desc["suggested"] as PackedStringArray)
 

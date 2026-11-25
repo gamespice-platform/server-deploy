@@ -50,6 +50,12 @@ func _test_requires_reader() -> void:
 	_check(not (shell.solo_addons_in('{"addons": {"../x": 1, "a/b": 1, "ok": 1}}') as Dictionary).has("../x")
 			and not (shell.solo_addons_in('{"addons": {"a/b": 1}}') as Dictionary).has("a/b"),
 		"a name that is a path is dropped")
+	var late := load("res://client/tmc_shell_solo_late.gd") as GDScript
+	_check(late.groups_in('{"fc_weapons": ["weapon-rifle", "weapon-frag", "weapon-rifle"]}') == PackedStringArray(["weapon-rifle", "weapon-frag"]),
+		"early groups are read once each, in order")
+	_check(late.groups_in('{"a": ["*", "x"]}') == PackedStringArray(["*"]) and late.groups_in("nope").is_empty()
+			and late.groups_in('{"a": "x"}').is_empty(),
+		"a star means every group; anything else names none")
 	_done()
 
 

@@ -21,6 +21,9 @@ const FALLBACK_SETTLE_FRAMES := 10
 ## The most a game with no gate is covered for, camera or not.
 const FALLBACK_MAX_SEC := 5.0
 ## Seconds a game on the root contract has, after it is on screen, to say it is ready.
+## A game's load gate opened (the first time for each).
+signal gate_opened
+
 var warm_wait_sec: float = 20.0
 
 ## Seconds the material warm-up may hold the screen, with a warning past it; 0 is no limit. Past it the screen lifts and the warm-up keeps drawing the rest in play, one budgeted round a frame, so nothing is skipped. Checked between frames, so it holds only because [member draw_budget_msec] keeps every frame short. Project setting [code]tmc/cover/draw_max_sec[/code] overrides it.
@@ -204,6 +207,7 @@ func _on_gate_ready(gate: Object) -> void:
 ## The gate opens on its own after its host time-out; the screen must not outlive that.
 func _on_gate_opened(gate: Object) -> void:
 	_warming.erase(gate.get_instance_id())
+	gate_opened.emit()
 	if loading.is_showing():
 		GSLog.warn(CHANNEL, "the gate opened while the screen was still up; dropping it", {
 			"step": "warm-up", "status": str(gate.call(&"status_text"))})

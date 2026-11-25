@@ -10,6 +10,7 @@ var _menu_ui := TmcShellMenu.new(self)
 var _solo_flow := TmcShellSolo.new(self)
 var _solo_packs := TmcShellSoloPacks.new(self)
 var _solo_addons := TmcShellSoloAddons.new(self)
+var _solo_late := TmcShellSoloLate.new(self)
 
 ## Where the game scene is added. Named so the server's scene and this shell's own UI
 ## cannot collide.
