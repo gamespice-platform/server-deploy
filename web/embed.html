@@ -431,12 +431,31 @@
     new URLSearchParams(location.search).get("threads") !== "0";
   // Read by the browser checks (tools/browser_check.mjs) and by anybody asking "which one?".
   window.__TMC_ENGINE__ = threaded ? "threads" : "single";
-  // Which engine, and when it is the single-threaded one, why. A host without COOP/COEP lands here by design.
-  console.log("tmc engine: " + window.__TMC_ENGINE__ +
-    (threaded ? "" : " (" + (!ENGINE_MT ? "no threaded twin in this export"
+  // Which engine, and when it is the single-threaded one, why. A host without COOP/COEP lands here.
+  var engineWhy = threaded ? "" : (!ENGINE_MT ? "no threaded twin in this export"
       : NATIVE_LIBS_MT.length !== NATIVE_LIBS.length ? "a native module has no threads build"
-      : self.crossOriginIsolated !== true ? "page is not cross-origin isolated: crossOriginIsolated=" + self.crossOriginIsolated
-      : typeof SharedArrayBuffer !== "function" ? "no SharedArrayBuffer" : "?threads=0") + ")"));
+      : new URLSearchParams(location.search).get("threads") === "0" ? "?threads=0"
+      : self.crossOriginIsolated !== true ? "page is not cross-origin isolated: crossOriginIsolated=" + self.crossOriginIsolated +
+        (window.parent !== window ? " (framed: the parent page needs COOP same-origin + COEP and the iframe allow=\"cross-origin-isolated\")"
+          : " (this page needs COOP same-origin + COEP require-corp or credentialless)")
+      : "no SharedArrayBuffer");
+  // The threads engine was built and the host could have run it: that is a misconfigured host, not a design
+  // choice, so it is an error, a flag a check can read, and a message the framing page can log or relay.
+  var isolationLost = !threaded && !!ENGINE_MT && engineWhy !== "?threads=0" &&
+    NATIVE_LIBS_MT.length === NATIVE_LIBS.length;
+  window.__TMC_ENGINE_WHY__ = engineWhy;
+  window.__TMC_THREADS_LOST__ = isolationLost;
+  console.log("tmc engine: " + window.__TMC_ENGINE__ + (threaded ? "" : " (" + engineWhy + ")"));
+  if (isolationLost) {
+    console.error("tmc engine: THREADS UNAVAILABLE, running the single-threaded engine: " + engineWhy);
+    document.documentElement.setAttribute("data-tmc-threads-lost", engineWhy);
+    if (framed) {
+      var lostTargets = parentOrigin ? [parentOrigin] : FRAME_ORIGINS.length ? FRAME_ORIGINS : ["*"];
+      for (var lt = 0; lt < lostTargets.length; lt++) {
+        try { window.parent.postMessage({ type: "tmc.engine.single", reason: engineWhy }, lostTargets[lt]); } catch (e) { /* none */ }
+      }
+    }
+  }
 
   /*
    * NATIVE MODULES. A dlink export (the Web preset's Extensions Support) lists the
