@@ -103,7 +103,7 @@ Cross-Origin-Embedder-Policy: require-corp      # or credentialless (Chrome, Fir
 
 Then every subresource from another origin must answer with CORS (`Access-Control-Allow-Origin`) or `Cross-Origin-Resource-Policy: cross-origin`, or it stops loading. WebSockets are exempt. Over `http://` only localhost counts; anywhere else it has to be HTTPS.
 
-**Opened on the game origin** (`embed.html` as the top-level page), those two headers on the game origin are enough. `./deploy/install-game-origin.sh --isolation` adds them to the nginx vhost; a storez origin takes them in its header profile (`coop`, `coep` beside the existing `corp` and `csp`).
+**Opened on the game origin** (`embed.html` as the top-level page), those two headers on the game origin are enough. `./deploy/install-game-origin.sh --isolation` adds them to the nginx vhost (COEP `credentialless`; `--coep require-corp` for the strict value); a storez origin takes them in its header profile (`coop`, `coep` beside the existing `corp` and `csp`). The website-city "Web games preset" now fills `coop: same-origin`, `coep: credentialless`; an origin saved earlier keeps its old profile until the preset is re-applied and saved (Admin > Uploads > Nodes > Origins), or `PUT /_s/v1/origins/<host>` with those two fields.
 
 **Framed in the site** (the normal path, through `tmc-loader.js`), a frame is only isolated when the page around it is. So all of these:
 

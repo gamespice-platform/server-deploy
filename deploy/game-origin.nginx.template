@@ -83,9 +83,10 @@ server {
 
         # CROSS-ORIGIN ISOLATION, which is what lets the page start the threaded engine
         # (index-mt, beside index; embed.html picks it when `crossOriginIsolated` is
-        # true). Off unless install-game-origin.sh --isolation: COEP require-corp makes
-        # every subresource the page loads from another origin answer with CORS or a
-        # Cross-Origin-Resource-Policy, and a content host that does not stops loading.
+        # true). Off unless install-game-origin.sh --isolation (COEP credentialless, or
+        # --coep require-corp, which makes every subresource the page loads from another
+        # origin answer with CORS or a Cross-Origin-Resource-Policy; a host that does not
+        # stops loading).
         # Framed in the site, the SITE's page needs the same pair for the frame to be
         # isolated; without it the game runs single-threaded, as before. web/README.md,
         # "Threads".
