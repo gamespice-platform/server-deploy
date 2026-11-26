@@ -29,7 +29,7 @@ gs-lighting	v0.1.14
 gs-loadout	v0.1.21
 gs-locale	v0.1.9
 gs-log	v0.1.11
-gs-map	v0.1.101
+gs-map	v0.1.102
 gs-match	v0.1.9
 gs-matchmaking	v0.1.11
 gs-menu	v0.1.36
@@ -45,7 +45,7 @@ gs-peer-to-peer	v0.1.7
 gs-physics	v0.1.13
 gs-platform	v0.1.13
 gs-player	v0.1.8
-gs-player-char	v0.1.81
+gs-player-char	v0.1.82
 gs-player-class	v0.1.12
 gs-player-controller	v0.4.21
 gs-procedural-generation	v0.1.7
@@ -59,7 +59,7 @@ gs-server	v0.1.37
 gs-server-query	v0.1.12
 gs-server-security	v0.1.10
 gs-settings	v0.1.10
-gs-sim	v0.2.18
+gs-sim	v0.2.20
 gs-spawn	v0.2.7
 gs-spectate	v0.1.14
 gs-sql	v0.1.9
@@ -73,7 +73,7 @@ gs-user-avatar	v0.1.14
 gs-vehicle	v0.1.13
 gs-voice	v0.1.14
 gs-vote	v0.1.20
-gs-weapon	v0.1.63
+gs-weapon	v0.1.64
 gs-weather	v0.1.5
 gs-workbench	v0.3.7
 natural-disasters	v0.1.5
