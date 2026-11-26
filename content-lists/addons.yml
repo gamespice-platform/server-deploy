@@ -92,11 +92,11 @@ entries:
   - repo: gs-player
     pin: v0.1.8
   - repo: gs-player-char
-    pin: v0.1.82
+    pin: v0.1.84
   - repo: gs-player-class
     pin: v0.1.12
   - repo: gs-player-controller
-    pin: v0.4.21
+    pin: v0.4.23
   - repo: gs-procedural-generation
     pin: v0.1.7
   - repo: gs-profile
