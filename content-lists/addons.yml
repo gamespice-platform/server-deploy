@@ -136,7 +136,7 @@ entries:
   - repo: gs-timer
     pin: v0.1.16
   - repo: gs-ui
-    pin: v0.3.2
+    pin: v0.3.4
   - repo: gs-user
     pin: v0.1.9
   - repo: gs-user-avatar
