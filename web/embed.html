@@ -506,6 +506,56 @@
     config.mainPack = config.mainPack || "index.pck";
   }
 
+  /*
+   * SIDE MODULE CODE CACHE. A dlink engine keeps almost all of its code (44 MB) in the side
+   * module <executable>.side.wasm, and emscripten loads that with fetch + arrayBuffer +
+   * WebAssembly.instantiate(bytes): a compile from bytes, which the browser never caches, so
+   * every visit compiles it again and the boot runs on baseline (Liftoff) code until the
+   * optimizing tier catches up. Here that one fetch is compiled with compileStreaming
+   * instead: it compiles while it downloads, and a returning player's browser keeps the
+   * optimized code with the HTTP-cached file (the engine folder is immutable). The engine
+   * still reads the module's dylink section; it gets a stub holding just that section, and
+   * its instantiate of the stub gets the compiled module. Anything unexpected (no
+   * compileStreaming, a failed compile) hands the engine the real bytes as before.
+   * `?wasmcache=0` turns it off.
+   */
+  (function () {
+    if (new URLSearchParams(location.search).get("wasmcache") === "0" ||
+        typeof WebAssembly.compileStreaming !== "function" || !window.fetch) return;
+    var realFetch = window.fetch, realInstantiate = WebAssembly.instantiate;
+    var stubs = new WeakMap();   // stub ArrayBuffer -> compiled WebAssembly.Module
+    function leb(n) { var out = []; do { var b = n & 127; n >>>= 7; out.push(n ? b | 128 : b); } while (n); return out; }
+    function stubFor(mod) {
+      var sec = WebAssembly.Module.customSections(mod, "dylink.0");
+      if (!sec.length) return null;
+      var body = new Uint8Array(sec[0]);
+      var name = [100, 121, 108, 105, 110, 107, 46, 48];   // "dylink.0"
+      var head = [0, 97, 115, 109, 1, 0, 0, 0, 0].concat(leb(1 + name.length + body.length), [name.length], name);
+      var out = new Uint8Array(Math.max(24, head.length + body.length));
+      out.set(head, 0); out.set(body, head.length);
+      stubs.set(out.buffer, mod);
+      return out.buffer;
+    }
+    window.fetch = function (input, init) {
+      var url = typeof input === "string" ? input : (input && input.url) || "";
+      if (!/\.side\.wasm(\?|$)/.test(url)) return realFetch.apply(this, arguments);
+      var compiled = WebAssembly.compileStreaming(realFetch(input, init)).catch(function (e) {
+        console.warn("tmc engine: side module streaming compile failed, compiling from bytes: " + e);
+        return null;
+      });
+      return compiled.then(function (mod) {
+        var stub = mod && stubFor(mod);
+        if (!stub) return realFetch(input, init);
+        return { ok: true, status: 200, url: url, arrayBuffer: function () { return Promise.resolve(stub); } };
+      });
+    };
+    WebAssembly.instantiate = function (src, imports) {
+      var mod = src && stubs.get(src.buffer || src);
+      if (!mod) return realInstantiate.apply(WebAssembly, arguments);
+      return realInstantiate.call(WebAssembly, mod, imports).then(function (instance) { return { module: mod, instance: instance }; });
+    };
+  })();
+
   // The engine's loader script, then the engine. Loaded from here rather than by a tag
   // because which one depends on the check above. A script element inserted this way
   // still sets document.currentScript, which is how the threaded engine finds the
