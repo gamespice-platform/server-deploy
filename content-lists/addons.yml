@@ -2,7 +2,7 @@
 # Shipped default; an operator replaces it with cfg/content/addons.yml (see docs/content-lists.md).
 entries:
   - repo: fc-weapons
-    pin: v1.4.76
+    pin: v1.4.79
   - repo: gs-2d
     pin: v0.1.10
   - repo: gs-achievements
@@ -60,7 +60,7 @@ entries:
   - repo: gs-log
     pin: v0.1.11
   - repo: gs-map
-    pin: v0.1.98
+    pin: v0.1.101
   - repo: gs-match
     pin: v0.1.9
   - repo: gs-matchmaking
@@ -72,7 +72,7 @@ entries:
   - repo: gs-moderation
     pin: v0.1.9
   - repo: gs-net
-    pin: v0.1.40
+    pin: v0.1.41
   - repo: gs-npc
     pin: v0.1.27
   - repo: gs-npc-ai
@@ -96,7 +96,7 @@ entries:
   - repo: gs-player-class
     pin: v0.1.12
   - repo: gs-player-controller
-    pin: v0.4.20
+    pin: v0.4.21
   - repo: gs-procedural-generation
     pin: v0.1.7
   - repo: gs-profile
@@ -112,7 +112,7 @@ entries:
   - repo: gs-save
     pin: v0.2.2
   - repo: gs-replay
-    pin: v0.1.22
+    pin: v0.1.24
   - repo: gs-server
     pin: v0.1.37
   - repo: gs-server-query
@@ -122,7 +122,7 @@ entries:
   - repo: gs-settings
     pin: v0.1.10
   - repo: gs-sim
-    pin: v0.2.16
+    pin: v0.2.18
   - repo: gs-spawn
     pin: v0.2.7
   - repo: gs-spectate
@@ -148,7 +148,7 @@ entries:
   - repo: gs-vote
     pin: v0.1.20
   - repo: gs-weapon
-    pin: v0.1.59
+    pin: v0.1.63
   - repo: gs-weather
     pin: v0.1.5
   - repo: gs-workbench
