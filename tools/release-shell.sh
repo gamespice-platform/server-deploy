@@ -110,7 +110,7 @@ while IFS=$'\t' read -r repo ref; do
     printf '%s\t%s\t%s\n' "$(slug_of "$repo")" "$repo" "$ref" >> "$slugs"
 done < addons.lock
 [ -s "$slugs" ] || die "addons.lock lists no addons"
-[ -x "$FORGEJO_CI" ] || [ -f "$FORGEJO_CI" ] || die "no Forgejo CI reader at $FORGEJO_CI (gs-bootstrap tools/ci-red-forgejo.sh)"
+[ -f "$FORGEJO_CI" ] || die "no Forgejo CI reader at $FORGEJO_CI: it lives in gs-bootstrap (tools/ci-red-forgejo.sh); clone gs-bootstrap beside the other repos or set RELEASE_SHELL_FORGEJO_CI"
 fj=$(cut -f1 "$slugs" | bash "$FORGEJO_CI" 2>"$WORK/fj.err") || { cat "$WORK/fj.err" >&2; die "the Forgejo CI reader failed (token file? docs/forgejo-ci.md in gs-bootstrap)"; }
 fallback=0; red=0
 while IFS=$'\t' read -r slug repo ref; do

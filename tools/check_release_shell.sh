@@ -106,7 +106,10 @@ out=$(SMOKE_FAIL=gamespice run web); rc=$?
 [ $rc != 0 ] && ! grep -q '^publish' "$LOG" && ok "failed prod check blocks the upload" || bad "prod smoke: rc=$rc"
 out=$(SHELL_PUBLISH_TOKEN="" run web); rc=$?
 [ $rc != 0 ] && ! grep -q '^publish' "$LOG" && ok "no publish token: refused, nothing uploaded" || bad "no token: rc=$rc"
-cp tools/release-shell.sh "$T/rs.bak"; echo >> tools/shell-inputs.sh
+out=$(RELEASE_SHELL_FORGEJO_CI="$T/bin/none" run web); rc=$?
+[ $rc != 0 ] && ! grep -q '^build' "$LOG" && grep -q 'no Forgejo CI reader' <<<"$out" && ok "missing Forgejo reader: clear refusal before the build" || bad "missing reader: rc=$rc $out"
+echo >> tools/shell-inputs.sh
 out=$(run web); rc=$?
-[ $rc != 0 ] || bad "unexpected pass with dirty inputs"; git checkout -q tools/shell-inputs.sh
+[ $rc != 0 ] && ! grep -q '^publish' "$LOG" && ok "inputs edited in the tree: refused, nothing uploaded" || bad "dirty inputs: rc=$rc"
+git checkout -q tools/shell-inputs.sh
 [ "$fails" -eq 0 ]
