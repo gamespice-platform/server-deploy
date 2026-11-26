@@ -42,7 +42,7 @@ entries:
   - repo: gs-flashlight
     pin: v0.1.6
   - repo: gs-fx
-    pin: v0.3.16
+    pin: v0.3.17
   - repo: gs-game
     pin: v0.1.67
   - repo: gs-input
@@ -148,7 +148,7 @@ entries:
   - repo: gs-vote
     pin: v0.1.20
   - repo: gs-weapon
-    pin: v0.1.69
+    pin: v0.1.71
   - repo: gs-weather
     pin: v0.1.5
   - repo: gs-workbench

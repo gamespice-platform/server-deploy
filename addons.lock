@@ -20,7 +20,7 @@ gs-effects	v0.1.12
 gs-entity	v0.1.12
 gs-flashlight	v0.1.6
 gs-friends	v0.1.9
-gs-fx	v0.3.16
+gs-fx	v0.3.17
 gs-game	v0.1.67
 gs-input	v0.2.1
 gs-inventory	v0.1.9
@@ -73,7 +73,7 @@ gs-user-avatar	v0.1.14
 gs-vehicle	v0.1.13
 gs-voice	v0.1.14
 gs-vote	v0.1.20
-gs-weapon	v0.1.69
+gs-weapon	v0.1.71
 gs-weather	v0.1.5
 gs-workbench	v0.3.7
 natural-disasters	v0.1.5
