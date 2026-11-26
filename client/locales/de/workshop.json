@@ -41,5 +41,10 @@
 		"incompatible": "dieses Spiel kann es nicht nutzen"
 	},
 	"forbidden": "Diese Anmeldung kann nur dieses Spiel ändern. Nutze die Seite, um alle Spiele zu ändern.",
-	"failed": "Die Änderung wurde nicht gespeichert: {why}"
+	"failed": "Die Änderung wurde nicht gespeichert: {why}",
+	"uninstall": {
+		"title": "Dieses Paket ausschalten?",
+		"confirm": "Ausschalten",
+		"cancel": "Behalten"
+	}
 }

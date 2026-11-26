@@ -456,6 +456,47 @@ func _set_all(sub_id: String, on: bool) -> void:
 func _set_device(content_id: String, off: bool) -> void:
 	if workshop == null:
 		return
+	# Turning a recommended pack off is what removes it here: say what the game loses first, and
+	# leave the switch alone until the player agrees.
+	var warning := _uninstall_warning(content_id) if off else ""
+	if warning != "":
+		_confirm_removal(content_id, warning)
+		return
+	_apply_device(content_id, off)
+
+
+## The text GSCloudWorkshop gives for removing [param content_id], "" for a pack that is not recommended
+## (and on a build whose gs-cloud predates API 35).
+func _uninstall_warning(content_id: String) -> String:
+	if workshop == null or not workshop.has_method("uninstall_warning"):
+		return ""
+	return str(workshop.call("uninstall_warning", content_id))
+
+
+func _confirm_removal(content_id: String, warning: String) -> void:
+	var old := get_node_or_null("UninstallConfirm")
+	if old != null:
+		old.free()
+	var dialog := ConfirmationDialog.new()
+	dialog.name = "UninstallConfirm"
+	dialog.title = _t("workshop.uninstall.title", "Turn this pack off?")
+	dialog.dialog_text = warning
+	dialog.ok_button_text = _t("workshop.uninstall.confirm", "Turn off")
+	dialog.cancel_button_text = _t("workshop.uninstall.cancel", "Keep it")
+	dialog.confirmed.connect(func() -> void:
+		dialog.queue_free()
+		_apply_device(content_id, true))
+	# Closing it any other way keeps the pack, and the redraw puts the switch back on.
+	dialog.canceled.connect(func() -> void:
+		dialog.queue_free()
+		if is_inside_tree():
+			refresh())
+	add_child(dialog)
+	if is_inside_tree():
+		dialog.popup_centered()
+
+
+func _apply_device(content_id: String, off: bool) -> void:
 	var res := workshop.set_device_off(content_id, off)
 	_after("device", res, func() -> void: _pending["device:" + content_id] = off)
 

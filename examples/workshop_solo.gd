@@ -346,6 +346,8 @@ func _test_the_panel() -> void:
 	sp.queue_free()
 	_ws.suggested = kept_suggested
 
+	await _test_uninstall_warning()
+
 	# A guest's page, on a build with no sign-in at all (every native build today).
 	var guest := TmcWorkshopPanel.new()
 	guest.workshop = _ws
@@ -591,6 +593,49 @@ func _test_subscription_marks() -> void:
 
 	_done()
 
+
+
+## Turning off a recommended suggested pack asks first; a plain one, and a pack the game does not suggest, do not.
+func _test_uninstall_warning() -> void:
+	_section("the removal warning")
+	var rec := "gamemann/zz-modern-weapons"
+	var plain := "gamemann/zz-map"
+	var kept_suggested: Array[Dictionary] = _ws.suggested
+	_ws.suggested = GSCloudSuggested.from_entries(PackedStringArray(["weapons=%s!" % rec, "maps=%s" % plain]))
+	var panel := TmcWorkshopPanel.new()
+	panel.workshop = _ws
+	panel.takes_subscriptions = true
+	panel.summary = {"guest": true, "mounted": []}
+	add_child(panel)
+	await get_tree().process_frame
+	_check(panel.call("_uninstall_warning", rec).contains("recommended pack"), "the panel reads the Workshop's warning for a recommended pack")
+
+	panel.call("_set_device", plain, true)
+	_check(panel.find_child("UninstallConfirm", true, false) == null and _ws.device.is_off(plain),
+		"a plain suggested pack turns off with no question")
+	_ws.device.set_off(plain, false)
+
+	panel.call("_set_device", rec, true)
+	var dialog: ConfirmationDialog = panel.find_child("UninstallConfirm", true, false)
+	_check(dialog != null and dialog.dialog_text.contains("recommended pack"), "a recommended pack asks first, with the warning text")
+	_check(not _ws.device.is_off(rec), "and nothing changed while the question is open")
+	dialog.canceled.emit()
+	await get_tree().process_frame
+	_check(not _ws.device.is_off(rec) and panel.find_child("UninstallConfirm", true, false) == null,
+		"keeping it leaves the pack on and closes the question")
+
+	panel.call("_set_device", rec, true)
+	dialog = panel.find_child("UninstallConfirm", true, false)
+	_check(dialog != null, "asking again opens the question again")
+	if dialog != null:
+		dialog.confirmed.emit()
+	_check(_ws.device.is_off(rec), "confirming turns it off on this device")
+
+	panel.call("_set_device", rec, false)
+	_check(panel.find_child("UninstallConfirm", true, false) == null and not _ws.device.is_off(rec),
+		"turning it back on never asks")
+	panel.queue_free()
+	_ws.suggested = kept_suggested
 
 
 func _toggles(node: Node) -> int:

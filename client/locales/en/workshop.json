@@ -41,5 +41,10 @@
 		"incompatible": "this game cannot use it"
 	},
 	"forbidden": "This sign-in can only change this game. Use the site to change every game.",
-	"failed": "The change was not saved: {why}"
+	"failed": "The change was not saved: {why}",
+	"uninstall": {
+		"title": "Turn this pack off?",
+		"confirm": "Turn off",
+		"cancel": "Keep it"
+	}
 }
