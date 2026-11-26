@@ -72,7 +72,7 @@ entries:
   - repo: gs-moderation
     pin: v0.1.9
   - repo: gs-net
-    pin: v0.1.41
+    pin: v0.1.42
   - repo: gs-npc
     pin: v0.1.27
   - repo: gs-npc-ai
