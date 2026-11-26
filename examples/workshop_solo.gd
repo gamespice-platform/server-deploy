@@ -5,7 +5,7 @@ extends Node
 const WORK := "user://tmc_workshop_solo"
 const SHELL := "res://client/shell.tscn"
 const GAME := "gamemann/ws-game"
-const CHECKS := 90
+const CHECKS := 98
 const ACCEPTS := {"kinds": ["map", "script"], "map_kinds": ["sandbox"]}
 const ADDON_GAME := "gamemann/ws-addgame"
 const ADDON_ACCEPTS := {"kinds": ["map", "addon"], "map_kinds": ["sandbox"]}
@@ -636,6 +636,7 @@ func _test_uninstall_warning() -> void:
 		"turning it back on never asks")
 	panel.queue_free()
 	_ws.suggested = kept_suggested
+	_done()
 
 
 func _toggles(node: Node) -> int:
