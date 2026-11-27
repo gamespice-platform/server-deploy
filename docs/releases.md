@@ -5,10 +5,10 @@
 ```bash
 git -C ../gs-vote tag v0.2.1 && git -C ../gs-vote push origin v0.2.1   # 1. tag the addon
 tools/addons-lock.sh write                                               # 2. lock it here (check the pack is on the origin first)
-git add addons.lock && git commit -m "Lock gs-vote v0.2.1" && git push  # 3. the web-shell workflow does the rest
+git add addons.lock && git commit -m "Lock gs-vote v0.2.1" && git push  # 3. free: CI and the dev channel run; nothing is released
 ```
 
-**Never** export, upload or pin a web shell by hand while the workflow is up; the order for a game is in the table below.
+**Pushing to `main` releases nothing** ([main is free](#main-is-free-releases-are-batched)). **Never** export, upload or pin a web shell by hand while the workflow is up; the order for a game is in the table below.
 
 ## A game pack against the lock
 
@@ -47,8 +47,8 @@ Born of the 2026-11-22 prod solo outage (the rename changed the manifest marker 
 | Releasing | Order |
 | --- | --- |
 | an addon | tag the addon → the site publishes its pack (hourly, or "Pull now") → bump `addons.lock` here (`tools/addons-lock.sh write`) and push → restart the servers |
-| a game | tag every addon it needs → lock them here and push → wait for the web-shell workflow's tag → tag the game |
-| a new shell | `tools/release-shell.sh web` (builds, verifies, uploads, pins, tags), or nothing by hand: push the lock (or the `client/` change) and the web-shell workflow exports, uploads, pins and tags ([below](#publishing-the-web-build)) |
+| a game | tag every addon it needs → lock them here and push → the next batched release (`tools/release.sh`) pins the shell and tags → tag the game |
+| a new shell | `tools/release-shell.sh web` (builds, verifies, uploads, pins, tags), or `tools/release.sh` then the `web-shell.yml` dispatch with the candidate ([below](#publishing-the-web-build)) |
 
 - **Push the lock only after the packs are on the origin.** A client that cannot fetch an addon pack joins on its own addons and does not retry that server this session. Check with `curl <origin>/<owner>/<repo>/<version>/manifest.json`.
 - **Each skipped step in the game order fails in CI**, not on a box: this repository's CI parses every script against `addons.lock` at the locked refs (gs-ci resolves a project that has a lock from the lock), and a game's release refuses a pack no released gs-server-deploy can run (gs-ci `scripts/server-compat.sh`).
@@ -97,7 +97,7 @@ A box's addons used to move only when somebody reinstalled, so a game released a
 - **`sv_web_requires`** is the other half: a NOTIFY cvar holding compact JSON of the addon API levels the loaded game's pack needs (`{"gs_net":3}`, the highest per addon over the game's pack and its dependencies, read from each mounted pack's `requires.json`, gs-cloud [mounting.md](../../gs-cloud/docs/mounting.md)). Empty when the pack has none. The host republishes it each time a game loads. The site picks the newest ACTIVE shell whose API levels satisfy it.
 - **`sv_pack_pins`** is a NOTIFY cvar holding compact JSON of `{content id: version}` for every pack this server is pinned to: the addons its `addons.lock` names (`modcommunity/gs-*`, and the same version under its new `gamespice-platform/<name>` id, only while `TMC_ADDONS_LOCK` is not `off`) and each pack mounted from the site (maps, the game, dependencies). The host sets it (`TmcHost.pack_pins_json`) and republishes as packs mount; empty when nothing is pinned. The site's content-retention sweep reads it (website-city `ServerPinnedVersions`) so a retention policy never tombstones a map or addon version a server runs.
 - **The site honours a pin only for a build it has a row for** (website-city `WebGameBuild`, Admin → Game) that is ACTIVE or DEPRECATED; a DISABLED or unknown pin falls back to the automatic choice. The admin panel lists pins with no row under "Pins being ignored".
-- **`web/shell-build` is only the checkout's record** of the shell exported from its `addons.lock`; the web-shell workflow still writes it, and auto-update still waits for it to be pinned before adopting a new lock. No server reads it as a pin. `web/shell-build.inputs` says which tree it was exported from: `lock` (sha256 of `addons.lock`) and `inputs` (sha256 over the lock, the tracked `client/`, `project.godot`, `export_presets.example.cfg`, `web/embed.html` and the engine pin; `tools/shell-inputs.sh paths`).
+- **`web/shell-build` is only the checkout's record** of the shell exported from its `addons.lock`; the web-shell release workflow still writes it, and auto-update still waits for it to be pinned before adopting a new lock. No server reads it as a pin. `web/shell-build.inputs` says which tree it was exported from: `lock` (sha256 of `addons.lock`) and `inputs` (sha256 over the lock, the tracked `client/`, `project.godot`, `export_presets.example.cfg`, `web/embed.html` and the engine pin; `tools/shell-inputs.sh paths`).
 - **How a build is registered**: the site's `web-build-register` job (every minute) registers a build from `game/<app>/latest.json` (written by `publish-web-shell.sh --pin`) or one a server reports as `sv_web_build`, once its entry answers on the content origin. A shell is therefore registered within a minute of publishing, with no server involved.
 - **The shell's API levels** are written by `export-web` into the build as `shell-api.json` (`{"gs_net":{"level":3,"oldest":1},...}`), which the site reads at registration to answer "does this shell satisfy this game".
 - **The site caches the release list for 60 s**: after changing a build's status or a server's pin, wait a minute before testing what a launch resolves.
@@ -120,11 +120,18 @@ Names a version of the site's shared web game loader (the JavaScript that frames
 - `TmcHost._register_web_loader` always registers the NOTIFY cvar, empty unless configured, so it can be set over rcon. A value that is not one path segment is warned about and reported empty. `./server check` asserts it.
 - **The desktop client has no equivalent yet**: it installs one build per platform, so a server ahead of or behind it is refused at signon.
 
+## Main is free, releases are batched
+
+- **A push to `main` runs CI and nothing else.** `web-shell.yml` and `native-shell.yml` have no push trigger; no push creates a `v*` tag or touches the prod bucket.
+- **The dev channel** (`tools/dev-channel.sh`, from cron on the box that hosts the LAN dev CDN: `*/5 * * * * tools/dev-channel.sh --async`): builds the shell of `origin/main` (`--ref` takes a dev tag) and publishes it to the dev CDN through `tools/dev-shell.sh`. It rebuilds only when the `tools/shell-inputs.sh` fingerprint changed, runs detached, fails loudly (exit 1, `FAILED` in its state dir, `--status`), never tags, never writes the prod bucket and is not prod-gated. It is a poller, not a workflow, because GitHub runners cannot reach the LAN. Tested offline by `tools/check_dev_channel.sh`.
+- **The prod release is one command**, run by whoever releases, a few times a day at most: `tools/release.sh`. It takes `origin/main`'s head as the candidate, runs `tools/release_smoke.sh` (on staging02 through `gpu.sh cdp-run`: each of the 14 games in `tools/release_games.txt` in a COOP/COEP parent against the real prod manifests, canvas polled, no console error, sync failed=0, a second launch downloads nothing), records the verdict as a git note `refs/notes/release-smoke` on that SHA and pushes it, then runs `tools/publish_gate.sh --prod <sha>`, and prints the next steps: `gh workflow run web-shell.yml -f candidate=<sha>` (and `native-shell.yml`), then the `v*` tag.
+- **The prod gate has no override.** `publish_gate.sh --prod` refuses when the repo's CI or Release run for the commit is not green, check-pins fails, the shell stamp is `-dirty`, gs-cloud's CI on main is red, or the smoke note for that exact SHA is missing or not `PASS`. `release.yml` runs it again as `--prod-tag` on the tag (a shell-pin commit is walked back to the candidate it pins). `tools/check_publish_gate.sh` covers every refusal.
+
 ## Publishing the web build
 
-**The web-shell workflow does it** (`.github/workflows/web-shell.yml`). Nobody exports, uploads, pins or registers a shell by hand:
+**The web-shell workflow does it** (`.github/workflows/web-shell.yml`), started by `workflow_dispatch` with a `candidate` (main's head) after [the release command](#main-is-free-releases-are-batched), never by a push. Nobody exports, uploads, pins or registers a shell by hand:
 
-1. A push to `main` that touches a shell input (`addons.lock`, `client/`, `project.godot`, the presets, `web/embed.html`, the engine pin) starts it. It checks out `main` and compares `tools/shell-inputs.sh print` with `web/shell-build.inputs`; equal means the pinned shell is this tree's and it stops.
+1. A dispatch (formerly: a push to `main` that touched a shell input; the inputs are (`addons.lock`, `client/`, `project.godot`, the presets, `web/embed.html`, the engine pin) starts it. It checks out `main` and compares `tools/shell-inputs.sh print` with `web/shell-build.inputs`; equal means the pinned shell is this tree's and it stops.
 2. Otherwise: `./setup.sh --no-games` (fresh addon clones at the lock, so `tools/addons-lock.sh check` passes), `client/auth.json` from the `WEB_SHELL_BACKBONE_URL` variable, `./server export-web --zip`. The export writes `shell-inputs.txt` into the build: the fingerprint, plus `addons off-lock` when the linked addons are not at the lock.
 3. `tools/publish-web-shell.sh --pin` uploads it to `game/<app>/<build id>/` in the bucket (brotli, one content type per file, immutable), reads the entry and `shell-inputs.txt` back through `WEB_SHELL_ORIGIN`, writes `web/shell-build` and `web/shell-build.inputs`, commits "Pin the web shell <id>", tags the next `v0.1.x` and pushes both in one atomic push (rejected because somebody pushed meanwhile: it replays the pin on origin and retries with the next tag, unless origin changed a shell input, when it stops and that push's run builds). It refuses a build whose record is off-lock or is not this checkout's (a lock pulled between export and pin).
 4. It dispatches `release.yml` on that tag (and a later run that finds a matching record but no `v*` tag at or after the pin commit tags main and dispatches it, so a pin is never left unreleased), because a push made with the workflow's own token starts no workflow. The pin commit touches no input, so nothing loops; runs queue one deep and the next one finds the record matching.

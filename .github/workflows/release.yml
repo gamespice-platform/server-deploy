@@ -3,6 +3,8 @@
 # a project root, everything else ships the tracked tree as a tarball. Both come with
 # a SHA256SUMS. See gamespice-platform/ci.
 #
+# The prod-gate job refuses a tag whose commit has no candidate smoke PASS (tools/release.sh).
+#
 # The release may already exist by the time this runs -- the tag is what the sync
 # reacts to -- so this uploads into one that is there rather than failing on it.
 #
@@ -56,6 +58,23 @@ jobs:
                       echo "served: $url"
                   fi
 
+    # [b]The prod gate on the tag path.[/b] A tag is the rare, batched act: it needs repo CI and gs-cloud
+    # CI green and a candidate smoke PASS recorded for the commit the tag's pin sits on
+    # (tools/publish_gate.sh --prod-tag; no override).
+    prod-gate:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+            - name: Candidate smoke, CI and gs-cloud CI are green for this tag's commit
+              env:
+                  GH_TOKEN: ${{ secrets.GS_DEPS_TOKEN || github.token }}
+              run: |
+                  git fetch -q origin 'refs/notes/release-smoke:refs/notes/release-smoke' || true
+                  tools/publish_gate.sh --prod-tag "$GITHUB_SHA"
+
     # [b]No release over a failing pin check.[/b] v0.1.150 was tagged while
     # `addons-lock.sh check-pins` failed. The release job needs this.
     addon-pins:
@@ -75,7 +94,7 @@ jobs:
             DEPS_TOKEN: ${{ secrets.GS_DEPS_TOKEN }}
 
     release:
-        needs: [validate, shell-pin, addon-pins]
+        needs: [validate, shell-pin, addon-pins, prod-gate]
         uses: gamespice-platform/ci/.github/workflows/release.yml@v1
         permissions:
             contents: write

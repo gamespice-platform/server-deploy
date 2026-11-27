@@ -14,7 +14,12 @@ cp "$ROOT/addons.lock" "$T/"; cp "$ROOT/content-lists/addons.yml" "$T/content-li
 # gh stub: answers a green check run unless GH_RED names the repo.
 cat > "$T/bin/gh" <<'GH'
 #!/usr/bin/env bash
-case "$2" in *"${GH_RED:-@none@}"*) echo "completed:failure completed:success" ;; *) echo "completed:success" ;; esac
+case "$2" in
+    *actions/runs?head_sha=*) printf '%s\n' "${GH_RUNS-.github/workflows/ci.yml completed:success}" ;;
+    *actions/runs*) echo "${GH_CLOUD:-completed:success}" ;;
+    *"${GH_RED:-@none@}"*) echo "completed:failure completed:success" ;;
+    *) echo "completed:success" ;;
+esac
 GH
 chmod +x "$T/bin/gh"
 stamp() { printf 'const COMMIT := "%s"\n' "$1" > "$T/client/build_stamp.gd"; }
@@ -48,6 +53,44 @@ printf '{"trusted_keys":{"smoke-extra":"x"}}' > "$T/client/content.json"
 out="$(gate env)"; rc=$?
 [ "$rc" != 0 ] && grep -q "differs from HEAD" <<<"$out" && ok "modified client/content.json is refused" || bad "modified content.json passed: $out"
 git -C "$T" checkout -q client/content.json
+
+# ---- the PROD gate: --prod SHA adds repo CI / Release, gs-cloud CI and the candidate smoke note ----
+cand="$(git -C "$T" rev-parse HEAD)"
+note() { git -C "$T" -c user.email=t@t -c user.name=t notes --ref=release-smoke add -f -m "$2" "$1" >/dev/null; }
+pgate() { GS_CHECK_CI_CACHE="$(mktemp -d "$T/cache.XXXXXX")" GS_FORGEJO_ENV=/nonexistent GS_GH="$T/bin/gh" GS_CLOUD_REPO=x/gs-cloud GS_REPO=x/y \
+    env "$@" bash "$T/tools/publish_gate.sh" "${PG_MODE:---prod}" "${PG_SHA:-$cand}" 2>&1; }
+out="$(pgate X=1)"; rc=$?
+[ "$rc" != 0 ] && grep -q "no candidate smoke result" <<<"$out" && ok "prod: no smoke note is refused" || bad "prod passed without a smoke note: $out"
+note "$cand" "FAIL 3 games: dm-x canvas never appeared"
+out="$(pgate X=1)"; rc=$?
+[ "$rc" != 0 ] && grep -q "did not pass" <<<"$out" && ok "prod: a failed smoke is refused" || bad "failed smoke passed: $out"
+note "$cand" "PASS 14 games"
+out="$(pgate X=1)"; rc=$?
+[ "$rc" = 0 ] && grep -q "(prod," <<<"$out" && ok "prod: green CI, green gs-cloud, smoke PASS: publishes" || bad "prod good path refused: $out"
+out="$(pgate GH_RUNS=".github/workflows/ci.yml completed:failure")"; rc=$?
+[ "$rc" != 0 ] && grep -q "repo CI (ci.yml)" <<<"$out" && ok "prod: red repo CI is refused" || bad "red repo CI passed: $out"
+out="$(pgate GH_RUNS=".github/workflows/ci.yml in_progress:none")"; rc=$?
+[ "$rc" != 0 ] && grep -q "repo CI (ci.yml)" <<<"$out" && ok "prod: unfinished repo CI is refused" || bad "running repo CI passed: $out"
+out="$(pgate GH_RUNS="")"; rc=$?
+[ "$rc" != 0 ] && grep -q "no CI run" <<<"$out" && ok "prod: no CI run at all is refused" || bad "no CI run passed: $out"
+out="$(pgate GH_RUNS=".github/workflows/ci.yml completed:success
+.github/workflows/release.yml completed:failure")"; rc=$?
+[ "$rc" != 0 ] && grep -q "Release (release.yml)" <<<"$out" && ok "prod: red Release is refused" || bad "red Release passed: $out"
+out="$(pgate GH_CLOUD=completed:failure)"; rc=$?
+[ "$rc" != 0 ] && grep -q "gs-cloud CI on main is not green" <<<"$out" && ok "prod: red gs-cloud CI is refused" || bad "red gs-cloud passed: $out"
+stamp abc1234-dirty
+out="$(pgate X=1)"; rc=$?
+[ "$rc" != 0 ] && grep -q "uncommitted tree" <<<"$out" && ok "prod: -dirty stamp is refused" || bad "prod dirty stamp passed: $out"
+stamp abc1234
+# the tag's pin commit (touches only web/shell-build*) is judged by the commit below it
+mkdir -p "$T/web"; echo 20261127-0000 > "$T/web/shell-build"; git -C "$T" add web && git -C "$T" -c user.email=t@t -c user.name=t commit -qm pin
+pin="$(git -C "$T" rev-parse HEAD)"
+out="$(PG_MODE=--prod-tag PG_SHA=$pin pgate X=1)"; rc=$?
+[ "$rc" = 0 ] && grep -q "${cand:0:12}" <<<"$out" && ok "prod-tag: the pin commit walks back to the smoked candidate" || bad "pin commit not walked back: $out"
+note "$cand" "FAIL x"
+out="$(PG_MODE=--prod-tag PG_SHA=$pin pgate X=1)"; rc=$?
+[ "$rc" != 0 ] && ok "prod-tag: a failed smoke on the candidate refuses the tag" || bad "prod-tag passed over a failed smoke: $out"
+note "$cand" "PASS 14 games"
 
 # An unpinned lock: a yml pin that disagrees with addons.lock.
 pin_repo="$(awk '/^[[:space:]]*-[[:space:]]*repo:/ { r = $NF; next } /^[[:space:]]*pin:/ && r != "" { print r; exit }' "$T/content-lists/addons.yml")"

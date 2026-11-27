@@ -8,8 +8,8 @@ import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export async function serveShell({ dir, port, buildId, upstream, givenUrl, coi = false, parentHtml = '' }) {
-  if (!fs.existsSync(path.join(dir, 'embed.html'))) throw new Error(`--serve ${dir} has no embed.html`);
+export async function serveShell({ dir, port, buildId, upstream, givenUrl, coi = false, parentHtml = '', shellUpstream = '' }) {
+  if (!shellUpstream && !fs.existsSync(path.join(dir, 'embed.html'))) throw new Error(`--serve ${dir} has no embed.html`);
   const base = upstream.replace(/\/$/, '');
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'application/wasm', '.json': 'application/json', '.png': 'image/png' };
   const prefix = `/godot/${buildId || 'local'}/`;
@@ -38,6 +38,16 @@ export async function serveShell({ dir, port, buildId, upstream, givenUrl, coi =
       return;
     }
     if (!u.pathname.startsWith(prefix)) { res.writeHead(404, { 'content-type': 'text/html' }); res.end('<!doctype html>'); return; }
+    // `shellUpstream` (an origin that serves /godot/<build>/, e.g. the dev CDN): the shell comes from there instead of `dir`.
+    if (shellUpstream) {
+      const sb = shellUpstream.replace(/\/$/, '');
+      const lib = sb.startsWith('https:') ? https : http;
+      const up = lib.request(sb + u.pathname + u.search, { method: req.method, headers: { 'user-agent': 'local_shell_server/1' } },
+        r => { const h = { ...r.headers }; delete h['alt-svc']; res.writeHead(r.statusCode, h); r.pipe(res); });
+      up.on('error', e => { res.writeHead(502); res.end(String(e)); });
+      up.end();
+      return;
+    }
     // Resolved first: a relative --serve (`web/build`) never started with its own absolute path, so every file was a 403.
     const p = path.join(path.resolve(dir), decodeURIComponent(u.pathname.slice(prefix.length)));
     if (!p.startsWith(path.resolve(dir))) { res.writeHead(403); res.end(); return; }

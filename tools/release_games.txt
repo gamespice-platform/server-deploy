@@ -1,0 +1,15 @@
+# The 14 platform games the candidate smoke (release_smoke.mjs) loads, one owner/repo per line.
+gamemann/game-prop-hunt
+gamemann/mg-wipeout
+gamemann/mg-smash-copter
+gamemann/game-deathrun
+gamemann/mg-dangerous-delivery
+gamemann/mg-buses-from-hell
+gamemann/game-zombie-zone
+gamemann/game-murder-mystery
+gamemann/game-hide-n-seek
+gamemann/mg-look-at-me
+gamemann/game-hungario
+gamemann/game-airdrift
+gamemann/game-fatal-contact
+gamemann/game-playlot

@@ -1,5 +1,7 @@
-# Exports the native shell (Linux, Windows, macOS) and publishes it to the site whenever
-# what it is built from changes. The web shell has its own workflow (web-shell.yml); this
+# Exports the native shell (Linux, Windows, macOS) and publishes it to the site. This is a PROD
+# publish, so it runs ONLY by workflow_dispatch with a candidate commit that tools/release.sh
+# smoke-tested (never on a push to main: pushes are free and run ci.yml only), behind
+# tools/publish_gate.sh --prod. The web shell has its own workflow (web-shell.yml); this
 # is its native twin. Before it, `./server export-native` was run and published by hand,
 # so the Library kept an old native shell for weeks and the desktop app refused solo
 # starts on it ("needs a newer TMC game build", 2026-11-21).
@@ -11,30 +13,12 @@
 name: Native shell
 
 on:
-    push:
-        branches: [main]
-        paths:
-            - addons.lock
-            - content-lists/addons.yml
-            - 'client/**'
-            - project.godot
-            - export_presets.example.cfg
-            - tools/fetch-godot.sh
-            - tools/fetch-export-templates.sh
-            - tools/fetch-natives.sh
-            - tools/shell-auth-json.sh
-            - tools/shell-inputs.sh
-            - tools/addons-lock.sh
-            - tools/publish-native-shell.sh
-            - tools/publish_gate.sh
-            - tools/artifact_boot_smoke.sh
-            - tools/shell_import.sh
-            - tools/check_shell_parse.sh
-            - tools/check_solo_smoke.sh
-            - tools/solo_manifest_probe.gd
-            - .github/workflows/native-shell.yml
     workflow_dispatch:
         inputs:
+            candidate:
+                description: The commit SHA to release (carries a PASS from tools/release_smoke.sh).
+                type: string
+                required: true
             force:
                 description: Export and publish even when this tree's native shell is already out.
                 type: boolean
@@ -57,6 +41,14 @@ jobs:
             WEB_SHELL_BACKBONE_URL: ${{ vars.WEB_SHELL_BACKBONE_URL }}
         steps:
             - uses: actions/checkout@v4
+              with:
+                  ref: ${{ inputs.candidate }}
+                  fetch-depth: 0
+
+            - name: The smoke notes
+              run: |
+                  git fetch -q origin 'refs/notes/release-smoke:refs/notes/release-smoke' \
+                      || { echo "no refs/notes/release-smoke on origin, the candidate smoke was never recorded"; exit 1; }
 
             - name: Fingerprint
               id: fp
@@ -164,7 +156,7 @@ jobs:
               if: steps.need.outputs.build == 'true'
               env:
                   GH_TOKEN: ${{ secrets.GS_DEPS_TOKEN || github.token }}
-              run: tools/publish_gate.sh
+              run: tools/publish_gate.sh --prod "${{ inputs.candidate }}"
 
             - name: Solo smoke (the client parses and verifies the live manifests)
               if: steps.need.outputs.build == 'true'

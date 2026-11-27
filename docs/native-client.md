@@ -50,9 +50,9 @@ Two files, both on the player's machine; the first error in either names the cau
 
 A game whose scripts do not compile on the shell's addons is refused with `GAME_DID_NOT_COMPILE` (client/shell.gd) instead of a crash. The usual cause is an addon the shell's addons need and the shell does not carry; `tools/check_shell_parse.sh` catches that before a shell is published (2026-11-21: gs-animation and gs-camera were missing, and Fatal Contact and Hungario segfaulted on join).
 
-## Publishing is automatic
+## Publishing is a dispatch
 
-`.github/workflows/native-shell.yml` exports the desktop three and publishes them (`tools/publish-native-shell.sh`, the site\x27s native build API, `--app godot`) whenever the shell\x27s inputs change on main, the same inputs as the web shell. A cache entry keyed by `tools/shell-inputs.sh`\x27s fingerprint marks a tree as published, so nothing is committed back and a re-run does nothing; `workflow_dispatch` with `force` publishes anyway. It uses the same `SHELL_PUBLISH_TOKEN` secret and `WEB_SHELL_BACKBONE_URL` variable as web-shell.yml. Running `./server export-native` and the printed commands by hand is the fallback.
+`.github/workflows/native-shell.yml` exports the desktop three and publishes them (`tools/publish-native-shell.sh`, the site\x27s native build API, `--app godot`) when dispatched with a `candidate` (main's head, after `tools/release.sh`; a push to main does not publish), the same inputs as the web shell. A cache entry keyed by `tools/shell-inputs.sh`\x27s fingerprint marks a tree as published, so nothing is committed back and a re-run does nothing; `workflow_dispatch` with `force` publishes anyway. It uses the same `SHELL_PUBLISH_TOKEN` secret and `WEB_SHELL_BACKBONE_URL` variable as web-shell.yml. Running `./server export-native` and the printed commands by hand is the fallback.
 
 ## When a solo download looks stuck
 
