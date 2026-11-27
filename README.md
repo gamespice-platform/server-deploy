@@ -3,7 +3,7 @@ Everything a server owner needs to run a game on the [**GameSpice**](https://gam
 ## Install and run
 
 ```bash
-git clone https://github.com/gamespice-platform/server-deploy && cd gs-server-deploy
+git clone https://github.com/gamespice-platform/server-deploy && cd server-deploy
 ./setup.sh                      # fetches a Godot runtime, links the addons, writes ./server
 ./server --games fatalcontact   # installs the game if needed, then starts the server
 ./server --help                 # every command and option
@@ -90,8 +90,14 @@ Options include `--port`, `--bind`, `--name`, `--max-players`, `--game`, `--map`
 | [docs/reference.md](docs/reference.md) | Guided install, layout, packs and signing, upgrading, Docker, TLS. |
 | [docs/README.md](docs/README.md) | Every other document. |
 
+## Used by
+
+No game vendors it; it is the project you run to host them.
+
+The whole collection is at [zeesgames.com](https://zeesgames.com).
+
 ## Status and licence
 
-Part of the [**GameSpice**](https://gamespice.net) platform: a family of Godot addons. Written with Claude Code and maintained by `gamemann`. Every addon has headless tests, but little of this has been played by real users yet, so expect rough edges and please [open an issue](https://github.com/gamespice-platform/server-deploy/issues) when you hit one.
+Part of the [**GameSpice**](https://gamespice.net) platform: a family of Godot addons, MIT licensed and built with Claude Code. The headless scene `selftest` covers it, along with the shell tests under `tests/`. [Zee's Games](https://zeesgames.com) run on live servers, and this project is how a server owner starts one. Report bugs on the [issue tracker](https://github.com/gamespice-platform/server-deploy/issues).
 
 MIT licence, see [LICENSE](LICENSE). The only closed part of the [**GameSpice**](https://gamespice.net) platform is the web back end; you can use your own instead of GameSpice's.
