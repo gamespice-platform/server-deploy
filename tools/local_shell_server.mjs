@@ -37,7 +37,8 @@ export async function serveShell({ dir, port, buildId, upstream, givenUrl, coi =
       up.end();
       return;
     }
-    if (!u.pathname.startsWith(prefix)) { res.writeHead(404, { 'content-type': 'text/html' }); res.end('<!doctype html>'); return; }
+    // The shell's engine files sit beside the build (`../engine/<hash>/`), so with an upstream shell every /godot/ path is proxied.
+    if (!u.pathname.startsWith(shellUpstream ? '/godot/' : prefix)) { res.writeHead(404, { 'content-type': 'text/html' }); res.end('<!doctype html>'); return; }
     // `shellUpstream` (an origin that serves /godot/<build>/, e.g. the dev CDN): the shell comes from there instead of `dir`.
     if (shellUpstream) {
       const sb = shellUpstream.replace(/\/$/, '');
