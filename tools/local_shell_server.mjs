@@ -43,7 +43,8 @@ export async function serveShell({ dir, port, buildId, upstream, givenUrl, coi =
       const sb = shellUpstream.replace(/\/$/, '');
       const lib = sb.startsWith('https:') ? https : http;
       const up = lib.request(sb + u.pathname + u.search, { method: req.method, headers: { 'user-agent': 'local_shell_server/1' } },
-        r => { const h = { ...r.headers }; delete h['alt-svc']; res.writeHead(r.statusCode, h); r.pipe(res); });
+        r => { const h = { ...r.headers }; delete h['alt-svc']; delete h['content-security-policy']; delete h['x-frame-options']; // the site's frame-ancestors names the site, not this local parent
+         res.writeHead(r.statusCode, h); r.pipe(res); });
       up.on('error', e => { res.writeHead(502); res.end(String(e)); });
       up.end();
       return;

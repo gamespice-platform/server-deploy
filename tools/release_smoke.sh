@@ -25,8 +25,9 @@ GPU=${GPU_SH:-$HERE/../../gs-bootstrap/tools/gpu.sh}
 [ -x "$GPU" ] || { echo "release_smoke: gpu.sh not found (set GPU_SH)" >&2; exit 2; }
 port=${RELEASE_SMOKE_PORT:-8099}
 log="$(mktemp /tmp/release_smoke.XXXXXX.log)"
-echo "release_smoke: ${sha:0:12} on a GPU box (log $log)"
-timeout "${RELEASE_SMOKE_TIMEOUT:-5400}" "$GPU" cdp-run --serve "$port" -- node "$HERE/release_smoke.mjs" --host-port "$port" "${pass[@]}" 2>&1 | tee "$log" | grep -E "^(PASS|FAIL|   |release_smoke)" 
+export GPU_CDP_WAIT=${GPU_CDP_WAIT:-1800}
+echo "release_smoke: ${sha:0:12}: waiting for a GPU box with no suite running (staging02, then staging; up to ${GPU_CDP_WAIT} s; log $log)"
+timeout "${RELEASE_SMOKE_TIMEOUT:-7200}" "$GPU" cdp-run --serve "$port" -- node "$HERE/release_smoke.mjs" --host-port "$port" "${pass[@]}" 2>&1 | tee "$log" | grep -E "^(PASS|FAIL|   |release_smoke|gpu\.sh)"
 rc=${PIPESTATUS[0]}
 summary="$(grep -E '^release_smoke: [0-9]+/[0-9]+ games pass' "$log" | tail -1)"
 if [ "$rc" -eq 0 ] && [ -n "$summary" ]; then verdict="PASS ${summary#release_smoke: }"; rc=0

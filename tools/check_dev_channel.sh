@@ -13,7 +13,7 @@ for f in $(cd "$REPO" && tools/shell-inputs.sh paths 2>/dev/null); do [ -f "$REP
 git add -A && git commit -qm base
 export DEV_CHANNEL_REMOTE="$t/remote" DEV_CHANNEL_DIR="$t/work" DEV_CHANNEL_STATE="$t/state"
 export DEV_CHANNEL_BUILD="touch $t/built"
-run() { "$REPO/tools/dev-channel.sh" "$@" > "$t/out" 2>&1; }
+run() { bash "$REPO/tools/dev-channel.sh" "$@" > "$t/out" 2>&1; }
 run && [ -f "$t/built" ] && ok "first run builds" || { bad "first run did not build: $(tail -2 "$t/out")"; }
 rm -f "$t/built"; run && [ ! -f "$t/built" ] && grep -q "nothing to build" "$t/out" && ok "unchanged inputs: no rebuild" || bad "rebuilt with unchanged inputs"
 run --force && [ -f "$t/built" ] && ok "--force rebuilds" || bad "--force did not rebuild"

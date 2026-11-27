@@ -56,36 +56,51 @@ async function launch(ctx, game) {
   const s = await serveShell({ dir, port, buildId, upstream: content, givenUrl: `http://x/${q}`, coi: true,
     parentHtml: parentPage(gameUrl), shellUpstream: shellOrigin });
   const page = await ctx.newPage();
-  const lines = [];
+  const lines = [], http = [];
   const t0 = Date.now();
   const log = x => lines.push(`${((Date.now() - t0) / 1000).toFixed(1)} ${x}`);
   page.on('console', m => log(`[${m.type()}] ${m.text()}`));
   page.on('pageerror', e => log(`[pageerror] ${e.message}`));
+  page.on('response', r => { if (r.status() === 404 || r.status() === 429 || r.status() >= 500) http.push(`HTTP ${r.status()} ${r.url().replace(/^https?:\/\/[^/]+/, '')}`); });
   await page.goto(`http://localhost:${port}/`);
   const text = () => lines.join('\n');
   const deadline = Date.now() + secs * 1000;
-  let ready = false;
+  let ready = false, size = null, lastNote = Date.now();
   while (Date.now() < deadline) {
     await page.waitForTimeout(1500);
     if (/This did not load|Could not start|could not be downloaded/.test(text())) break;
     const frame = page.frames().find(f => f !== page.mainFrame());
-    const canvas = frame ? await frame.evaluate(() => !!document.querySelector('canvas')).catch(() => false) : false;
+    const canvas = frame ? await frame.evaluate(() => { const c = document.querySelector('canvas'); return c ? { w: c.width, h: c.height } : null; }).catch(() => null) : null;
+    if (canvas) size = canvas;
     if (canvas && /solo game started/.test(text())) { ready = true; break; }
+    if (Date.now() - lastNote > 30000) { lastNote = Date.now(); console.log(`   ... ${game} still loading (${Math.round((Date.now() - t0) / 1000)} s)`); }
   }
   if (ready) await page.waitForTimeout(3000); // errors that follow the start
-  const out = { text: text(), ready };
+  const out = { text: text(), ready, size, http };
   await page.close();
   await new Promise(r => s.srv.close(r));
   return out;
 }
 
+// Verdict: FAIL = the game is broken for a player; WARN = prod is degraded but the game coped (named, never fatal).
+//  - a 404 or 429 (or 5xx) response is a WARN with its path; it is a FAIL only when the game itself logs an error naming that URL's file
+//    (the game could not live without it). Chrome's own "Failed to load resource" console line is the network error, so it is that WARN, not a FAIL.
+//  - "THREADS UNAVAILABLE" is benign only on a page that is NOT cross-origin isolated; the smoke frames under COOP/COEP, so here it FAILs.
 function judge(game, first, second) {
-  const bad = [];
-  if (!first.ready) bad.push('first launch never reached canvas + "solo game started"');
-  for (const [tag, t] of [['first', first.text], ['second', second.text]]) {
-    const errs = t.split('\n').filter(l => /\[(error|pageerror)\]/.test(l)
-      && !/favicon|Failed to load resource: the server responded with a status of 404 \(\)$/.test(l));
-    if (errs.length) bad.push(`${tag} launch: ${errs.length} console error(s), first: ${errs[0].slice(0, 200)}`);
+  const bad = [], warn = [];
+  const sizeOk = r => r.size && r.size.w > 0 && r.size.h > 0;
+  if (!first.ready || !sizeOk(first)) bad.push('first launch never reached canvas + "solo game started"');
+  if (first.ready && sizeOk(first) && (first.size.w !== 1280 || first.size.h !== 720)) warn.push(`canvas is ${first.size.w}x${first.size.h}, not 1280x720`);
+  for (const [tag, r] of [['first', first], ['second', second]]) {
+    const t = r.text;
+    for (const h of new Set(r.http)) warn.push(`${tag} launch: ${h}`);
+    const errs = t.split('\n').filter(l => /\[(error|pageerror)\]/.test(l) && !/Failed to load resource/.test(l));
+    for (const e of errs) {
+      const named = r.http.find(h => { const f = h.split('/').slice(-2).join('/'); return f && e.includes(f.split('?')[0]); });
+      bad.push(`${tag} launch: console error${named ? ' for ' + named : ''}: ${e.slice(0, 200)}`);
+      if (bad.length > 6) break;
+    }
+    if (/THREADS UNAVAILABLE/.test(t)) bad.push(`${tag} launch: "THREADS UNAVAILABLE" under COOP/COEP (the threaded engine did not start)`);
     if (/Could not download the content manifest/.test(t)) bad.push(`${tag} launch: manifest download failed`);
     const f = t.split('\n').find(l => /\bfailed[=: ]+([1-9]\d*)/.test(l) && /sync|download|acquir/i.test(l));
     if (f) bad.push(`${tag} launch: sync failed>0: ${f.slice(0, 200)}`);
@@ -94,28 +109,29 @@ function judge(game, first, second) {
   const dl = second.text.split('\n').filter(l => /cloud\.dl sync starting/.test(l) && !/workshop/i.test(l) && !/fetch[=: ]+0\b/.test(l));
   const need = second.text.split('\n').filter(l => /acquiring content/.test(l) && /need[=: ]+[1-9]/.test(l) && !/workshop/i.test(l));
   if (dl.length || need.length) bad.push(`second launch downloaded objects (${dl.length + need.length} lines): ${(dl[0] || need[0]).slice(0, 200)}`);
-  return bad;
+  return { bad, warn };
 }
 
 const results = [];
 const ctx = await cdp.newContext({ viewport: { width: 1280, height: 720 } }); // one profile: its IndexedDB is the cache the second launch reuses
 try {
   for (const g of games) {
-    let bad;
+    let bad, warn = [];
     try {
       const first = await launch(ctx, g);
       const second = await launch(ctx, g);
       fs.writeFileSync(path.join(outDir, `${g.replace('/', '_')}.log`), `--- first\n${first.text}\n--- second\n${second.text}\n`);
-      bad = judge(g, first, second);
+      ({ bad, warn } = judge(g, first, second));
     } catch (e) { bad = [`harness error: ${e.message}`]; }
-    results.push({ g, bad });
+    results.push({ g, bad, warn });
     console.log(`${bad.length ? 'FAIL' : 'PASS'} ${g}`);
     for (const b of bad) console.log(`   ${b}`);
+    for (const w of warn) console.log(`   WARN ${w}`);
   }
 } finally {
   await ctx.close().catch(() => {});
   await cdp.close().catch(() => {});
 }
 const fails = results.filter(r => r.bad.length);
-console.log(`release_smoke: ${results.length - fails.length}/${results.length} games pass (build ${buildId}, logs ${outDir})`);
+console.log(`release_smoke: ${results.length - fails.length}/${results.length} games pass, ${results.reduce((n, r) => n + r.warn.length, 0)} warning(s) (build ${buildId}, logs ${outDir})`);
 process.exit(fails.length ? 1 : 0);
