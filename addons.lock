@@ -6,7 +6,7 @@ gs-achievements	v0.1.16
 gs-animation	v0.2.3
 gs-audio	v0.1.25
 gs-auth	v0.1.19
-gs-bot	v0.1.39
+gs-bot	v0.1.41
 gs-bot-record	v0.1.7
 gs-browser	v0.1.12
 gs-camera	v0.2.2
@@ -47,7 +47,7 @@ gs-platform	v0.1.13
 gs-player	v0.1.8
 gs-player-char	v0.1.87
 gs-player-class	v0.1.12
-gs-player-controller	v0.4.26
+gs-player-controller	v0.4.27
 gs-procedural-generation	v0.1.7
 gs-profile	v0.1.27
 gs-profiler	v0.1.7
@@ -59,11 +59,11 @@ gs-server	v0.1.37
 gs-server-query	v0.1.12
 gs-server-security	v0.1.10
 gs-settings	v0.1.10
-gs-sim	v0.2.34
+gs-sim	v0.2.35
 gs-spawn	v0.2.7
 gs-spectate	v0.1.14
 gs-sql	v0.1.9
-gs-stats	v0.1.24
+gs-stats	v0.1.25
 gs-team	v0.1.12
 gs-timer	v0.1.17
 gs-trail	v0.1.8

@@ -14,7 +14,7 @@ entries:
   - repo: gs-auth
     pin: v0.1.19
   - repo: gs-bot
-    pin: v0.1.39
+    pin: v0.1.41
   - repo: gs-bot-record
     pin: v0.1.7
   - repo: gs-browser
@@ -96,7 +96,7 @@ entries:
   - repo: gs-player-class
     pin: v0.1.12
   - repo: gs-player-controller
-    pin: v0.4.26
+    pin: v0.4.27
   - repo: gs-procedural-generation
     pin: v0.1.7
   - repo: gs-profile
@@ -122,7 +122,7 @@ entries:
   - repo: gs-settings
     pin: v0.1.10
   - repo: gs-sim
-    pin: v0.2.34
+    pin: v0.2.35
   - repo: gs-spawn
     pin: v0.2.7
   - repo: gs-spectate
@@ -130,7 +130,7 @@ entries:
   - repo: gs-sql
     pin: v0.1.9
   - repo: gs-stats
-    pin: v0.1.24
+    pin: v0.1.25
   - repo: gs-team
     pin: v0.1.12
   - repo: gs-timer
