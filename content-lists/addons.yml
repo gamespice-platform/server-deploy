@@ -122,7 +122,7 @@ entries:
   - repo: gs-settings
     pin: v0.1.10
   - repo: gs-sim
-    pin: v0.2.40
+    pin: v0.2.41
   - repo: gs-spawn
     pin: v0.2.7
   - repo: gs-spectate
